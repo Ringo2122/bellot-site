@@ -47,20 +47,43 @@
     letter-spacing:.04em}
 
   /* ── шапка ── */
-  header.main{background:var(--card);border-bottom:1px solid var(--hair);position:sticky;
-    top:env(safe-area-inset-top,0px);z-index:40}
-  .hrow{display:flex;align-items:center;gap:22px;padding-block:13px}
+  header.main{background:var(--card);border-bottom:1px solid var(--hair);position:relative;z-index:50}
+  .hrow{display:flex;align-items:center;gap:14px;padding-block:13px;position:relative}
   .logo{display:flex;align-items:center;gap:10px;flex:none}
   .logo .mark{width:38px;height:38px;border-radius:7px;background:var(--brand);color:#fff;
     display:grid;place-items:center;font-weight:700;font-size:17px;letter-spacing:-.02em}
   .logo .nm{font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
   .logo .sub{font-size:11px;color:var(--ink-3);line-height:1.2}
-  .hsearch{flex:1;display:flex;min-width:0}
-  .hsearch input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--hair-2);
-    border-right:0;border-radius:5px 0 0 5px;background:var(--card);color:var(--ink)}
-  .hsearch button{padding:9px 20px;border:0;border-radius:0 5px 5px 0;background:var(--brand);
-    color:#fff;cursor:pointer;font-weight:700}
-  .hsearch button:hover{background:var(--brand-d)}
+/* поиск: лупа, по нажатию — поле с подсказками поверх шапки */
+.hsearch{margin-left:auto}
+.hs-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--hair-2);background:var(--card);color:var(--ink);
+  display:grid;place-items:center;cursor:pointer;transition:border-color .15s,color .15s}
+.hs-btn:hover{border-color:var(--brand);color:var(--brand)}
+.hs-btn svg,.hs-ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.hs-form{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:0;opacity:0;pointer-events:none;
+  display:flex;align-items:center;background:var(--card);border:1.5px solid var(--brand);border-radius:23px;
+  box-shadow:var(--sh-2);transition:width .3s cubic-bezier(.2,.7,.3,1),opacity .18s}
+.hsearch.open .hs-form{width:min(580px,calc(100% - 32px));opacity:1;pointer-events:auto}
+.hs-ico{padding:0 4px 0 14px;color:var(--ink-3);display:grid;place-items:center}
+.hs-form input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);padding:11px 6px;font-size:15px;outline:none}
+  .hs-form input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}   /* свой крестик уже есть */
+.hs-x{border:0;background:none;color:var(--ink-3);font-size:17px;padding:0 15px;cursor:pointer}
+.hs-x:hover{color:var(--ink)}
+.sugg{position:absolute;left:0;right:0;top:calc(100% + 7px);background:var(--card);border:1px solid var(--hair);
+  border-radius:10px;box-shadow:var(--sh-2);overflow:hidden;display:none;z-index:60;text-align:left}
+.sugg.on{display:block}
+.sugg a{display:flex;gap:11px;align-items:center;padding:9px 12px;color:var(--ink);border-bottom:1px solid var(--hair)}
+.sugg a:last-child{border-bottom:0}
+.sugg a:hover,.sugg a.cur{background:var(--brand-l);text-decoration:none}
+.sugg .si{flex:none;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+  background:var(--cl,var(--brand-l));color:var(--c,var(--brand))}
+.sugg .si svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sugg .sb{min-width:0;flex:1}
+.sugg .sname{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sugg .smeta{display:block;font-size:12px;color:var(--ink-3)}
+.sugg mark{background:var(--accent-l);color:inherit;border-radius:2px}
+.sugg .all{justify-content:center;font-weight:700;color:var(--brand);font-size:13.5px}
+.sugg .none{padding:14px;color:var(--ink-3);font-size:14px}
   .hacts{display:flex;gap:9px;flex:none}
   .more{display:block;margin:22px auto 0;min-width:260px}
   .btn{padding:9px 16px;border-radius:5px;border:1px solid var(--hair-2);background:var(--card);
@@ -69,7 +92,7 @@
   .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
   .btn.pri:hover{filter:brightness(.93);color:#fff}
 
-  nav.main{background:var(--brand);overflow-x:auto}
+  nav.main{background:var(--brand);overflow-x:auto;position:sticky;top:0;z-index:40;box-shadow:0 2px 10px rgba(10,30,60,.18)}
   nav.main ul{display:flex;list-style:none;margin:0;padding:0;gap:0;min-width:max-content}
   nav.main a{display:block;padding:11px 16px;color:#fff;font-size:14.5px;white-space:nowrap;
     border-bottom:3px solid transparent}
@@ -215,7 +238,7 @@
   .cat-head h1{margin:0}
   .cat-head .lede{margin:5px 0 0}
   .layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:22px;align-items:start}
-  .filters{position:sticky;top:82px;max-height:calc(100vh - 98px);overflow:auto;scrollbar-width:thin;
+  .filters{position:sticky;top:62px;max-height:calc(100vh - 78px);overflow:auto;scrollbar-width:thin;
     display:flex;flex-direction:column}
   .filters .fh{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--hair);
     font-weight:700;position:sticky;top:0;background:var(--card);z-index:1}
@@ -311,7 +334,7 @@
     padding:5px 12px;border-radius:20px;margin-bottom:18px}
   .land h1{font-size:44px;line-height:1.1;letter-spacing:-.025em;max-width:17ch;margin:0 0 16px;text-wrap:balance}
   .land p{font-size:17px;line-height:1.55;color:#d5e5f5;max-width:58ch;margin:0 0 26px}
-  .land-search{display:flex;max-width:620px;background:#fff;border-radius:8px;padding:5px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .land-search{position:relative;display:flex;max-width:620px;background:#fff;border-radius:8px;padding:5px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
   .land-search input{flex:1;min-width:0;border:0;padding:12px 14px;font-size:16px;color:#1a2330;background:transparent;outline:none}
   .land-search button{border:0;border-radius:6px;background:var(--accent);color:#fff;font-weight:700;padding:0 22px;cursor:pointer;font-size:15px}
   .land-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}
@@ -322,24 +345,33 @@
   .kpi{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:18px 18px 16px;box-shadow:var(--sh-2)}
   .kpi b{display:block;font-size:28px;color:var(--brand);letter-spacing:-.02em;line-height:1.15}
   .kpi span{font-size:13px;color:var(--ink-2)}
-  /* плитки разделов: обложка — фото лота раздела */
-  .stiles{display:grid;grid-template-columns:1.25fr 1fr 1fr;grid-template-rows:200px 200px;gap:14px}
-  .stile{position:relative;display:block;border-radius:12px;overflow:hidden;color:#fff;background:var(--brand-d);box-shadow:var(--sh)}
-  .stile.s-nedvizhimost{grid-row:span 2}
-  .stile:hover{text-decoration:none}
-  .stile img.bgi{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
-  .stile:hover img.bgi{transform:scale(1.06)}
-  .stile .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,28,52,.15) 0%,rgba(8,28,52,.35) 45%,rgba(8,28,52,.9) 100%)}
-  .sico{position:absolute;top:14px;left:14px;width:44px;height:44px;border-radius:11px;background:rgba(255,255,255,.16);
-    border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(6px);display:grid;place-items:center}
-  .sico svg,.sico2 svg,.hico svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-  .sbody{position:absolute;left:18px;right:60px;bottom:16px;display:flex;flex-direction:column;gap:2px}
-  .stile .st{font-size:20px;font-weight:700;letter-spacing:-.01em}
-  .stile.s-nedvizhimost .st{font-size:26px}
-  .stile .sn{font-size:13px;color:#d5e5f5}
-  .sgo{position:absolute;right:16px;bottom:16px;width:34px;height:34px;border-radius:50%;background:var(--accent);
-    display:grid;place-items:center;font-weight:700;transition:transform .2s}
-  .stile:hover .sgo{transform:translateX(3px)}
+/* плитки разделов: рисованные в стиле иконок, у каждого раздела свой цвет */
+.stiles{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.stile{position:relative;display:flex;flex-direction:column;gap:10px;padding:16px;min-height:134px;border-radius:12px;
+  overflow:hidden;background:var(--card);border:1px solid var(--hair);color:var(--ink);box-shadow:var(--sh);
+  transition:transform .18s,box-shadow .18s,border-color .18s}
+.stile:hover{text-decoration:none;transform:translateY(-3px);box-shadow:var(--sh-2);border-color:var(--c,var(--brand))}
+.stile .ti{width:46px;height:46px;border-radius:12px;background:var(--cl,var(--brand-l));color:var(--c,var(--brand));
+  display:grid;place-items:center}
+.stile svg,.hico svg,.sico2 svg{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+.hico svg,.sico2 svg{width:24px;height:24px;stroke-width:1.7}
+.stile .ti svg{width:26px;height:26px;stroke-width:1.7}
+.stile .bg{position:absolute;right:-20px;bottom:-24px;color:var(--c,var(--brand));opacity:.08;transition:transform .35s,opacity .35s}
+.stile .bg svg{width:120px;height:120px;stroke-width:1.1}
+.stile:hover .bg{opacity:.15;transform:rotate(-7deg) scale(1.06)}
+.stile .tt{font-weight:700;font-size:15.5px;line-height:1.25;margin-top:auto;position:relative}
+.stile .tn{font-size:12.5px;color:var(--ink-3);position:relative}
+.s-nedvizhimost{--c:#12508f;--cl:#e8f0f8}
+.s-avto{--c:#17807a;--cl:#e2f3f1}
+.s-gruz{--c:#6a4fb3;--cl:#efeaf9}
+.s-spec{--c:#c2651a;--cl:#fbeee2}
+.s-oborud{--c:#4a5a70;--cl:#e9edf2}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .s-nedvizhimost{--c:#5a9fe0;--cl:#152534}
+  :root:not([data-theme="light"]) .s-avto{--c:#4fc1b8;--cl:#12302d} :root:not([data-theme="light"]) .s-gruz{--c:#a58ce8;--cl:#241c3a}
+  :root:not([data-theme="light"]) .s-spec{--c:#ec9a55;--cl:#33210f} :root:not([data-theme="light"]) .s-oborud{--c:#9fb0c6;--cl:#1d2530} }
+:root[data-theme="dark"] .s-nedvizhimost{--c:#5a9fe0;--cl:#152534} :root[data-theme="dark"] .s-avto{--c:#4fc1b8;--cl:#12302d}
+:root[data-theme="dark"] .s-gruz{--c:#a58ce8;--cl:#241c3a} :root[data-theme="dark"] .s-spec{--c:#ec9a55;--cl:#33210f}
+:root[data-theme="dark"] .s-oborud{--c:#9fb0c6;--cl:#1d2530}
   .how{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
   .how>div{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:18px;box-shadow:var(--sh)}
   .hn{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700}
@@ -350,7 +382,7 @@
   .helpband h2{margin:0 0 6px;color:#fff}
   .helpband p{margin:0;color:#d5e5f5;max-width:60ch}
   .archline{text-align:center;font-size:14px}
-  .hico{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:10px;background:var(--brand-l);color:var(--brand);
+  .hico{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:10px;background:var(--cl,var(--brand-l));color:var(--c,var(--brand));
     vertical-align:-7px;margin-right:12px}
 
   /* ── страница лота: ориентир под карточкой, калькулятор ── */
@@ -377,6 +409,13 @@
   .cx-rules li{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--hair)}
   .cx-rules span{color:var(--ink-3)}
   .cx-rules b{font-weight:400}
+.cx-fees{margin-top:16px;padding:12px 14px;border:1px dashed var(--hair-2);border-radius:8px}
+.cx-fh{font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.cx-in label.cx-f{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:7px 0;
+  text-transform:none;letter-spacing:0;font-weight:400;font-size:13.5px;color:var(--ink-2)}
+.cx-f input{flex:none;width:112px;padding:6px 8px;border:1px solid var(--hair-2);border-radius:5px;background:var(--card);
+  color:var(--ink);text-align:right}
+.cx-fnote{font-size:12px;color:var(--ink-3);margin-top:6px;line-height:1.45}
   .cx-out{background:var(--brand-l);border:1px solid var(--hair);border-radius:8px;padding:6px 16px 14px}
   .cx-mk{margin-top:12px;padding:10px 12px;border-radius:6px;font-size:13.5px}
   .cx-mk.ok{background:var(--ok-l);border:1px solid var(--ok)}
@@ -400,7 +439,7 @@
   .steps4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:22px}
   .steps4 div{display:flex;gap:10px;align-items:center;font-size:13.5px;color:var(--ink-2)}
   .steps4 b{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center}
-  .hform{padding:22px;position:sticky;top:82px}
+  .hform{padding:22px;position:sticky;top:62px}
   .hform h2{margin:0 0 6px}
   .hform small{text-transform:none;letter-spacing:0;font-weight:400}
   .ferr{color:#c0392b;font-size:13px;min-height:18px;margin-bottom:6px}
@@ -414,8 +453,6 @@
   }
   @media (max-width:900px){
     .calc{grid-template-columns:1fr}
-    .hsearch{order:3;flex-basis:100%}
-    .hrow{flex-wrap:wrap;gap:12px}
   }
   @media (max-width:760px){
     .layout{grid-template-columns:1fr}
@@ -437,8 +474,7 @@
     .help,.cx-grid{grid-template-columns:1fr}
     .hform{position:static}
     .kpis,.how{grid-template-columns:repeat(2,1fr)}
-    .stiles{grid-template-columns:1fr 1fr;grid-template-rows:none;grid-auto-rows:170px}
-    .stile.s-nedvizhimost{grid-row:auto;grid-column:span 2}
+    .stiles{grid-template-columns:repeat(3,1fr)}
     .cx-time{grid-template-columns:repeat(2,1fr)}
   }
   @media (max-width:760px){
@@ -450,12 +486,12 @@
     .cx-rules li{grid-template-columns:1fr;gap:2px}
   }
   @media (max-width:520px){
-    .kpis,.how,.stiles{grid-template-columns:1fr}
-    .stile.s-nedvizhimost{grid-column:auto}
+    .kpis,.how{grid-template-columns:1fr}
+    .stiles{grid-template-columns:1fr 1fr}
+    .stile{min-height:118px;padding:14px}
     .cx-time{grid-template-columns:1fr}
     .kpis{margin-top:-40px}
     .logo .sub{display:none}
-    .hacts{margin-left:auto}
     .hacts .btn{padding:8px 12px;font-size:13px}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -476,10 +512,15 @@
     <span class="mark">БЛ</span>
     <span><span class="nm">БелЛот</span><br><span class="sub">агрегатор торгов Беларуси</span></span>
   </a>
-  <form class="hsearch" id="hs">
-    <input id="hs-q" type="search" placeholder="Поиск по названию, адресу, должнику" aria-label="Поиск">
-    <button type="submit">Найти</button>
+<div class="hsearch" id="hs">
+  <button class="hs-btn" id="hs-open" type="button" aria-label="Поиск по лотам"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg></button>
+  <form class="hs-form" id="hs-form" role="search">
+    <span class="hs-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg></span>
+    <input id="hs-q" type="search" placeholder="Название, адрес, VIN или номер лота" aria-label="Поиск по лотам" autocomplete="off">
+    <button class="hs-x" id="hs-close" type="button" aria-label="Закрыть поиск">✕</button>
+    <div class="sugg" id="hs-sugg"></div>
   </form>
+</div>
   <div class="hacts">
     <a class="btn pri" href="#/help">Помощь в аукционе</a>
   </div>
@@ -582,8 +623,70 @@ $('#nav').innerHTML = '<li><a href="#/">Главная</a></li><li><a href="#/ca
   + SECTIONS.map(([s,n])=>`<li><a href="#/s/${s}">${n}</a></li>`).join('')
   + '<li><a href="#/calc">Калькулятор</a></li><li><a href="#/about">О платформе</a></li>';
 $('#fnav').innerHTML = SECTIONS.map(([s,n])=>`<li><a href="#/s/${s}">${n}</a></li>`).join('');
-$('#hs').addEventListener('submit', e=>{ e.preventDefault();
-  location.hash = '#/catalog?q=' + encodeURIComponent($('#hs-q').value.trim()); });
+
+/* ───────── поиск с подсказками ───────── */
+const norm = s => String(s||'').toLowerCase().replace(/ё/g,'е');
+/* отсекаем окончание: «квартиры в минске» находит «Квартира, г. Минск»; номера и VIN не трогаем */
+const stem = w => /\d/.test(w) ? w : w.length>=6 ? w.slice(0,-2) : w.length===5 ? w.slice(0,-1) : w;
+const qwords = q => norm(q).split(/[\s,]+/).filter(w=>w.length>1 || /\d/.test(w)).map(stem);
+function findLots(q, n){
+  const words = qwords(q);
+  if(!words.length) return {total:0, top:[]};
+  const res = [];
+  for(const l of DATA){
+    const nm = norm(l.name), hay = nm+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor);
+    if(!words.every(w=>hay.includes(w))) continue;
+    // выше — совпадение в названии и в его начале
+    res.push([(nm.startsWith(words[0])?3:0) + words.filter(w=>nm.includes(w)).length*2 - nm.length/400, l]);
+  }
+  res.sort((a,b)=>b[0]-a[0]);
+  return {total:res.length, top:res.slice(0,n).map(x=>x[1])};
+}
+const hl = (text, q) => qwords(q).reduce((h,w)=>
+  h.replace(new RegExp('('+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'), '<mark>$1</mark>'), esc(text));
+function attachSuggest(input, box, done){
+  let cur = -1, tm;
+  const close = () => { box.classList.remove('on'); cur = -1; };
+  const draw = () => {
+    const q = input.value.trim();
+    if(q.length < 2){ close(); return; }
+    const r = findLots(q, 7);
+    box.innerHTML = r.top.length
+      ? r.top.map(l=>`<a href="#/lot/${encodeURIComponent(l.id)}"><span class="si s-${l.section}">${ICON[l.section]}</span>
+          <span class="sb"><span class="sname">${hl(l.name,q)}</span>
+          <span class="smeta">${nf(l.price)} BYN · ${esc(l.region||secName(l.section))} · заявки до ${dt(l.req_to)}</span></span></a>`).join('')
+        + `<a class="all" href="#/catalog?q=${encodeURIComponent(q)}">Все результаты: ${r.total} →</a>`
+      : `<div class="none">Среди активных лотов ничего не нашлось. <a href="#/catalog?q=${encodeURIComponent(q)}&st=arch">Поискать в архиве →</a></div>`;
+    box.classList.add('on'); cur = -1;
+  };
+  input.addEventListener('input', ()=>{ clearTimeout(tm); tm = setTimeout(draw, 90); });
+  input.addEventListener('focus', draw);
+  input.addEventListener('keydown', e=>{
+    const links = [...box.querySelectorAll('a')];
+    if((e.key==='ArrowDown' || e.key==='ArrowUp') && links.length){
+      e.preventDefault();
+      cur = (cur + (e.key==='ArrowDown'?1:-1) + links.length) % links.length;
+      links.forEach((a,i)=>a.classList.toggle('cur', i===cur));
+      links[cur].scrollIntoView({block:'nearest'});
+    } else if(e.key==='Escape'){ close(); if(done) done(); }
+  });
+  input.form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const links = [...box.querySelectorAll('a')], q = input.value.trim();
+    const to = cur>=0 && links[cur] ? links[cur].getAttribute('href') : (q ? '#/catalog?q='+encodeURIComponent(q) : null);
+    close(); if(done) done(); if(to) location.hash = to;
+  });
+  box.addEventListener('click', e=>{ if(e.target.closest('a')){ close(); if(done) done(); } });
+}
+// клик мимо — закрыть подсказки и поле поиска
+document.addEventListener('click', e=>{
+  document.querySelectorAll('.sugg.on').forEach(b=>{ if(!b.parentElement.contains(e.target)) b.classList.remove('on'); });
+  if($('#hs').classList.contains('open') && !$('#hs').contains(e.target)) hsClose();
+});
+const hsClose = () => { $('#hs').classList.remove('open'); $('#hs-q').value = ''; $('#hs-sugg').classList.remove('on'); };
+$('#hs-open').onclick = () => { $('#hs').classList.add('open'); setTimeout(()=>$('#hs-q').focus(), 80); };
+$('#hs-close').onclick = hsClose;
+attachSuggest($('#hs-q'), $('#hs-sugg'), hsClose);
 
 /* ───────── карточка в сетке ───────── */
 /* насколько стартовая цена ниже медианы похожих предложений, % */
@@ -694,7 +797,7 @@ function pageCatalog(section, params){
     return section ? src.filter(l=>l.section===section) : src; };
   $('#app').innerHTML = `<div class="wrap">
     ${crumbs(section?[[title]]:[[title]])}
-    <div class="cat-head"><h1>${section?`<span class="hico">${ICON[section]}</span>`:''}${esc(title)}</h1><p class="lede" id="c-lede"></p></div>
+    <div class="cat-head"><h1>${section?`<span class="hico s-${section}">${ICON[section]}</span>`:''}${esc(title)}</h1><p class="lede" id="c-lede"></p></div>
     <div class="layout"><div id="fwrap"></div><div><div class="toolbar" id="tb"></div><div id="res"></div></div></div></div>`;
   document.title = title + ' — БелЛот';
 
@@ -806,6 +909,8 @@ function calcModel(l, t){
 /* «в течение 30 календарных дней» из порядка оплаты, если площадка его написала */
 function payTerm(secs){
   const rows = secs.flatMap(s=>s.rows);
+  // beltorgi пишет срок внутри «Обязанностей»: «Срок оплаты предмета торгов: не позднее 3 рабочих дней…»
+  for(const [,v] of rows){ const x = String(v).match(/Срок оплаты предмета торгов:\s*([^.;]{5,90})/i); if(x) return x[1].replace(/\s+[А-ЯЁ].*$/, '').trim(); }   // до начала следующей фразы
   // сначала — оплата самого лота; «возмещение затрат» и задаток — это другие сроки
   const pick = rows.find(([k])=>/оплат\S* за лот|порядок оплаты|срок оплаты/i.test(k) && !/возмещ|вознагр|задат/i.test(k))
             || rows.find(([k])=>/оплат/i.test(k) && !/возмещ|вознагр|задат/i.test(k));
@@ -819,6 +924,19 @@ function payTerm(secs){
 function calcBlock(l, det){
   const t = det.t || {}, m = calcModel(l, t), known = Object.keys(t).length > 0;
   const pay = payTerm(det.s || []);
+  // Сверх цены лота: у beltorgi — аукционный сбор % и затраты на организацию торгов, у ИПМ — вознаграждение % и затраты,
+  // у e-auction по арестованному имуществу сборов нет. Поля заполнены данными площадки и их можно поправить.
+  const feeName = l.platform==='beltorgi.by' ? 'Аукционный сбор' : 'Вознаграждение организатору';
+  const feeNote = !known ? 'Площадка не указала сборы по этому лоту — впишите, если знаете.'
+    : l.platform==='beltorgi.by'
+      ? 'Из карточки лота на площадке.' + (t.fee_later ? ' Сумму затрат площадка объявит до начала торгов — впишите её, когда узнаете.' : '')
+    : l.platform==='ipmtorgi.by'
+      ? 'Из карточки лота на площадке. Точную сумму затрат площадка сообщает до начала торгов.'
+      : 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.';
+  const feesHtml = `<div class="cx-fees"><div class="cx-fh">Расходы сверх цены лота</div>
+      <label class="cx-f"><span>${feeName}, % от итоговой цены</span><input type="number" id="cx-fp" min="0" max="30" step="0.1" value="${t.fee_pct!=null?t.fee_pct:''}" placeholder="0"></label>
+      <label class="cx-f"><span>Затраты на организацию торгов, BYN</span><input type="number" id="cx-fa" min="0" step="1" value="${t.fee_abs!=null?t.fee_abs:''}" placeholder="${t.fee_later?'объявят до торгов':'0'}"></label>
+      <div class="cx-fnote">${esc(feeNote)}</div></div>`;
   const spOpts = m.pick ? [0.5,1,2,3,4,5].filter(x=>x>=(t.step_min_pct||0.5) && x<=(t.step_pct||5)) : [];
   $('#calcx').innerHTML = `
     <div class="cx-head"><h2>Калькулятор покупки</h2>
@@ -835,10 +953,10 @@ function calcBlock(l, det){
           <li><span>Шаг торгов</span><b>${esc(m.stepTxt)}</b></li>
           <li><span>Задаток</span><b>${nf(m.deposit)} BYN${m.est.deposit?' — оценка 10%':''}</b></li>
           ${m.single?`<li><span>Единственный участник</span><b>покупает за ${nf(m.single)} BYN (+${t.single_pct}%)</b></li>`:''}
-          ${t.fee_pct||t.fee_abs?`<li><span>Сверх цены лота</span><b>${[t.fee_pct?`вознаграждение организатору ${t.fee_pct}%`:'', t.fee_abs?`затраты ${nf(t.fee_abs)} BYN`:''].filter(Boolean).join(' + ')}</b></li>`:''}
           ${t.min_price?`<li><span>Минимальная стоимость</span><b>${nf(t.min_price)} BYN</b></li>`:''}
           ${t.vat?`<li><span>НДС</span><b>${esc(t.vat)}</b></li>`:''}
         </ul>
+        ${feesHtml}
       </div>
       <div class="cx-out" id="cx-out"></div>
     </div>
@@ -851,15 +969,16 @@ function calcBlock(l, det){
   const run = () => {
     const n = +$('#cx-n').value, sp = m.pick ? +$('#cx-sp').value : 0;
     $('#cx-nv').textContent = n;
+    const fp = parseFloat($('#cx-fp').value)||0, fa = parseFloat($('#cx-fa').value)||0, feeOf = p => p*fp/100 + fa;
     const price = n===0 && m.single ? m.single : m.at(n, sp);
-    const fees = m.fees(price), total = price + fees, rest = Math.max(total - m.deposit, 0);
+    const fees = feeOf(price), total = price + fees, rest = Math.max(total - m.deposit, 0);
     $('#cx-hint').textContent = n===0
       ? (m.single ? 'Без борьбы: вы единственный участник.' : 'Покупка по стартовой цене.')
       : `Цена выросла на ${Math.round((price/m.P-1)*100)}% от стартовой.`;
     let mk = '';
     if(l.market){
       const med = l.market.median, d = Math.round((med-total)/med*100);
-      let k = 0; while(k<200 && (m.at(k+1,sp) + m.fees(m.at(k+1,sp))) < med) k++;
+      let k = 0; while(k<200 && (m.at(k+1,sp) + feeOf(m.at(k+1,sp))) < med) k++;
       mk = `<div class="cx-mk ${d>=0?'ok':'bad'}">${d>=0
         ? `Итог на <b>${d}%</b> ниже рыночной медианы (${nf(med)} BYN).`
         : `Итог на <b>${-d}%</b> выше рыночной медианы — дальше торговаться невыгодно.`}
@@ -870,8 +989,8 @@ function calcBlock(l, det){
     }
     $('#cx-out').innerHTML = `
       <div class="row"><span class="l">Цена лота после торгов</span><span class="r">${nf(price)} BYN</span></div>
-      ${t.fee_pct?`<div class="row"><span class="l">Вознаграждение организатору, ${t.fee_pct}%</span><span class="r">${nf(price*t.fee_pct/100)} BYN</span></div>`:''}
-      ${t.fee_abs?`<div class="row"><span class="l">Затраты организатора</span><span class="r">${nf(t.fee_abs)} BYN</span></div>`:''}
+      <div class="row"><span class="l">${feeName}${fp?`, ${String(fp).replace('.',',')}%`:''}</span><span class="r">${fp?nf(price*fp/100)+' BYN':'нет'}</span></div>
+      <div class="row"><span class="l">Затраты на организацию торгов</span><span class="r">${fa?nf(fa)+' BYN':(t.fee_later?'объявят до торгов':'нет')}</span></div>
       <div class="row big"><span class="l">Итого за покупку</span><span class="r">${nf(total)} BYN</span></div>
       <div class="row"><span class="l">Задаток — внести до ${dt(t.deposit_to || l.req_to)}</span><span class="r">${nf(m.deposit)} BYN</span></div>
       <div class="row"><span class="l">Доплатить после победы</span><span class="r">${nf(rest)} BYN</span></div>
@@ -880,6 +999,7 @@ function calcBlock(l, det){
   };
   $('#cx-n').addEventListener('input', run);
   if(m.pick) $('#cx-sp').addEventListener('change', run);
+  ['cx-fp','cx-fa'].forEach(id=>$('#'+id).addEventListener('input', run));
   run();
 }
 
@@ -1160,16 +1280,9 @@ const ICON = {
 };
 
 function sectionTiles(){
-  return `<div class="stiles">${SECTIONS.map(([s,n])=>{
-    const ls = DATA.filter(l=>l.section===s);
-    // обложка — самый дорогой лот раздела с фото: у таких обычно лучшие снимки
-    const cover = ls.filter(l=>l.photo).sort((a,b)=>b.price-a.price)[0];
-    return `<a class="stile s-${s}" href="#/s/${s}">
-      ${cover?pic(cover,'bgi'):''}<span class="shade"></span>
-      <span class="sico">${ICON[s]}</span>
-      <span class="sbody"><span class="st">${n}</span>
-        <span class="sn">${ls.length} ${plural(ls.length,'активный лот','активных лота','активных лотов')}</span></span>
-      <span class="sgo">→</span></a>`;
+  return `<div class="stiles">${SECTIONS.map(([s,n])=>{ const k = cnt(s);
+    return `<a class="stile s-${s}" href="#/s/${s}"><span class="bg">${ICON[s]}</span><span class="ti">${ICON[s]}</span>
+      <span class="tt">${n}</span><span class="tn">${k} ${plural(k,'активный лот','активных лота','активных лотов')}</span></a>`;
   }).join('')}</div>`;
 }
 
@@ -1188,7 +1301,7 @@ function pageHome(){
       <div class="eyebrow">Агрегатор торгов по имуществу должников</div>
       <h1>Имущество с торгов дешевле рынка — в одном окне и без риска</h1>
       <p>Недвижимость, автомобили и техника со всех крупных площадок Беларуси. Показываем, сколько такой объект стоит на рынке, считаем полную цену покупки и помогаем пройти торги до сделки.</p>
-      <form class="land-search" id="ls"><input id="ls-q" type="search" placeholder="Квартира в Гомеле, Volkswagen, экскаватор…" aria-label="Поиск лота"><button type="submit">Найти лот</button></form>
+      <form class="land-search" id="ls"><input id="ls-q" type="search" placeholder="Например: квартира в Минске, Volkswagen, экскаватор" aria-label="Поиск лота" autocomplete="off"><button type="submit">Найти лот</button><div class="sugg" id="ls-sugg"></div></form>
       <div class="land-cta">
         <a class="btn pri big" href="#/catalog">Смотреть ${nf(DATA.length)} лотов</a>
         <a class="btn ghost big" href="#/help">Помощь в аукционе</a>
@@ -1229,8 +1342,7 @@ function pageHome(){
 
     <div class="sec archline"><a href="#/catalog?st=arch">Архив завершённых торгов — ${nf(ARCHN._||0)} ${plural(ARCHN._||0,'лот','лота','лотов')} →</a></div>
   </div>`;
-  $('#ls').addEventListener('submit', e=>{ e.preventDefault();
-    location.hash = '#/catalog?q=' + encodeURIComponent($('#ls-q').value.trim()); });
+  attachSuggest($('#ls-q'), $('#ls-sugg'));
 }
 
 /* ───────── роутер с переходом страниц ───────── */

@@ -131,7 +131,8 @@ PLAN.map do |plat, secs|
           old = mx.synchronize { db[c['key']] }
           if old
             upd = {}
-            unless old.key?('terms')
+            # beltorgi: с версии 2 в условиях есть аукционный сбор и затраты — пересобираем из подробностей
+            if !old.key?('terms') || (c['platform'] == 'beltorgi.by' && old['terms']['v'].to_i < 2)
               go = mx.synchronize { (terms_left -= 1) >= 0 }
               if go
                 # у beltorgi условия уже лежат в подробностях — площадку не дёргаем
