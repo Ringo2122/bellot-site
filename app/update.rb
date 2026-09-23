@@ -20,6 +20,9 @@ RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
 WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3 }.freeze
 MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
+# Условия покупки (задаток, шаг, сборы) появились позже самих лотов. У известных лотов без них
+# робот дозаполняет их постепенно — не больше TERMS_CAP страниц за прогон, чтобы не нагружать площадки.
+TERMS_CAP = (ENV['TERMS_CAP'] || 800).to_i
 
 SEC_RU = { 'nedvizhimost' => 'Недвижимость', 'avto' => 'Легковые авто', 'gruz' => 'Грузовые и автобусы',
            'spec' => 'Спецтехника', 'oborud' => 'Оборудование' }.freeze
@@ -85,7 +88,7 @@ def new_lot(c, sec, d, src, now)
     'torg' => d['torg'], 'url' => c['url'], 'location' => loc, 'region' => region_of(loc),
     'debtor' => d['debtor'], 'area_num' => sec == 'nedvizhimost' ? d['area_num'] : nil,
     'sub_ru' => plat == 'e-auction.by' && sec == 'nedvizhimost' ? Src::EA_SUBS[c['sub']] : nil,
-    'platform' => plat, 'section' => sec, 'section_ru' => SEC_RU[sec] }
+    'platform' => plat, 'section' => sec, 'section_ru' => SEC_RU[sec], 'terms' => d['terms'] || {} }
 end
 
 now = Time.now.to_i
@@ -96,6 +99,7 @@ mx = Mutex.new
 seen = {}          # ключи, которые площадки показали в этом прогоне
 lists = {}         # src → сколько карточек прочитано (nil — список не прочитан)
 stat = Hash.new(0)
+terms_left = TERMS_CAP
 
 PLAN.map do |plat, secs|
   Thread.new do
@@ -127,6 +131,18 @@ PLAN.map do |plat, secs|
           old = mx.synchronize { db[c['key']] }
           if old
             upd = {}
+            unless old.key?('terms')
+              go = mx.synchronize { (terms_left -= 1) >= 0 }
+              if go
+                # у beltorgi условия уже лежат в подробностях — площадку не дёргаем
+                if c['platform'] == 'beltorgi.by'
+                  upd['terms'] = Src.bt_terms(Store.details(c['key']))
+                elsif (d2 = fetch_detail(c))   # площадка не ответила — попробуем в следующий прогон
+                  upd['terms'] = d2['terms'] || {}
+                end
+                mx.synchronize { stat['дозаполнены условия'] += 1 }
+              end
+            end
             upd['price'] = c['price'] if c['price'].to_f.positive? && c['price'] != old['price']
             if c['platform'] == 'beltorgi.by'
               # срок по обратному отсчёту разошёлся с известным больше чем на сутки — перевыставили
@@ -135,6 +151,7 @@ PLAN.map do |plat, secs|
                 if d && d['req_to']
                   upd['req_to'] = d['req_to']
                   upd['torg'] = d['torg']
+                  upd['terms'] = d['terms'] if d['terms']
                   Store.save_details(c['key'], trim(d['details'] || []))
                 end
               end

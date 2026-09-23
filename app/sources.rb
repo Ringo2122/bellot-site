@@ -125,8 +125,26 @@ module Src
       'location' => rows_find(secs, /Местоположение/),
       'debtor' => rows_find(secs, /^Должник/),
       'area_num' => area && area_m2('Площадь', area),
-      'photo_url' => pic && EA + pic }
+      'photo_url' => pic && EA + pic, 'terms' => ea_terms(html) }
   end
+
+# Условия покупки для калькулятора. На e-auction: «задаток в размере 538.17 BYN»,
+# «Первая ставка - 5% от начальной цены», «Лимиты установки ставки: от … (0.5%) до … (5%)»,
+# единственный участник покупает «по начальной цене … плюс 5%». Арестованное имущество НДС не облагается.
+def ea_terms(html)
+  tx = txt(html.gsub(/<script.*?<\/script>|<style.*?<\/style>/m, ''))
+  t = {}
+  t['deposit'] = num(tx[/задаток в размере\s*([\d\s.,]+?)\s*BYN/, 1])
+  t['first_pct'] = num(tx[/Первая ставка\s*-\s*([\d.,]+)\s*%/, 1])
+  if (m = tx.match(/Лимиты установки ставки:\s*от[^(]*\(([\d.,]+)\s*%\)\s*до[^(]*\(([\d.,]+)\s*%\)/))
+    t['step_min_pct'] = num(m[1])
+    t['step_pct'] = num(m[2])
+    t['step_base'] = 'start'
+  end
+  t['single_pct'] = num(tx[/по начальной цене [\d\s.,]+ BYN плюс ([\d.,]+)\s*%/, 1])
+  t['vat'] = 'НДС не облагается — реализация арестованного имущества' if tx.include?('реализации арестованного имущества')
+  t.reject { |_, v| v.nil? || v == 0.0 }
+end
 
   # ---------------- ipmtorgi.by ----------------
   # Список отсортирован по сроку заявок по убыванию и тянет архив до 2019 года:
@@ -186,8 +204,30 @@ module Src
       'torg' => ts(txt(html[/Время начала торгов:<\/b>\s*<br\s*\/?>\s*([0-9:. ]+)/m, 1])),
       'area_num' => arow && area_m2(arow[0], arow[1]),
       'debtor' => (seller.find { |k, _| k =~ /Наименование/ } || [])[1],
-      'photo_url' => pic && IPM + pic }
+      'photo_url' => pic && IPM + pic, 'terms' => ipm_terms(html) }
   end
+
+# «Шаг аукциона: 5% от текущей цены», «Сумма задатка: 3 336.96 BYN»,
+# «Кроме цены за лот победитель оплачивает: затраты: 300,00 руб.», «вознаграждение организатору торгов 8% от цены продажи»,
+# единственный участник — «по начальной цене предмета аукциона, увеличенной на 5%»
+def ipm_terms(html)
+  i = html.index('auction-bet') or return {}
+  tx = txt(html[i, 12_000])
+  all = txt(html.gsub(/<script.*?<\/script>|<style.*?<\/style>/m, ''))
+  t = {}
+  t['deposit'] = num(tx[/Сумма задатка:\s*([\d\s.,]+?)\s*BYN/, 1])
+  if (m = tx.match(/Шаг аукциона:\s*([\d.,]+)\s*%\s*от\s*(текущей|начальной)/))
+    t['step_pct'] = num(m[1])
+    t['step_base'] = m[2] == 'текущей' ? 'current' : 'start'
+  elsif (m = tx.match(/Шаг аукциона:\s*([\d\s.,]+?)\s*BYN/))
+    t['step_abs'] = num(m[1])
+  end
+  t['fee_abs'] = num(tx[/затраты:\s*([\d\s.,]+?)\s*руб/, 1])
+  t['fee_pct'] = num(tx[/вознаграждение организатору торгов\s*([\d.,]+)\s*%/, 1])
+  t['vat'] = tx[/(С учетом НДС|Без учета НДС|НДС не облагается)/i, 1]
+  t['single_pct'] = num(all[/согласившимся приобрести предмет аукциона по начальной цене предмета аукциона, увеличенной на (\d+)\s*%/, 1])
+  t.reject { |_, v| v.nil? || v == 0.0 }
+end
 
   # ---------------- beltorgi.by ----------------
   # Каталог грузится скриптом: страница раздела отдаёт content_id и cachekey (меняется при
@@ -270,6 +310,19 @@ end
       'debtor' => rows_find(secs, /Собственник/),
       'req_to' => ts(rows_find(secs, /Окончание подачи заявок/)),
       'torg' => ts(rows_find(secs, /Начало торгов/)),
-      'area_num' => area && (a = num(area)).positive? ? a : nil }
+      'area_num' => area && (a = num(area)).positive? ? a : nil,
+      'terms' => bt_terms(secs, html) }
   end
+
+# «Сумма задатка», «Шаг торгов» (фиксированный, в рублях), «Срок уплаты задатка», «Минимальная стоимость»;
+# про НДС — строкой над датами: «Цена с НДС (НДС в том числе по ставке 20%)»
+def bt_terms(secs, html = nil)
+  t = {}
+  t['deposit'] = num(rows_find(secs, /Сумма задатка/))
+  t['deposit_to'] = ts(rows_find(secs, /Срок уплаты задатка/))
+  t['step_abs'] = num(rows_find(secs, /Шаг торгов/))
+  t['min_price'] = num(rows_find(secs, /Минимальная стоимость/))
+  t['vat'] = txt(html[/<div class="py-3">\s*([^<]*НДС[^<]*)</, 1]) if html
+  t.reject { |_, v| v.nil? || v == 0.0 || v == '' }
+end
 end

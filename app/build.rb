@@ -4,7 +4,7 @@
 # Сборка сайта из памяти (data/) в _site/:
 #   index.html  шаблон + короткие записи активных лотов
 #   arch.js     архив — грузится, только когда посетитель его открыл
-#   det/pN.js   подробности лотов пачками по 40 — грузятся на странице лота
+#   det/pN.js   подробности и условия покупки (для калькулятора) пачками по 40 — грузятся на странице лота
 #   ph/pN.js    фото пачками по 40 — грузятся, когда карточка на экране
 # Страница остаётся лёгкой, сколько бы лотов ни накопилось в архиве.
 require 'json'
@@ -74,7 +74,7 @@ order.each_slice(PACK) do |chunk|
   chunk.each do |l|
     l['pk'] = packs
     secs = Store.details(l['key'])
-    det[l['id']] = ENV['MASK'] ? mask(secs) : secs
+    det[l['id']] = { 's' => ENV['MASK'] ? mask(secs) : secs, 't' => l['terms'] || {} }
     ph[l['id']] = Base64.strict_encode64(File.binread(Store.ph_path(l['key']))) if l['photo']
   end
   File.write(File.join(OUT, 'det', "p#{packs}.js"), "__det(#{packs},#{JSON.generate(det)});")

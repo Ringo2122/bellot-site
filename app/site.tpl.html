@@ -266,7 +266,7 @@
   .gal .big{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--hair);
     background:var(--brand-l);display:block}
   .gal .noph{aspect-ratio:4/3;display:grid;place-items:center;color:var(--ink-3)}
-  .buy{padding:18px;position:sticky;top:82px}
+  .buy{padding:18px}
   .buy .lbl{font-size:12.5px;color:var(--ink-3)}
   .bigprice{font-size:31px;font-weight:700;color:var(--brand);letter-spacing:-.025em;line-height:1.15}
   .pchg{font-size:13px;color:var(--ok);margin-top:3px;font-weight:700}
@@ -302,6 +302,112 @@
   .rows>.wide{grid-column:1/-1;line-height:1.6}
   .rows>.wide .k2{color:var(--ink-3);font-size:12.5px;margin-bottom:3px}
 
+  /* ── главная: приветственный экран ── */
+  .land{margin-top:-22px;position:relative;overflow:hidden;color:#fff;background:linear-gradient(160deg,#0b2f57 0%,#12508f 55%,#1d6fb6 100%);
+    padding:64px 0 150px}
+  .land .sky{position:absolute;left:0;right:0;bottom:0;width:100%;height:62%;pointer-events:none}
+  .land-in{position:relative}
+  .eyebrow{display:inline-block;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.12);
+    padding:5px 12px;border-radius:20px;margin-bottom:18px}
+  .land h1{font-size:44px;line-height:1.1;letter-spacing:-.025em;max-width:17ch;margin:0 0 16px;text-wrap:balance}
+  .land p{font-size:17px;line-height:1.55;color:#d5e5f5;max-width:58ch;margin:0 0 26px}
+  .land-search{display:flex;max-width:620px;background:#fff;border-radius:8px;padding:5px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .land-search input{flex:1;min-width:0;border:0;padding:12px 14px;font-size:16px;color:#1a2330;background:transparent;outline:none}
+  .land-search button{border:0;border-radius:6px;background:var(--accent);color:#fff;font-weight:700;padding:0 22px;cursor:pointer;font-size:15px}
+  .land-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}
+  .btn.big{padding:13px 22px;font-size:15.5px;border-radius:7px}
+  .btn.ghost{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.45);color:#fff}
+  .btn.ghost:hover{background:rgba(255,255,255,.18);color:#fff;border-color:#fff}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:-58px;position:relative}
+  .kpi{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:18px 18px 16px;box-shadow:var(--sh-2)}
+  .kpi b{display:block;font-size:28px;color:var(--brand);letter-spacing:-.02em;line-height:1.15}
+  .kpi span{font-size:13px;color:var(--ink-2)}
+  /* плитки разделов: обложка — фото лота раздела */
+  .stiles{display:grid;grid-template-columns:1.25fr 1fr 1fr;grid-template-rows:200px 200px;gap:14px}
+  .stile{position:relative;display:block;border-radius:12px;overflow:hidden;color:#fff;background:var(--brand-d);box-shadow:var(--sh)}
+  .stile.s-nedvizhimost{grid-row:span 2}
+  .stile:hover{text-decoration:none}
+  .stile img.bgi{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
+  .stile:hover img.bgi{transform:scale(1.06)}
+  .stile .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,28,52,.15) 0%,rgba(8,28,52,.35) 45%,rgba(8,28,52,.9) 100%)}
+  .sico{position:absolute;top:14px;left:14px;width:44px;height:44px;border-radius:11px;background:rgba(255,255,255,.16);
+    border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(6px);display:grid;place-items:center}
+  .sico svg,.sico2 svg,.hico svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .sbody{position:absolute;left:18px;right:60px;bottom:16px;display:flex;flex-direction:column;gap:2px}
+  .stile .st{font-size:20px;font-weight:700;letter-spacing:-.01em}
+  .stile.s-nedvizhimost .st{font-size:26px}
+  .stile .sn{font-size:13px;color:#d5e5f5}
+  .sgo{position:absolute;right:16px;bottom:16px;width:34px;height:34px;border-radius:50%;background:var(--accent);
+    display:grid;place-items:center;font-weight:700;transition:transform .2s}
+  .stile:hover .sgo{transform:translateX(3px)}
+  .how{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .how>div{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:18px;box-shadow:var(--sh)}
+  .hn{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700}
+  .how h3{margin:12px 0 5px;font-size:16px}
+  .how p{margin:0;font-size:13.5px;color:var(--ink-2)}
+  .helpband{margin-top:34px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px;
+    background:linear-gradient(120deg,#0b2f57,#12508f);color:#fff;border-radius:12px;padding:26px 28px}
+  .helpband h2{margin:0 0 6px;color:#fff}
+  .helpband p{margin:0;color:#d5e5f5;max-width:60ch}
+  .archline{text-align:center;font-size:14px}
+  .hico{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:10px;background:var(--brand-l);color:var(--brand);
+    vertical-align:-7px;margin-right:12px}
+
+  /* ── страница лота: ориентир под карточкой, калькулятор ── */
+  .rcol{display:flex;flex-direction:column;gap:14px}
+  .rcol .mkt{margin-top:0}
+  .calcx{margin-top:22px;padding:20px 22px}
+  .cx-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:16px}
+  .cx-head h2{margin:0}
+  .cx-head .c{font-size:12.5px;color:var(--ok);font-weight:700}
+  .cx-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+  .cx-in label{display:block;font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+  .cx-range{display:flex;align-items:center;gap:12px}
+  .cx-range input{flex:1;accent-color:var(--brand)}
+  .cx-range output{min-width:40px;text-align:center;font-weight:700;font-size:18px;color:var(--brand);background:var(--brand-l);border-radius:6px;padding:2px 6px}
+  .cx-hint{font-size:13px;color:var(--ink-2);margin-top:4px}
+  .cx-in select{width:100%;padding:7px 9px;border:1px solid var(--hair-2);border-radius:5px;background:var(--card);color:var(--ink)}
+  .sc-track{position:relative;height:10px;border-radius:5px;background:var(--hair);margin:30px 0 8px}
+  .sc-fill{position:absolute;inset:0 auto 0 0;background:var(--brand);border-radius:5px;transition:width .2s}
+  .sc-mark{position:absolute;top:-6px;width:2px;height:22px;background:var(--ink-3)}
+  .sc-mark.mk{background:var(--ok)}
+  .sc-mark i{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;color:var(--ink-3);white-space:nowrap}
+  .sc-mark.mk i{color:var(--ok);font-weight:700}
+  .cx-rules{list-style:none;margin:16px 0 0;padding:0;font-size:13.5px}
+  .cx-rules li{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--hair)}
+  .cx-rules span{color:var(--ink-3)}
+  .cx-rules b{font-weight:400}
+  .cx-out{background:var(--brand-l);border:1px solid var(--hair);border-radius:8px;padding:6px 16px 14px}
+  .cx-mk{margin-top:12px;padding:10px 12px;border-radius:6px;font-size:13.5px}
+  .cx-mk.ok{background:var(--ok-l);border:1px solid var(--ok)}
+  .cx-mk.bad{background:var(--accent-l);border:1px solid var(--accent)}
+  .cx-time{list-style:none;margin:20px 0 0;padding:16px 0 0;border-top:1px solid var(--hair);display:grid;
+    grid-template-columns:repeat(4,1fr);gap:10px;counter-reset:t}
+  .cx-time li{position:relative;padding-left:34px;font-size:13.5px}
+  .cx-time li::before{counter-increment:t;content:counter(t);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;
+    background:var(--brand);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
+  .cx-time b{display:block}
+  .cx-time span{color:var(--ink-2)}
+  .accs-h{margin:8px 0 2px}
+
+  /* ── помощь в аукционе ── */
+  .help{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:26px;align-items:start}
+  .svc{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+  .svc .it{display:flex;gap:12px;background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:15px;box-shadow:var(--sh)}
+  .sico2{flex:none;width:40px;height:40px;border-radius:10px;background:var(--brand-l);color:var(--brand);display:grid;place-items:center}
+  .svc h3{margin:1px 0 4px;font-size:15px}
+  .svc p{margin:0;font-size:13.5px;color:var(--ink-2)}
+  .steps4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:22px}
+  .steps4 div{display:flex;gap:10px;align-items:center;font-size:13.5px;color:var(--ink-2)}
+  .steps4 b{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center}
+  .hform{padding:22px;position:sticky;top:82px}
+  .hform h2{margin:0 0 6px}
+  .hform small{text-transform:none;letter-spacing:0;font-weight:400}
+  .ferr{color:#c0392b;font-size:13px;min-height:18px;margin-bottom:6px}
+  .done{text-align:center;padding:10px 0}
+  .done .ok{width:56px;height:56px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;
+    font-size:28px;margin:0 auto 12px}
+
   @media (max-width:980px){
     .lotpage{grid-template-columns:1fr}
     .buy{position:static}
@@ -327,6 +433,31 @@
     .lotname{font-size:21px}
     .bigprice{font-size:27px}
   }
+  @media (max-width:980px){
+    .help,.cx-grid{grid-template-columns:1fr}
+    .hform{position:static}
+    .kpis,.how{grid-template-columns:repeat(2,1fr)}
+    .stiles{grid-template-columns:1fr 1fr;grid-template-rows:none;grid-auto-rows:170px}
+    .stile.s-nedvizhimost{grid-row:auto;grid-column:span 2}
+    .cx-time{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:760px){
+    .land{padding:40px 0 120px}
+    .land h1{font-size:30px}
+    .land p{font-size:15.5px}
+    .svc{grid-template-columns:1fr}
+    .steps4{grid-template-columns:1fr 1fr}
+    .cx-rules li{grid-template-columns:1fr;gap:2px}
+  }
+  @media (max-width:520px){
+    .kpis,.how,.stiles{grid-template-columns:1fr}
+    .stile.s-nedvizhimost{grid-column:auto}
+    .cx-time{grid-template-columns:1fr}
+    .kpis{margin-top:-40px}
+    .logo .sub{display:none}
+    .hacts{margin-left:auto}
+    .hacts .btn{padding:8px 12px;font-size:13px}
+  }
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -350,8 +481,7 @@
     <button type="submit">Найти</button>
   </form>
   <div class="hacts">
-    <a class="btn" href="#/calc">Калькулятор</a>
-    <a class="btn pri" href="#/about">Возможности</a>
+    <a class="btn pri" href="#/help">Помощь в аукционе</a>
   </div>
 </div></header>
 
@@ -371,6 +501,7 @@
       <li><a href="#/about">Возможности платформы</a></li>
       <li><a href="#/catalog">Весь каталог</a></li>
       <li><a href="#/catalog?st=arch">Архив торгов</a></li>
+      <li><a href="#/help">Помощь в аукционе</a></li>
     </ul></div>
     <div><h4>Источники</h4><ul>
       <li><a href="https://e-auction.by" target="_blank" rel="noopener">БелЮрОбеспечение</a></li>
@@ -387,11 +518,11 @@ const DATA = __DATA__;
 const SNAP = __SNAP__;
 const ARCHN = __ARCHN__;          // размер архива по разделам, сам архив — в arch.js
 const SECTIONS = [
-  ['nedvizhimost','Недвижимость','🏢'],
-  ['avto','Легковые авто','🚗'],
-  ['gruz','Грузовые и автобусы','🚚'],
-  ['spec','Спецтехника','🚜'],
-  ['oborud','Оборудование','⚙️']
+  ['nedvizhimost','Недвижимость'],
+  ['avto','Легковые авто'],
+  ['gruz','Грузовые и автобусы'],
+  ['spec','Спецтехника'],
+  ['oborud','Оборудование']
 ];
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -426,9 +557,9 @@ const DET = {}, DETQ = {};
 window.__det = (n, m) => { Object.assign(DET, m); const w = DETQ[n]; DETQ[n] = 'ok'; if(Array.isArray(w)) w.forEach(f=>f()); };
 function loadDet(l){
   return new Promise(res=>{
-    if(DETQ[l.pk]==='ok') return res(DET[l.id]||[]);
+    if(DETQ[l.pk]==='ok') return res(DET[l.id]||{s:[],t:{}});
     if(!DETQ[l.pk]){ DETQ[l.pk] = []; addScript(`det/p${l.pk}.js`); }
-    DETQ[l.pk].push(()=>res(DET[l.id]||[]));
+    DETQ[l.pk].push(()=>res(DET[l.id]||{s:[],t:{}}));
   });
 }
 
@@ -563,7 +694,7 @@ function pageCatalog(section, params){
     return section ? src.filter(l=>l.section===section) : src; };
   $('#app').innerHTML = `<div class="wrap">
     ${crumbs(section?[[title]]:[[title]])}
-    <div class="cat-head"><h1>${esc(title)}</h1><p class="lede" id="c-lede"></p></div>
+    <div class="cat-head"><h1>${section?`<span class="hico">${ICON[section]}</span>`:''}${esc(title)}</h1><p class="lede" id="c-lede"></p></div>
     <div class="layout"><div id="fwrap"></div><div><div class="toolbar" id="tb"></div><div id="res"></div></div></div></div>`;
   document.title = title + ' — БелЛот';
 
@@ -628,6 +759,7 @@ function marketBlock(l){
   const dc = discount(l);
   const pos = Math.max(0, Math.min(100, Math.round(l.price / m.median * 100)));
   return `<div class="mkt">
+    <div class="hd">Рыночный ориентир</div>
     <div class="mval">${nf(m.median)} BYN</div>
     <div class="sub">медиана ${m.n} похожих предложений на ${esc(m.source)}${m.year?`, ${m.year} год`:''}</div>
     <div class="bar"><span>${nf(m.low)}</span><span class="track"><span class="fill" style="width:${pos}%"></span></span><span>${nf(m.high)}</span></div>
@@ -638,6 +770,117 @@ function marketBlock(l){
     <div class="warn">Состояние объекта не учитывается: на торгах имущество часто требует ремонта, а в сравнении участвуют обычные объявления. Ориентир показывает порядок цен, а не гарантию выгоды.
       <br><a href="${esc(m.link)}" target="_blank" rel="noopener">Посмотреть похожие предложения ↗</a></div>
   </div>`;
+}
+
+/* ───────── калькулятор покупки внутри лота ─────────
+   Правила у площадок разные, поэтому модель строится по условиям конкретного лота:
+   beltorgi — фиксированный шаг в рублях; ИПМ — % от текущей цены (растёт как сложный процент);
+   e-auction — первая ставка +5% к начальной, дальше 0,5–5% от начальной. */
+function calcModel(l, t){
+  const P = l.price, pct = x => x/100;
+  const m = { P, t, est:{} };
+  m.deposit = t.deposit || P*0.1; if(!t.deposit) m.est.deposit = true;
+  m.single = t.single_pct ? P*(1+pct(t.single_pct)) : null;
+  if(t.step_abs){
+    m.stepTxt = `${nf(t.step_abs)} BYN — фиксированный`;
+    m.at = n => P + n*t.step_abs;
+  } else if(t.step_pct && t.step_base==='current'){
+    m.stepTxt = `${t.step_pct}% от текущей цены — каждый шаг чуть больше предыдущего`;
+    m.at = n => P*Math.pow(1+pct(t.step_pct), n);
+  } else if(t.first_pct){
+    m.pick = true;   // шаг выбирает участник: от step_min_pct до step_pct от начальной
+    m.stepTxt = `первая ставка +${t.first_pct}% к начальной, дальше ${String(t.step_min_pct||0.5).replace('.',',')}–${String(t.step_pct||5).replace('.',',')}% от начальной`;
+    m.at = (n, sp) => n===0 ? P : P*(1+pct(t.first_pct)) + (n-1)*P*pct(sp);
+  } else if(t.step_pct){
+    m.stepTxt = `${t.step_pct}% от начальной цены`;
+    m.at = n => P*(1+n*pct(t.step_pct));
+  } else {
+    m.est.step = true;
+    m.stepTxt = '5% от начальной — площадка шаг не указала, это оценка';
+    m.at = n => P*(1+n*0.05);
+  }
+  m.fees = f => (t.fee_pct ? f*pct(t.fee_pct) : 0) + (t.fee_abs || 0);
+  return m;
+}
+
+/* «в течение 30 календарных дней» из порядка оплаты, если площадка его написала */
+function payTerm(secs){
+  const rows = secs.flatMap(s=>s.rows);
+  // сначала — оплата самого лота; «возмещение затрат» и задаток — это другие сроки
+  const pick = rows.find(([k])=>/оплат\S* за лот|порядок оплаты|срок оплаты/i.test(k) && !/возмещ|вознагр|задат/i.test(k))
+            || rows.find(([k])=>/оплат/i.test(k) && !/возмещ|вознагр|задат/i.test(k));
+  // «не позднее 10 (десяти) рабочих дней после подписания договора» — нужен срок с числом дней
+  const m = pick && String(pick[1]).match(/(?:не позднее|в течени[еи])\s+\d+\s*(?:\([^)]*\))?\s*(?:рабочих|календарных|банковских)?\s*дн[а-яё]*(?:\s+(?:после|со дня|с даты|с момента)\s+[^.;,]{0,40})?/i);
+  // оплата частями («50% от цены … оставшуюся сумму …») — одной строкой не передать
+  if(m && /\d+\s*%\s*от цены|оставш\S* сумм/i.test(pick[1])) return 'частями — см. «Оплата и договор» ниже';
+  return m ? m[0].replace(/\s+\S*$/, s => /дог|аукц|торг/.test(s) ? s : '').trim() : null;
+}
+
+function calcBlock(l, det){
+  const t = det.t || {}, m = calcModel(l, t), known = Object.keys(t).length > 0;
+  const pay = payTerm(det.s || []);
+  const spOpts = m.pick ? [0.5,1,2,3,4,5].filter(x=>x>=(t.step_min_pct||0.5) && x<=(t.step_pct||5)) : [];
+  $('#calcx').innerHTML = `
+    <div class="cx-head"><h2>Калькулятор покупки</h2>
+      <span class="c">${known?'условия площадки по этому лоту подставлены автоматически':'площадка не указала условия — считаем по типовым'}</span></div>
+    <div class="cx-grid">
+      <div class="cx-in">
+        <label for="cx-n">Сколько раз поднимут цену на торгах</label>
+        <div class="cx-range"><input type="range" id="cx-n" min="0" max="40" value="3"><output id="cx-nv">3</output></div>
+        <div class="cx-hint" id="cx-hint"></div>
+        ${m.pick?`<label for="cx-sp" style="margin-top:14px">Размер шага</label>
+          <select id="cx-sp">${spOpts.map(x=>`<option value="${x}"${x===(t.step_pct||5)?' selected':''}>${String(x).replace('.',',')}% от начальной</option>`).join('')}</select>`:''}
+        <div class="cx-scale" id="cx-scale"></div>
+        <ul class="cx-rules">
+          <li><span>Шаг торгов</span><b>${esc(m.stepTxt)}</b></li>
+          <li><span>Задаток</span><b>${nf(m.deposit)} BYN${m.est.deposit?' — оценка 10%':''}</b></li>
+          ${m.single?`<li><span>Единственный участник</span><b>покупает за ${nf(m.single)} BYN (+${t.single_pct}%)</b></li>`:''}
+          ${t.fee_pct||t.fee_abs?`<li><span>Сверх цены лота</span><b>${[t.fee_pct?`вознаграждение организатору ${t.fee_pct}%`:'', t.fee_abs?`затраты ${nf(t.fee_abs)} BYN`:''].filter(Boolean).join(' + ')}</b></li>`:''}
+          ${t.min_price?`<li><span>Минимальная стоимость</span><b>${nf(t.min_price)} BYN</b></li>`:''}
+          ${t.vat?`<li><span>НДС</span><b>${esc(t.vat)}</b></li>`:''}
+        </ul>
+      </div>
+      <div class="cx-out" id="cx-out"></div>
+    </div>
+    <ol class="cx-time">
+      <li><b>Задаток</b><span>до ${dtm(t.deposit_to || l.req_to)}</span></li>
+      <li><b>Заявка</b><span>до ${dtm(l.req_to)}</span></li>
+      <li><b>Торги</b><span>${l.torg?dtm(l.torg):dt(l.req_to+86400)}</span></li>
+      <li><b>Оплата остатка</b><span>${pay?esc(pay):'в срок из извещения'}</span></li>
+    </ol>`;
+  const run = () => {
+    const n = +$('#cx-n').value, sp = m.pick ? +$('#cx-sp').value : 0;
+    $('#cx-nv').textContent = n;
+    const price = n===0 && m.single ? m.single : m.at(n, sp);
+    const fees = m.fees(price), total = price + fees, rest = Math.max(total - m.deposit, 0);
+    $('#cx-hint').textContent = n===0
+      ? (m.single ? 'Без борьбы: вы единственный участник.' : 'Покупка по стартовой цене.')
+      : `Цена выросла на ${Math.round((price/m.P-1)*100)}% от стартовой.`;
+    let mk = '';
+    if(l.market){
+      const med = l.market.median, d = Math.round((med-total)/med*100);
+      let k = 0; while(k<200 && (m.at(k+1,sp) + m.fees(m.at(k+1,sp))) < med) k++;
+      mk = `<div class="cx-mk ${d>=0?'ok':'bad'}">${d>=0
+        ? `Итог на <b>${d}%</b> ниже рыночной медианы (${nf(med)} BYN).`
+        : `Итог на <b>${-d}%</b> выше рыночной медианы — дальше торговаться невыгодно.`}
+        ${d>=0?`<br>Выгода сохраняется примерно до <b>${k}</b> ${plural(k,'шага','шагов','шагов')}.`:''}</div>`;
+      const max = Math.max(med, total)*1.08, x = v => Math.min(100, v/max*100);
+      $('#cx-scale').innerHTML = `<div class="sc-track"><span class="sc-fill" style="width:${x(total)}%"></span>
+        <span class="sc-mark" style="left:${x(m.P)}%"><i>старт</i></span><span class="sc-mark mk" style="left:${x(med)}%"><i>рынок</i></span></div>`;
+    }
+    $('#cx-out').innerHTML = `
+      <div class="row"><span class="l">Цена лота после торгов</span><span class="r">${nf(price)} BYN</span></div>
+      ${t.fee_pct?`<div class="row"><span class="l">Вознаграждение организатору, ${t.fee_pct}%</span><span class="r">${nf(price*t.fee_pct/100)} BYN</span></div>`:''}
+      ${t.fee_abs?`<div class="row"><span class="l">Затраты организатора</span><span class="r">${nf(t.fee_abs)} BYN</span></div>`:''}
+      <div class="row big"><span class="l">Итого за покупку</span><span class="r">${nf(total)} BYN</span></div>
+      <div class="row"><span class="l">Задаток — внести до ${dt(t.deposit_to || l.req_to)}</span><span class="r">${nf(m.deposit)} BYN</span></div>
+      <div class="row"><span class="l">Доплатить после победы</span><span class="r">${nf(rest)} BYN</span></div>
+      ${mk}
+      <div class="note">Задаток засчитывается в цену. Проигравшим его возвращают. Если победитель отказывается от покупки, задаток не возвращают. Госпошлина и регистрация здесь не учтены.</div>`;
+  };
+  $('#cx-n').addEventListener('input', run);
+  if(m.pick) $('#cx-sp').addEventListener('change', run);
+  run();
 }
 
 /* заголовки секций у площадок разные и бывают обрезаны — приводим к одному виду */
@@ -671,7 +914,7 @@ function pageLot(id){
     return;
   }
   if(!l){ $('#app').innerHTML = `<div class="wrap">${crumbs([['Лот не найден']])}<div class="panel empty">Лот не найден — возможно, он уже удалён из архива.</div></div>`; return; }
-  const arch = l.status==='archive', d = left(l), dc = discount(l), pc = pchg(l);
+  const arch = l.status==='archive', d = left(l), pc = pchg(l);
   document.title = l.name.slice(0,60) + ' — БелЛот';
   $('#app').innerHTML = `<div class="wrap">
     ${crumbs([[secName(l.section), '#/s/'+l.section], ...(arch?[['Архив', `#/s/${l.section}?st=arch`]]:[]), ['Лот '+l.art]])}
@@ -686,48 +929,107 @@ function pageLot(id){
       : `<b>Приём заявок завершён ${dt(l.closed)}.</b>`} Лот в архиве БелЛота: сведения сохранены для истории цен. Итог торгов — на площадке.</div>`:''}
     <div class="lotpage">
       <div class="gal">${l.photo?pic(l,'big'):'<div class="panel noph">Фотографий нет</div>'}</div>
-      <aside class="panel buy">
-        <div class="lbl">Стартовая цена</div>
-        <div class="bigprice">${nf(l.price)} BYN</div>
-        ${pc?`<div class="pchg">${pc<0?'↓ снижена на '+(-pc)+'%':'↑ выросла на '+pc+'%'} — было ${nf(l.prices[0][1])} BYN</div>`:''}
-        <dl class="facts">
-          <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
-            :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
-          <dt>Торги</dt><dd>${l.torg?dtm(l.torg):dt(l.req_to+86400)}</dd>
-          <dt>Регион</dt><dd>${esc(l.region||'—')}</dd>
-          ${l.area_num?`<dt>Площадь</dt><dd>${nf(l.area_num)} м²</dd>`:''}
-          <dt>Должник</dt><dd>${esc(l.debtor||'—')}</dd>
-        </dl>
-        ${l.market?`<a class="mini" href="#" id="to-mkt">Рынок ≈ <b>${nf(l.market.median)} BYN</b> · ${dc>=0?'лот дешевле на '+dc+'%':'лот дороже на '+(-dc)+'%'} →</a>`:''}
-        <div class="cta">
-          <a class="btn pri" href="${esc(l.url)}" target="_blank" rel="noopener">На площадке ↗</a>
-          <a class="btn" href="#/calc?price=${l.price}">Задаток</a>
-        </div>
-      </aside>
+      <div class="rcol">
+        <aside class="panel buy">
+          <div class="lbl">Стартовая цена</div>
+          <div class="bigprice">${nf(l.price)} BYN</div>
+          ${pc?`<div class="pchg">${pc<0?'↓ снижена на '+(-pc)+'%':'↑ выросла на '+pc+'%'} — было ${nf(l.prices[0][1])} BYN</div>`:''}
+          <dl class="facts">
+            <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
+              :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
+            <dt>Торги</dt><dd>${l.torg?dtm(l.torg):dt(l.req_to+86400)}</dd>
+            <dt>Регион</dt><dd>${esc(l.region||'—')}</dd>
+            ${l.area_num?`<dt>Площадь</dt><dd>${nf(l.area_num)} м²</dd>`:''}
+            <dt>Должник</dt><dd>${esc(l.debtor||'—')}</dd>
+          </dl>
+          <div class="cta">
+            <a class="btn pri" href="${esc(l.url)}" target="_blank" rel="noopener">На площадке ↗</a>
+            <a class="btn" href="#/help?lot=${encodeURIComponent(l.art)}">Помощь с этим лотом</a>
+          </div>
+        </aside>
+        ${l.market?marketBlock(l):''}
+      </div>
     </div>
-    <div class="accs" id="accs">
-      ${l.market?acc('mkt','Рыночный ориентир',marketBlock(l),false):''}
-      <div class="skel"></div><div class="skel"></div><div class="skel"></div>
-    </div>
+    ${arch?'':'<section class="panel calcx" id="calcx"><div class="skel"></div></section>'}
+    <div class="accs" id="accs"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     ${arch?'':`<div class="sec"><div class="sec-h"><h2>Похожие лоты</h2><a href="#/s/${l.section}">Весь раздел →</a></div>
       <div class="grid">${DATA.filter(x=>x.section===l.section&&x.id!==l.id).slice(0,4).map(lotCard).join('')}</div></div>`}
   </div>`;
-  const tm = $('#to-mkt');
-  if(tm) tm.onclick = e => { e.preventDefault(); const a = $('#acc-mkt'); a.open = true; a.scrollIntoView({behavior:'smooth', block:'start'}); };
-  loadDet(l).then(secs=>{
+  loadDet(l).then(det=>{
     if(CUR!=='/lot/'+encodeURIComponent(id)) return;
+    if(!arch) calcBlock(l, det);
     // одноимённые секции склеиваем, порядок — от важного к справочному
     const groups = {};
-    secs.forEach(s=>{ const t = secTitle(s.h); (groups[t] = groups[t]||[]).push(...s.rows); });
+    (det.s||[]).forEach(s=>{ const t = secTitle(s.h); (groups[t] = groups[t]||[]).push(...s.rows); });
     const names = Object.keys(groups).sort((a,b)=>{ const i=SEC_ORDER.indexOf(a), j=SEC_ORDER.indexOf(b);
       return (i<0?99:i)-(j<0?99:j); });
-    $('#accs').innerHTML = (l.market?acc('mkt','Рыночный ориентир',marketBlock(l),false):'')
-      + names.map((t,i)=>acc('s'+i, t, rowsHtml(groups[t]), i===0,
+    $('#accs').innerHTML = names.length
+      ? `<h2 class="accs-h">Сведения о лоте</h2>` + names.map((t,i)=>acc('s'+i, t, rowsHtml(groups[t]), i===0,
           groups[t].length+' '+plural(groups[t].length,'пункт','пункта','пунктов'))).join('')
-      + acc('svc','Помощь с покупкой',`<p class="note" style="margin:10px 0 6px">Платформа может организовать выезд на осмотр с фотоотчётом, проверить объект на обременения и сопроводить сделку. Документы по лоту — на площадке-первоисточнике.</p>`,false)
-      || '<div class="panel empty">Подробных сведений площадка не опубликовала.</div>';
-    const tm2 = $('#to-mkt');
-    if(tm2) tm2.onclick = e => { e.preventDefault(); const a = $('#acc-mkt'); a.open = true; a.scrollIntoView({behavior:'smooth', block:'start'}); };
+      : '<div class="panel empty">Подробных сведений площадка не опубликовала.</div>';
+  });
+}
+
+/* ───────── помощь в аукционе ───────── */
+const SERVICES = [
+  ['check','Проверка объекта до задатка','Обременения, аресты, долги, история собственников и прошлых торгов. Чтобы не купить проблему вместе с объектом.'],
+  ['eye','Выезд на осмотр','Фото и видео, реальное состояние, сверка с описанием на площадке. Особенно выручает для объектов в районах.'],
+  ['chart','Оценка и стратегия ставок','Рыночная стоимость, предел разумной цены, сколько шагов имеет смысл делать и когда остановиться.'],
+  ['hammer','Участие в торгах под ключ','Регистрация на площадке, ЭЦП, задаток, заявка и сами торги — по доверенности, без вашего участия.'],
+  ['doc','Сопровождение после победы','Договор, оплата, регистрация права, перерегистрация транспорта, приёмка объекта.'],
+  ['search','Подбор лотов под задачу','Следим за всеми площадками и присылаем варианты под ваш бюджет, регион и цель.']
+];
+const SICON = {
+  check:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>',
+  eye:'<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  chart:'<svg viewBox="0 0 24 24"><path d="M3 20h18M6 16v-4M11 16V8M16 16v-6M20 5l-5 4-4-2-5 4"/></svg>',
+  hammer:'<svg viewBox="0 0 24 24"><path d="M14 4l6 6-3 3-6-6zM11 7l-8 8 3 3 8-8M4 21h9"/></svg>',
+  doc:'<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg>',
+  search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>'
+};
+
+function pageHelp(params){
+  document.title = 'Помощь в аукционе — БелЛот';
+  const lot = params.get('lot') || '';
+  $('#app').innerHTML = `<div class="wrap">
+    ${crumbs([['Помощь в аукционе']])}
+    <div class="help">
+      <div>
+        <h1>Помощь в покупке на торгах</h1>
+        <p class="lede">На торгах можно купить заметно дешевле рынка, но цена ошибки — задаток и испорченная покупка. Берём на себя то, на чём покупатели ошибаются чаще всего.</p>
+        <div class="svc">${SERVICES.map(([ic,t,d])=>`<div class="it"><span class="sico2">${SICON[ic]}</span>
+          <div><h3>${esc(t)}</h3><p>${esc(d)}</p></div></div>`).join('')}</div>
+        <div class="steps4">
+          <div><b>1</b><span>Оставляете заявку</span></div>
+          <div><b>2</b><span>Связываемся и уточняем задачу</span></div>
+          <div><b>3</b><span>Согласовываем объём и стоимость</span></div>
+          <div><b>4</b><span>Работаем до результата</span></div>
+        </div>
+      </div>
+      <aside class="panel hform" id="hform">
+        <h2>Оставить заявку</h2>
+        <p class="note" style="margin:0 0 14px">Перезвоним, ответим на вопросы по лоту и предложим, чем помочь.</p>
+        <form id="hf" novalidate>
+          <div class="fg"><label for="h-name">Имя</label><input id="h-name" autocomplete="name" required></div>
+          <div class="fg"><label for="h-phone">Номер телефона</label><input id="h-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00" required></div>
+          <div class="fg"><label for="h-mail">Email <small>необязательно</small></label><input id="h-mail" type="email" autocomplete="email"></div>
+          <div class="fg"><label for="h-lot">Номер лота <small>необязательно</small></label><input id="h-lot" value="${esc(lot)}" placeholder="например, 34950"></div>
+          <div class="ferr" id="h-err"></div>
+          <button class="btn pri" type="submit" style="width:100%">Отправить заявку</button>
+          <p class="note">Демо-версия: форма пока не отправляет данные.</p>
+        </form>
+      </aside>
+    </div></div>`;
+  $('#hf').addEventListener('submit', e=>{
+    e.preventDefault();
+    const name = $('#h-name').value.trim(), phone = $('#h-phone').value.replace(/\D/g,''), mail = $('#h-mail').value.trim();
+    const err = !name ? 'Укажите имя' : phone.length < 9 ? 'Проверьте номер телефона' : (mail && !/^\S+@\S+\.\S+$/.test(mail)) ? 'Проверьте email' : '';
+    $('#h-err').textContent = err;
+    if(err) return;
+    $('#hform').innerHTML = `<div class="done"><div class="ok">✓</div><h2>Заявка принята</h2>
+      <p>${esc(name)}, спасибо! Свяжемся с вами по номеру ${esc($('#h-phone').value.trim())}${$('#h-lot').value.trim()?` по лоту № ${esc($('#h-lot').value.trim())}`:''}.</p>
+      <p class="note">Демо-версия: заявка никуда не отправлена.</p>
+      <a class="btn" href="#/catalog">Вернуться к лотам</a></div>`;
   });
 }
 
@@ -813,51 +1115,122 @@ function pageAbout(){
     </div></div>`;
 }
 
+/* ───────── главная ───────── */
+/* фон первого экрана: город, стройка и дорога — недвижимость, техника и транспорт.
+   Рисуется кодом: чёткий на любом экране и ничего не весит */
+function skyline(){
+  let s = 11; const r = () => (s = (s*9301 + 49297) % 233280) / 233280;
+  let back = '', mid = '', x = -10;
+  while(x < 1440){ const w = 36+r()*54, h = 110+r()*160; back += `<rect x="${x|0}" y="${(332-h)|0}" width="${w|0}" height="${h|0}"/>`; x += w+3; }
+  x = -30;
+  while(x < 1440){
+    if(x > 880 && x < 1060){ x = 1060; continue; }          // место под кран
+    const w = 54+r()*80, h = 70+r()*130; mid += `<rect x="${x|0}" y="${(332-h)|0}" width="${w|0}" height="${h|0}" rx="2"/>`; x += w+14+r()*46;
+  }
+  return `<svg class="sky" viewBox="0 0 1440 360" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <defs><pattern id="win" width="15" height="19" patternUnits="userSpaceOnUse"><rect x="4" y="5" width="6" height="8" rx="1" fill="rgba(255,255,255,.2)"/></pattern></defs>
+    <circle cx="1190" cy="118" r="74" fill="#d9761f" opacity=".26"/>
+    <g fill="rgba(255,255,255,.045)">${back}</g>
+    <g fill="rgba(255,255,255,.08)">${mid}</g><g fill="url(#win)">${mid}</g>
+    <g stroke="rgba(255,255,255,.3)" stroke-width="3" fill="none" stroke-linecap="round">
+      <path d="M968 332V92M952 332V92M952 92h16M952 120l16 26M968 146l-16 26M952 172l16 26M968 198l-16 26M952 224l16 26M968 250l-16 26M952 276l16 26"/>
+      <path d="M880 96h300M880 96l80-28M1180 96l-220-28M960 68v28"/>
+      <path d="M1130 96v74"/><rect x="1118" y="170" width="24" height="18" rx="2" fill="rgba(255,255,255,.18)"/>
+      <path d="M888 96v22h28V96"/>
+    </g>
+    <rect y="332" width="1440" height="28" fill="rgba(0,0,0,.2)"/>
+    <path d="M0 346h1440" stroke="rgba(255,255,255,.18)" stroke-width="2" stroke-dasharray="26 22"/>
+    <g fill="rgba(255,255,255,.34)">
+      <rect x="170" y="262" width="176" height="62" rx="4"/>
+      <path d="M350 324v-44h50l22 22v22z"/><rect x="360" y="286" width="26" height="14" rx="2" fill="rgba(13,60,110,.6)"/>
+      <circle cx="210" cy="330" r="13"/><circle cx="244" cy="330" r="13"/><circle cx="392" cy="330" r="13"/>
+      <path d="M560 326v-12l20-5 24-18h52l26 18 20 4v13z"/>
+      <circle cx="594" cy="328" r="11"/><circle cx="676" cy="328" r="11"/>
+    </g>
+  </svg>`;
+}
+
+/* иконки разделов */
+const ICON = {
+  nedvizhimost:'<svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-5h6v5M9 10h.01M15 10h.01M9 13h.01M15 13h.01"/></svg>',
+  avto:'<svg viewBox="0 0 24 24"><path d="M4 16v-3l1.6-4.2A2 2 0 0 1 7.5 7.5h9a2 2 0 0 1 1.9 1.3L20 13v3zM4 13h16"/><circle cx="7.5" cy="16.5" r="1.8"/><circle cx="16.5" cy="16.5" r="1.8"/></svg>',
+  gruz:'<svg viewBox="0 0 24 24"><path d="M2 5h12v11H2zM14 9h4l3 3.5V16h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>',
+  spec:'<svg viewBox="0 0 24 24"><path d="M2 20h11M3 20v-4h8v4M5 16v-3h4l2 3M11 12l3-6 5 2-1 5M18 13l2 3h-3"/></svg>',
+  oborud:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>'
+};
+
+function sectionTiles(){
+  return `<div class="stiles">${SECTIONS.map(([s,n])=>{
+    const ls = DATA.filter(l=>l.section===s);
+    // обложка — самый дорогой лот раздела с фото: у таких обычно лучшие снимки
+    const cover = ls.filter(l=>l.photo).sort((a,b)=>b.price-a.price)[0];
+    return `<a class="stile s-${s}" href="#/s/${s}">
+      ${cover?pic(cover,'bgi'):''}<span class="shade"></span>
+      <span class="sico">${ICON[s]}</span>
+      <span class="sbody"><span class="st">${n}</span>
+        <span class="sn">${ls.length} ${plural(ls.length,'активный лот','активных лота','активных лотов')}</span></span>
+      <span class="sgo">→</span></a>`;
+  }).join('')}</div>`;
+}
+
 function pageHome(){
-  document.title = 'БелЛот — торги Беларуси';
-  const soon=[...DATA].filter(l=>left(l)>=0).sort((a,b)=>a.req_to-b.req_to).slice(0,8);
-  const fresh=DATA.filter(isNew).sort((a,b)=>b.first_seen-a.first_seen);
-  const regions={}; DATA.forEach(l=>{ if(l.region) regions[l.region]=(regions[l.region]||0)+1; });
-  const topReg=Object.entries(regions).sort((a,b)=>b[1]-a[1]).slice(0,7);
-  const prices=DATA.map(l=>l.price).filter(p=>p>0).sort((a,b)=>a-b);
+  document.title = 'БелЛот — торги по имуществу должников Беларуси';
+  const fresh = DATA.filter(isNew).sort((a,b)=>b.first_seen-a.first_seen);
+  const soon = [...DATA].filter(l=>left(l)>=0).sort((a,b)=>a.req_to-b.req_to);
+  const dcs = DATA.map(discount).filter(x=>x!==null).sort((a,b)=>a-b);
+  const medDc = dcs.length ? dcs[Math.floor(dcs.length/2)] : 0;
+  const plats = new Set(DATA.map(l=>l.platform)).size;
+  const show = fresh.length >= 4 ? ['Новые лоты', fresh] : ['Заявки закрываются первыми', soon];
   $('#app').innerHTML = `
-  <div class="hero"><div class="wrap">
-    <h1>Все торги Беларуси в одном каталоге</h1>
-    <p>Имущество должников с площадок страны: недвижимость, транспорт, спецтехника и оборудование. Без задержек и без регистрации.</p>
-    <div class="quick">${SECTIONS.map(([s,n])=>`<a href="#/s/${s}">${n} · ${cnt(s)}</a>`).join('')}</div>
-    <div class="stats">
-      <div class="stat"><div class="v">${nf(DATA.length)}</div><div class="k">активных лотов</div></div>
-      <div class="stat"><div class="v">${fresh.length}</div><div class="k">новых за сутки</div></div>
-      <div class="stat"><div class="v">${DATA.filter(l=>left(l)>=0&&left(l)<=7).length}</div><div class="k">закрываются на неделе</div></div>
-      <div class="stat"><div class="v">${nf(prices[Math.floor(prices.length/2)]||0)}</div><div class="k">медианная цена, BYN</div></div>
-      <a class="stat" href="#/catalog?st=arch" style="text-decoration:none"><div class="v">${nf(ARCHN._||0)}</div><div class="k">в архиве торгов →</div></a>
+  <section class="land">
+    ${skyline()}
+    <div class="wrap land-in">
+      <div class="eyebrow">Агрегатор торгов по имуществу должников</div>
+      <h1>Имущество с торгов дешевле рынка — в одном окне и без риска</h1>
+      <p>Недвижимость, автомобили и техника со всех крупных площадок Беларуси. Показываем, сколько такой объект стоит на рынке, считаем полную цену покупки и помогаем пройти торги до сделки.</p>
+      <form class="land-search" id="ls"><input id="ls-q" type="search" placeholder="Квартира в Гомеле, Volkswagen, экскаватор…" aria-label="Поиск лота"><button type="submit">Найти лот</button></form>
+      <div class="land-cta">
+        <a class="btn pri big" href="#/catalog">Смотреть ${nf(DATA.length)} лотов</a>
+        <a class="btn ghost big" href="#/help">Помощь в аукционе</a>
+      </div>
     </div>
-  </div></div>
+  </section>
   <div class="wrap">
-    <div class="sec"><div class="sec-h"><h2>Разделы каталога</h2><a href="#/catalog">Все лоты →</a></div>
-      <div class="tiles">${SECTIONS.map(([s,n,ic])=>`<a class="tile" href="#/s/${s}">
-        <div class="ic">${ic}</div><div class="t">${n}</div><div class="n">${cnt(s)} активных лотов</div></a>`).join('')}</div></div>
+    <div class="kpis">
+      <div class="kpi"><b>${nf(DATA.length)}</b><span>активных лотов прямо сейчас</span></div>
+      <div class="kpi"><b>${plats}</b><span>${plural(plats,'площадка','площадки','площадок')} в одном каталоге</span></div>
+      <div class="kpi"><b>2 раза</b><span>в день обновляем каталог — в 11:00 и 18:00</span></div>
+      <div class="kpi"><b>${medDc>0?medDc+'%':'—'}</b><span>типичная разница с рынком у лотов с ориентиром</span></div>
+    </div>
 
-    ${fresh.length?`<div class="sec"><div class="sec-h"><h2>Новые лоты</h2><a href="#/catalog">Смотреть все →</a></div>
-      <div class="grid">${fresh.slice(0,8).map(lotCard).join('')}</div></div>`:''}
+    <div class="sec"><div class="sec-h"><h2>Что продаётся на торгах</h2><a href="#/catalog">Весь каталог →</a></div>
+      ${sectionTiles()}</div>
 
-    <div class="sec"><div class="sec-h"><h2>Заявки закрываются первыми</h2><a href="#/catalog">Смотреть все →</a></div>
-      <div class="grid">${soon.map(lotCard).join('')}</div></div>
+    <div class="sec"><h2>Как это работает</h2>
+      <div class="how">
+        <div><span class="hn">1</span><h3>Находите лот</h3><p>Все площадки в одном каталоге: фильтры по региону, цене и сроку заявок. Не нужно обходить сайты по одному.</p></div>
+        <div><span class="hn">2</span><h3>Сравниваете с рынком</h3><p>Рядом с ценой лота — медиана похожих объявлений. Сразу видно, есть ли выгода.</p></div>
+        <div><span class="hn">3</span><h3>Считаете покупку</h3><p>Калькулятор в карточке знает правила площадки: задаток, шаг, сборы организатора, сроки оплаты.</p></div>
+        <div><span class="hn">4</span><h3>Покупаете с нами</h3><p>Проверим объект, съездим на осмотр, проведём через торги и сделку — если нужна помощь.</p></div>
+      </div></div>
 
-    <div class="sec"><h2>Преимущества работы с платформой</h2>
+    <div class="sec"><h2>Почему БелЛот</h2>
       <div class="adv">${ADV.slice(0,6).map(([ic,t,d])=>`<div class="it"><div class="ic">${ic}</div><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
       <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p></div>
 
-    <div class="sec"><div class="sec-h"><h2>Лоты по регионам</h2><a href="#/catalog">Фильтр по региону →</a></div>
-      <table class="plain"><tr><th>Регион</th><th>Лотов</th><th>Доля</th></tr>
-      ${topReg.map(([r,n])=>`<tr><td>${esc(r)}</td><td class="mono">${n}</td>
-        <td><span style="display:inline-block;height:9px;border-radius:2px;background:var(--brand);width:${Math.round(n/topReg[0][1]*140)}px"></span></td></tr>`).join('')}
-      </table></div>
+    <div class="helpband">
+      <div><h2>Первый раз на торгах?</h2>
+        <p>Проверим объект до задатка, съездим на осмотр, подскажем разумный предел цены и проведём через аукцион.</p></div>
+      <a class="btn pri big" href="#/help">Оставить заявку</a>
+    </div>
 
-    <div class="sec"><h2>Посчитать задаток и итоговую цену</h2>
-      <p class="lede">Сколько внести до торгов, во сколько обойдётся объект после нескольких шагов и когда платить остаток.</p>
-      <a class="btn pri" href="#/calc">Открыть калькулятор</a></div>
+    <div class="sec"><div class="sec-h"><h2>${show[0]}</h2><a href="#/catalog">Смотреть все →</a></div>
+      <div class="grid">${show[1].slice(0,8).map(lotCard).join('')}</div></div>
+
+    <div class="sec archline"><a href="#/catalog?st=arch">Архив завершённых торгов — ${nf(ARCHN._||0)} ${plural(ARCHN._||0,'лот','лота','лотов')} →</a></div>
   </div>`;
+  $('#ls').addEventListener('submit', e=>{ e.preventDefault();
+    location.hash = '#/catalog?q=' + encodeURIComponent($('#ls-q').value.trim()); });
 }
 
 /* ───────── роутер с переходом страниц ───────── */
@@ -870,6 +1243,7 @@ function render(path, params){
   else if(path==='/catalog') pageCatalog(null, params);
   else if(path==='/calc') pageCalc(params.get('price'));
   else if(path==='/about') pageAbout();
+  else if(path==='/help') pageHelp(params);
   else pageHome();
 }
 function go(){
