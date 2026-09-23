@@ -1,0 +1,74 @@
+name: Обновление сайта
+
+on:
+  schedule:
+    - cron: '0 8 * * *'     # 11:00 по Минску
+    - cron: '0 15 * * *'    # 18:00 по Минску
+  workflow_dispatch:
+    inputs:
+      collect:
+        description: 'Обойти площадки (если снять — только пересобрать сайт)'
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths: ['app/**', '.github/workflows/**']   # правка кода — пересобрать сайт без обхода
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: site
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      TZ: Europe/Minsk
+      COLLECT: ${{ github.event_name == 'schedule' || inputs.collect == true }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: ImageMagick для фото
+        run: command -v convert || (sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick)
+
+      - name: Обход площадок
+        if: env.COLLECT == 'true'
+        run: ruby app/update.rb
+
+      - name: Рыночный ориентир (Kufar)
+        if: env.COLLECT == 'true'
+        continue-on-error: true
+        run: ruby app/market.rb && ruby app/market_realty.rb
+
+      - name: Сохранить память
+        if: env.COLLECT == 'true'
+        run: |
+          git config user.name "bellot-bot"
+          git config user.email "bellot-bot@users.noreply.github.com"
+          git add -A data
+          git commit -q -m "данные: $(date '+%d.%m.%Y %H:%M')" || echo "без изменений"
+          git push || (git pull --rebase -q && git push)
+
+      - name: Сборка сайта
+        run: ruby app/build.rb
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

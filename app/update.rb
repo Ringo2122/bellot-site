@@ -1,0 +1,205 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+#
+# Обновление памяти сайта: обходит три площадки, добавляет новые лоты,
+# обновляет цену и срок у известных, отправляет в архив закрытые.
+# Запускается GitHub Actions в 11:00 и 18:00 по Минску; руками — ruby app/update.rb
+#
+# В архив лот уходит, когда:
+#   • срок приёма заявок истёк                         → why: deadline
+#   • лот пропал из списка площадки раньше срока        → why: removed
+#     (только если список раздела прочитан целиком и не «похудел» подозрительно —
+#      иначе сбой площадки отправил бы в архив полкаталога)
+# Если лот снова появился в списке (повторные торги) — возвращается из архива.
+# Архив хранится RETAIN_DAYS дней, потом лот удаляется вместе с фото.
+require_relative 'sources'
+require_relative 'regions'
+require_relative 'store'
+
+RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
+MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
+WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3 }.freeze
+MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
+
+SEC_RU = { 'nedvizhimost' => 'Недвижимость', 'avto' => 'Легковые авто', 'gruz' => 'Грузовые и автобусы',
+           'spec' => 'Спецтехника', 'oborud' => 'Оборудование' }.freeze
+
+# площадка → [раздел площадки, раздел сайта; nil — определить по названию]
+PLAN = {
+  'e-auction.by' => [['/nedvizhimost/', 'nedvizhimost'], ['/legkovye_avtomobili/', 'avto'],
+                     ['/gruzovaya_tekhnika_i_avtobusy/', 'gruz'], ['/spetstekhnika/', 'spec'],
+                     ['/stanki_i_oborudovanie/', 'oborud']],
+  'ipmtorgi.by'  => [['/auctions/nedvizhimost/', 'nedvizhimost'], ['/auctions/transport-i-spetstekhnika/', nil],
+                     ['/auctions/stanki-oborudovanie/', 'oborud']],
+  'beltorgi.by'  => [['nedvizhimost', 'nedvizhimost'], ['legkovye-avto', 'avto'], ['gruzovye-avto', 'gruz'],
+                     ['avtobusy', 'gruz'], ['specztexnika', 'spec'], ['stanki-i-oborudovanie', 'oborud']]
+}.freeze
+
+# У ИПМ-Торгов транспорт и спецтехника — один раздел; разносим по началу названия
+def ipm_kind(name)
+  n = name.downcase
+  return 'avto' if n.start_with?('легков')
+  return 'spec' if n =~ /тракторн|мотоблоч/
+  return 'gruz' if n =~ /\A(грузов|автобус|полуприцеп|прицеп|автомобиль\s|автомашина)/
+  'spec'
+end
+
+def list(plat, path)
+  case plat
+  when 'e-auction.by' then Src.ea_list(path)
+  when 'ipmtorgi.by'  then Src.ipm_list(path)
+  else Src.bt_list(path)
+  end
+end
+
+def fetch_detail(c)
+  html = Src.get(c['url']) or return nil
+  d = case c['platform']
+      when 'e-auction.by' then Src.ea_detail(html)
+      when 'ipmtorgi.by'  then Src.ipm_detail(html)
+      else Src.bt_detail(html)
+      end
+  sleep 0.4
+  d
+end
+
+def trim(secs)
+  secs.map do |s|
+    { 'h' => s['h'], 'rows' => s['rows'].map { |k, v| [k, v.length > MAXV ? v[0, MAXV].sub(/\s\S*\z/, '') + '…' : v] } }
+  end
+end
+
+def new_lot(c, sec, d, src, now)
+  plat = c['platform']
+  loc = plat == 'ipmtorgi.by' ? c['location'].to_s : d['location'].to_s
+  if plat == 'beltorgi.by' && loc !~ /обл|г\.\s*Минск/
+    loc = [c['region'], loc].reject { |x| x.to_s.empty? }.join(', ')
+  end
+  price = c['price'].to_f.positive? ? c['price'] : d['price_byn'].to_f
+  { 'key' => c['key'], 'status' => 'active', 'src' => src, 'first_seen' => now, 'last_seen' => now,
+    'art' => plat == 'ipmtorgi.by' && !d['lotno'].to_s.empty? ? d['lotno'] : c['art'],
+    'name' => plat == 'beltorgi.by' && !d['title'].to_s.empty? ? d['title'] : c['name'],
+    'price' => price, 'prices' => [[now, price]],
+    # у ИПМ точное время — в карточке лота; у beltorgi в списке его нет вовсе
+    'req_to' => plat == 'e-auction.by' ? c['req_to'] : (d['req_to'] || c['req_to']),
+    'torg' => d['torg'], 'url' => c['url'], 'location' => loc, 'region' => region_of(loc),
+    'debtor' => d['debtor'], 'area_num' => sec == 'nedvizhimost' ? d['area_num'] : nil,
+    'sub_ru' => plat == 'e-auction.by' && sec == 'nedvizhimost' ? Src::EA_SUBS[c['sub']] : nil,
+    'platform' => plat, 'section' => sec, 'section_ru' => SEC_RU[sec] }
+end
+
+now = Time.now.to_i
+t0 = Time.now
+db = Store.load.each_with_object({}) { |l, h| h[l['key']] = l }
+before = db.values.count { |l| l['status'] == 'active' }
+mx = Mutex.new
+seen = {}          # ключи, которые площадки показали в этом прогоне
+lists = {}         # src → сколько карточек прочитано (nil — список не прочитан)
+stat = Hash.new(0)
+
+PLAN.map do |plat, secs|
+  Thread.new do
+    todo = Queue.new
+    secs.each do |path, sec|
+      src = "#{plat} #{path}"
+      cards = list(plat, path)
+      mx.synchronize do
+        lists[src] = cards.empty? ? nil : cards.size
+        cards.each { |c| seen[c['key']] = true }
+      end
+      STDERR.puts "#{src}: в списке #{cards.size}"
+      cards.each do |c|
+        next if plat == 'beltorgi.by' && !c['open']          # ещё не принимают заявки
+        s = sec || ipm_kind(c['name'])
+        min = MIN_PRICE[s]
+        next if min && c['price'].to_f.positive? && c['price'] < min
+        todo << [c, s, src]
+      end
+    end
+    Array.new(WORKERS[plat]) do
+      Thread.new do
+        loop do
+          c, sec, src = begin
+            todo.pop(true)
+          rescue ThreadError
+            break
+          end
+          old = mx.synchronize { db[c['key']] }
+          if old
+            upd = {}
+            upd['price'] = c['price'] if c['price'].to_f.positive? && c['price'] != old['price']
+            if c['platform'] == 'beltorgi.by'
+              # срок по обратному отсчёту разошёлся с известным больше чем на сутки — перевыставили
+              if c['est'] && (c['est'] - old['req_to'].to_i).abs > 86_400
+                d = fetch_detail(c)
+                if d && d['req_to']
+                  upd['req_to'] = d['req_to']
+                  upd['torg'] = d['torg']
+                  Store.save_details(c['key'], trim(d['details'] || []))
+                end
+              end
+            elsif c['req_to'].to_i.positive? && c['req_to'] != old['req_to']
+              upd['req_to'] = c['req_to']
+            end
+            mx.synchronize do
+              if upd['price']
+                (old['prices'] ||= [[old['first_seen'], old['price']]]) << [now, upd['price']]
+                stat['цена изменилась'] += 1
+              end
+              old.merge!(upd)
+              old['last_seen'] = now
+              if old['status'] == 'archive' && old['req_to'].to_i > now
+                old['status'] = 'active'
+                old['reopened'] = now
+                old.delete('closed')
+                old.delete('why')
+                stat['вернулись из архива'] += 1
+              end
+            end
+          else
+            d = fetch_detail(c) or next
+            rec = new_lot(c, sec, d, src, now)
+            next unless rec['req_to'].to_i > now
+            Store.save_details(c['key'], trim(d['details'] || []))
+            rec['photo'] = Store.save_photo([d['photo_url'], c['thumb']], c['key'], Src::UA)
+            mx.synchronize do
+              db[c['key']] = rec
+              stat['новых'] += 1
+            end
+          end
+        end
+      end
+    end.each(&:join)
+  end
+end.each(&:join)
+
+# ── архив ──
+active_by_src = Hash.new(0)
+db.each_value { |l| active_by_src[l['src']] += 1 if l['status'] == 'active' }
+db.each_value do |l|
+  next unless l['status'] == 'active'
+  if l['req_to'].to_i <= now
+    l.merge!('status' => 'archive', 'closed' => l['req_to'], 'why' => 'deadline')
+    stat['в архив: срок истёк'] += 1
+  elsif !seen[l['key']]
+    n = lists[l['src']]
+    # список раздела не прочитан или короче половины известного — не верим, ждём следующего прогона
+    next if n.nil? || n < active_by_src[l['src']] / 2
+    l.merge!('status' => 'archive', 'closed' => now, 'why' => 'removed')
+    stat['в архив: снят с площадки'] += 1
+  end
+end
+
+cut = now - RETAIN_DAYS * 86_400
+db.delete_if do |k, l|
+  next false unless l['status'] == 'archive' && l['closed'].to_i < cut
+  [Store.det_path(k), Store.ph_path(k)].each { |f| File.delete(f) if File.exist?(f) }
+  stat['удалено из архива'] += 1
+  true
+end
+
+Store.save(db.values)
+act = db.values.count { |l| l['status'] == 'active' }
+STDERR.puts stat.map { |k, v| "#{k}: #{v}" }.join(', ') unless stat.empty?
+STDERR.puts "активных #{before} → #{act}, в архиве #{db.size - act}, за #{((Time.now - t0) / 60).round(1)} мин"
+abort('подозрительно мало активных лотов — проверьте парсеры') if act < 100

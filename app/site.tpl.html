@@ -1,0 +1,902 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>БелЛот — торги Беларуси</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&family=PT+Mono&display=swap">
+<style>
+  :root{
+    --brand:#12508f; --brand-d:#0d3c6e; --brand-l:#e8f0f8;
+    --accent:#d9761f; --accent-l:#fdf1e4;
+    --ok:#1d7a4d; --ok-l:#e6f3ec;
+    --ink:#1a2330; --ink-2:#4a5563; --ink-3:#77818d;
+    --bg:#f2f4f7; --card:#fff; --hair:#dde2e8; --hair-2:#c6cdd6;
+    --sh:0 1px 3px rgba(20,30,45,.08); --sh-2:0 6px 20px rgba(20,30,45,.14);
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --brand:#4a92d8; --brand-d:#3878b8; --brand-l:#152534;
+    --accent:#e8944a; --accent-l:#2c2015;
+    --ok:#4cb583; --ok-l:#14291f;
+    --ink:#e8ebef; --ink-2:#a6b0bc; --ink-3:#7a848f;
+    --bg:#11161c; --card:#1a2028; --hair:#2a323c; --hair-2:#3a434e;
+    --sh:0 1px 3px rgba(0,0,0,.4); --sh-2:0 8px 26px rgba(0,0,0,.6);
+  }}
+  :root[data-theme="dark"]{
+    --brand:#4a92d8; --brand-d:#3878b8; --brand-l:#152534;
+    --accent:#e8944a; --accent-l:#2c2015;
+    --ok:#4cb583; --ok-l:#14291f;
+    --ink:#e8ebef; --ink-2:#a6b0bc; --ink-3:#7a848f;
+    --bg:#11161c; --card:#1a2028; --hair:#2a323c; --hair-2:#3a434e;
+    --sh:0 1px 3px rgba(0,0,0,.4); --sh-2:0 8px 26px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"PT Sans",system-ui,sans-serif;
+    font-size:15px;line-height:1.5}
+  a{color:var(--brand);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .mono{font-family:"PT Mono",ui-monospace,monospace}
+  .wrap{max-width:1220px;margin:0 auto;padding-inline:16px}
+  button,input,select{font:inherit}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ── верхняя полоса ── */
+  .topbar{background:var(--brand-d);color:#fff;font-size:12.5px}
+  .topbar .wrap{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:center;padding-block:7px}
+  .topbar b{font-weight:700}
+  .topbar .demo{margin-left:auto;background:rgba(255,255,255,.16);padding:2px 9px;border-radius:3px;
+    letter-spacing:.04em}
+
+  /* ── шапка ── */
+  header.main{background:var(--card);border-bottom:1px solid var(--hair);position:sticky;
+    top:env(safe-area-inset-top,0px);z-index:40}
+  .hrow{display:flex;align-items:center;gap:22px;padding-block:13px}
+  .logo{display:flex;align-items:center;gap:10px;flex:none}
+  .logo .mark{width:38px;height:38px;border-radius:7px;background:var(--brand);color:#fff;
+    display:grid;place-items:center;font-weight:700;font-size:17px;letter-spacing:-.02em}
+  .logo .nm{font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+  .logo .sub{font-size:11px;color:var(--ink-3);line-height:1.2}
+  .hsearch{flex:1;display:flex;min-width:0}
+  .hsearch input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--hair-2);
+    border-right:0;border-radius:5px 0 0 5px;background:var(--card);color:var(--ink)}
+  .hsearch button{padding:9px 20px;border:0;border-radius:0 5px 5px 0;background:var(--brand);
+    color:#fff;cursor:pointer;font-weight:700}
+  .hsearch button:hover{background:var(--brand-d)}
+  .hacts{display:flex;gap:9px;flex:none}
+  .more{display:block;margin:22px auto 0;min-width:260px}
+  .btn{padding:9px 16px;border-radius:5px;border:1px solid var(--hair-2);background:var(--card);
+    color:var(--ink);cursor:pointer;font-weight:700;font-size:14px;white-space:nowrap}
+  .btn:hover{border-color:var(--brand);color:var(--brand)}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.pri:hover{filter:brightness(.93);color:#fff}
+
+  nav.main{background:var(--brand);overflow-x:auto}
+  nav.main ul{display:flex;list-style:none;margin:0;padding:0;gap:0;min-width:max-content}
+  nav.main a{display:block;padding:11px 16px;color:#fff;font-size:14.5px;white-space:nowrap;
+    border-bottom:3px solid transparent}
+  nav.main a:hover{background:rgba(255,255,255,.12);text-decoration:none}
+  nav.main a.on{background:rgba(0,0,0,.18);border-bottom-color:var(--accent)}
+
+  /* ── общее ── */
+  main{padding-block:22px 56px;min-height:60vh}
+  .crumbs{font-size:12.5px;color:var(--ink-3);margin-bottom:14px}
+  .crumbs a{color:var(--ink-3)}
+  h1{margin:0 0 6px;font-size:27px;letter-spacing:-.02em}
+  h2{margin:0 0 14px;font-size:20px;letter-spacing:-.015em}
+  h3{margin:0 0 9px;font-size:15px}
+  .lede{color:var(--ink-2);margin:0 0 20px;max-width:70ch}
+  .panel{background:var(--card);border:1px solid var(--hair);border-radius:8px;box-shadow:var(--sh)}
+  .sec{margin-top:34px}
+  .sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:14px}
+  .sec-h h2{margin:0}
+
+  /* ── главная ── */
+  .hero{background:linear-gradient(180deg,var(--brand-l),var(--bg));border-bottom:1px solid var(--hair);
+    padding-block:34px 30px;margin-bottom:8px}
+  .hero h1{font-size:32px;max-width:20ch;line-height:1.15;text-wrap:balance}
+  .hero p{color:var(--ink-2);max-width:56ch;margin:10px 0 20px}
+  .quick{display:flex;flex-wrap:wrap;gap:8px}
+  .quick a{background:var(--card);border:1px solid var(--hair-2);border-radius:20px;padding:6px 14px;
+    font-size:13.5px;color:var(--ink-2)}
+  .quick a:hover{border-color:var(--brand);color:var(--brand);text-decoration:none}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
+    background:var(--hair);border:1px solid var(--hair);border-radius:8px;overflow:hidden;margin-top:26px}
+  .stat{background:var(--card);padding:15px 17px}
+  .stat .v{font-size:25px;font-weight:700;color:var(--brand);letter-spacing:-.02em}
+  .stat .k{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:13px}
+  .tile{background:var(--card);border:1px solid var(--hair);border-radius:8px;padding:17px;
+    display:block;color:var(--ink);box-shadow:var(--sh);transition:.15s}
+  .tile:hover{border-color:var(--brand);box-shadow:var(--sh-2);text-decoration:none;transform:translateY(-2px)}
+  .tile .ic{font-size:23px;line-height:1}
+  .tile .t{font-weight:700;margin-top:9px;font-size:16px}
+  .tile .n{color:var(--ink-3);font-size:13px;margin-top:3px}
+
+  /* ── карточки лотов ── */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(256px,1fr));gap:14px}
+  .lot{background:var(--card);border:1px solid var(--hair);border-radius:8px;overflow:hidden;
+    display:flex;flex-direction:column;box-shadow:var(--sh);transition:.15s;color:var(--ink)}
+  .lot:hover{border-color:var(--brand);box-shadow:var(--sh-2);text-decoration:none}
+  .lot .ph{position:relative;aspect-ratio:4/3;background:var(--brand-l);overflow:hidden}
+  .lot .ph img{width:100%;height:100%;object-fit:cover;display:block}
+  .lot .noph{width:100%;height:100%;display:grid;place-items:center;color:var(--ink-3);font-size:12px}
+  .flag{position:absolute;top:8px;left:8px;font-size:11px;font-weight:700;padding:3px 8px;
+    border-radius:3px;background:var(--accent);color:#fff}
+  .flag.t{background:rgba(16,22,30,.72);left:auto;right:8px}
+  .flag.disc{top:auto;bottom:8px;left:8px;background:var(--ok);color:#fff}
+
+  /* ── рыночный ориентир ── */
+  .mkt{border:1px solid var(--ok);background:var(--ok-l);border-radius:7px;padding:13px 15px;margin-top:15px}
+  .mkt .hd{font-size:12px;font-weight:700;color:var(--ok);text-transform:uppercase;letter-spacing:.05em}
+  .mkt .mval{font-size:23px;font-weight:700;letter-spacing:-.02em;margin-top:5px}
+  .mkt .sub{font-size:13px;color:var(--ink-2);margin-top:3px}
+  .mkt .bar{display:flex;align-items:center;gap:9px;margin-top:11px;font-size:12.5px;color:var(--ink-2)}
+  .mkt .track{flex:1;height:7px;border-radius:4px;background:var(--hair);position:relative;overflow:hidden}
+  .mkt .fill{position:absolute;inset:0 auto 0 0;background:var(--ok);border-radius:4px}
+  .mkt .warn{font-size:12px;color:var(--ink-3);margin-top:10px;line-height:1.5}
+  .mkt a{font-weight:700}
+  .lot .body{padding:12px 13px;display:flex;flex-direction:column;gap:7px;flex:1}
+  .lot .nm{font-weight:700;font-size:14.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
+    -webkit-box-orient:vertical;overflow:hidden;min-height:2.6em}
+  .lot .pr{font-size:19px;font-weight:700;color:var(--brand);letter-spacing:-.02em}
+  .lot .pr span{font-size:11.5px;color:var(--ink-3);font-weight:400}
+  .lot .loc{font-size:12.5px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:1;
+    -webkit-box-orient:vertical;overflow:hidden}
+  .lot .ft{margin-top:auto;padding-top:9px;border-top:1px solid var(--hair);font-size:12px;
+    color:var(--ink-3);display:flex;justify-content:space-between;gap:8px}
+  .lot .ft b{color:var(--ink-2)}
+
+  /* ── фильтры ── */
+  .fg{margin-bottom:15px}
+  .fg:last-child{margin-bottom:0}
+  .fg label{display:block;font-size:12px;font-weight:700;color:var(--ink-3);margin-bottom:5px;
+    text-transform:uppercase;letter-spacing:.04em}
+  .fg input,.fg select{width:100%;padding:7px 9px;border:1px solid var(--hair-2);border-radius:5px;
+    background:var(--card);color:var(--ink);min-width:0}
+  .fg .two{display:flex;gap:7px}
+  .fg .two input{width:50%}
+  .fcount{font-size:13px;color:var(--ink-2);margin-bottom:13px}
+  .fcount b{color:var(--ink)}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+    margin-bottom:14px}
+
+  /* ── карточка лота ── */
+
+  /* ── преимущества ── */
+  .adv{display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:14px}
+  .adv .it{background:var(--card);border:1px solid var(--hair);border-radius:8px;padding:17px;
+    box-shadow:var(--sh)}
+  .adv .it .ic{width:34px;height:34px;border-radius:6px;background:var(--brand-l);color:var(--brand);
+    display:grid;place-items:center;font-size:17px;font-weight:700}
+  .adv .it h3{margin:11px 0 5px;font-size:15.5px}
+  .adv .it p{margin:0;font-size:13.5px;color:var(--ink-2)}
+
+  /* ── калькулятор ── */
+  .calc{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  .calcform{padding:19px}
+  .calcout{padding:19px;background:var(--brand-l);border:1px solid var(--hair)}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--hair)}
+  .row:last-child{border-bottom:0}
+  .row .l{color:var(--ink-2);font-size:14px}
+  .row .r{font-weight:700;white-space:nowrap}
+  .row.big .r{font-size:20px;color:var(--brand)}
+  .note{font-size:12.5px;color:var(--ink-3);margin-top:13px;line-height:1.55}
+
+  table.plain{width:100%;border-collapse:collapse;font-size:14px;background:var(--card)}
+  table.plain th,table.plain td{padding:9px 12px;border:1px solid var(--hair);text-align:left}
+  table.plain th{background:var(--brand-l);color:var(--brand);font-size:12.5px;text-transform:uppercase;
+    letter-spacing:.04em}
+
+  footer.main{background:var(--brand-d);color:#cfe0f0;padding-block:28px 34px;font-size:13.5px;margin-top:40px}
+  footer.main a{color:#fff}
+  .fcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:22px}
+  footer.main h4{margin:0 0 9px;font-size:14px;color:#fff}
+  footer.main ul{list-style:none;margin:0;padding:0;line-height:1.9}
+  .fbot{border-top:1px solid rgba(255,255,255,.18);margin-top:22px;padding-top:16px;font-size:12.5px;
+    color:#a9c3dc}
+  .empty{padding:50px 20px;text-align:center;color:var(--ink-3)}
+
+
+  /* ── переходы между страницами ── */
+  #bar{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:100;opacity:0;pointer-events:none}
+  #bar.go{opacity:1;width:72%;transition:width .45s cubic-bezier(.2,.7,.3,1)}
+  #bar.done{opacity:0;width:100%;transition:width .2s ease,opacity .35s ease .15s}
+  #app.vt{view-transition-name:page}   /* только на время перехода: иначе фильтр-шторка уходит под шапку */
+  ::view-transition-old(root),::view-transition-new(root){animation:none}
+  ::view-transition-old(page){animation:vt-out .15s ease both}
+  ::view-transition-new(page){animation:vt-in .34s cubic-bezier(.2,.7,.3,1) both}
+  @keyframes vt-out{to{opacity:0;transform:translateY(-6px)}}
+  @keyframes vt-in{from{opacity:0;transform:translateY(14px)}}
+  #app.out{opacity:0;transform:translateY(-6px);transition:opacity .14s ease,transform .14s ease}
+  #app.in{animation:vt-in .34s cubic-bezier(.2,.7,.3,1) both}
+
+  /* ── каталог: фильтр сбоку ── */
+  .cat-head{margin-bottom:18px}
+  .cat-head h1{margin:0}
+  .cat-head .lede{margin:5px 0 0}
+  .layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:22px;align-items:start}
+  .filters{position:sticky;top:82px;max-height:calc(100vh - 98px);overflow:auto;scrollbar-width:thin;
+    display:flex;flex-direction:column}
+  .filters .fh{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--hair);
+    font-weight:700;position:sticky;top:0;background:var(--card);z-index:1}
+  .filters .fb{padding:14px 16px 16px}
+  .lnk{margin-left:auto;border:0;background:none;color:var(--brand);cursor:pointer;font-size:13px;padding:0}
+  .lnk:hover{text-decoration:underline}
+  .fclose,.fapply{display:none}
+  .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border:1px solid var(--hair-2);
+    border-radius:6px;padding:3px;gap:3px}
+  .seg button{border:0;background:none;padding:7px 4px;border-radius:4px;cursor:pointer;color:var(--ink-2);
+    font-size:13.5px;font-weight:700;transition:background .15s,color .15s}
+  .seg button.on{background:var(--card);color:var(--brand);box-shadow:var(--sh)}
+  .seg small{font-weight:400;color:var(--ink-3);margin-left:2px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  .toolbar .cnt{font-size:14px;color:var(--ink-2);margin-right:auto}
+  .toolbar .cnt b{color:var(--ink)}
+  .toolbar select{padding:7px 9px;border:1px solid var(--hair-2);border-radius:5px;background:var(--card);
+    color:var(--ink)}
+  .fbtn{display:none}
+  .overlay{position:fixed;inset:0;background:rgba(10,15,22,.45);z-index:60;opacity:0;pointer-events:none;
+    transition:opacity .2s}
+  .hint{background:var(--card);border:1px dashed var(--hair-2);border-radius:7px;padding:10px 14px;
+    font-size:13.5px;color:var(--ink-2);margin-bottom:14px}
+  .skel{height:54px;border-radius:8px;background:linear-gradient(90deg,var(--card) 30%,var(--bg) 50%,var(--card) 70%);
+    background-size:220% 100%;animation:sk 1.2s linear infinite;border:1px solid var(--hair)}
+  @keyframes sk{to{background-position:-220% 0}}
+
+  /* ── значки на карточках ── */
+  .lot .flags{position:absolute;top:8px;left:8px;display:flex;flex-wrap:wrap;gap:5px;max-width:65%}
+  .lot .flags .flag{position:static}
+  .flag.new{background:var(--ok)}
+  .flag.arch{background:#6b7480}
+  .lot.arch .ph img{filter:grayscale(.6)}
+  .lot.arch .pr{color:var(--ink-2)}
+  .down{font-style:normal;font-size:11.5px;color:var(--ok);font-weight:700;margin-left:4px}
+
+  /* ── страница лота ── */
+  .lothead .tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .tag{font-size:12px;padding:3px 10px;border-radius:12px;background:var(--brand-l);color:var(--brand);font-weight:700}
+  .tag.g{background:var(--card);color:var(--ink-2);border:1px solid var(--hair);font-weight:400}
+  .tag.a{background:#6b7480;color:#fff}
+  .tag.n{background:var(--ok);color:#fff}
+  .lotname{font-size:24px;line-height:1.28;max-width:62ch;margin-bottom:6px}
+  .lothead .where{color:var(--ink-2);font-size:14px}
+  .banner{margin-top:16px;padding:12px 16px;border-radius:8px;background:var(--accent-l);
+    border:1px solid var(--accent);font-size:14px}
+  .lotpage{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,1fr);gap:22px;align-items:start;margin-top:18px}
+  .gal .big{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--hair);
+    background:var(--brand-l);display:block}
+  .gal .noph{aspect-ratio:4/3;display:grid;place-items:center;color:var(--ink-3)}
+  .buy{padding:18px;position:sticky;top:82px}
+  .buy .lbl{font-size:12.5px;color:var(--ink-3)}
+  .bigprice{font-size:31px;font-weight:700;color:var(--brand);letter-spacing:-.025em;line-height:1.15}
+  .pchg{font-size:13px;color:var(--ok);margin-top:3px;font-weight:700}
+  .facts{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:14px;margin:15px 0 0;
+    padding-top:14px;border-top:1px solid var(--hair)}
+  .facts dt{color:var(--ink-3)}
+  .facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
+  .dl{display:inline-block;margin-left:6px;font-size:12px;padding:1px 8px;border-radius:10px;
+    background:var(--accent-l);color:var(--accent);font-weight:700}
+  .mini{display:block;margin-top:14px;padding:10px 12px;border-radius:6px;background:var(--ok-l);
+    border:1px solid var(--ok);color:var(--ink);font-size:13.5px}
+  .mini:hover{text-decoration:none;filter:brightness(.98)}
+  .mini b{color:var(--ok)}
+  .cta{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+  .cta .btn{flex:1;text-align:center}
+  .accs{margin-top:24px;display:flex;flex-direction:column;gap:10px}
+  details.acc{background:var(--card);border:1px solid var(--hair);border-radius:8px;box-shadow:var(--sh);overflow:hidden}
+  details.acc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 18px;
+    font-weight:700;font-size:15.5px;transition:background .15s}
+  details.acc>summary::-webkit-details-marker{display:none}
+  details.acc>summary .c{font-weight:400;font-size:12.5px;color:var(--ink-3)}
+  details.acc>summary::after{content:'';margin-left:auto;width:8px;height:8px;flex:none;
+    border-right:2px solid var(--ink-3);border-bottom:2px solid var(--ink-3);transform:rotate(45deg);transition:transform .2s}
+  details.acc[open]>summary::after{transform:rotate(-135deg)}
+  details.acc>summary:hover{background:var(--bg)}
+  details.acc[open]>summary{border-bottom:1px solid var(--hair)}
+  .acc-b{padding:4px 18px 10px;animation:accIn .22s ease}
+  .acc-b .mkt{margin:10px 0 6px}
+  @keyframes accIn{from{opacity:0;transform:translateY(-4px)}}
+  .rows{display:grid;grid-template-columns:minmax(150px,34%) minmax(0,1fr);font-size:14px}
+  .rows>div{padding:9px 0;border-bottom:1px solid var(--hair);overflow-wrap:anywhere}
+  .rows>.k{color:var(--ink-3);padding-right:16px}
+  .rows>.wide{grid-column:1/-1;line-height:1.6}
+  .rows>.wide .k2{color:var(--ink-3);font-size:12.5px;margin-bottom:3px}
+
+  @media (max-width:980px){
+    .lotpage{grid-template-columns:1fr}
+    .buy{position:static}
+  }
+  @media (max-width:900px){
+    .calc{grid-template-columns:1fr}
+    .hsearch{order:3;flex-basis:100%}
+    .hrow{flex-wrap:wrap;gap:12px}
+  }
+  @media (max-width:760px){
+    .layout{grid-template-columns:1fr}
+    .filters{position:fixed;top:0;bottom:0;left:0;width:min(86vw,330px);max-height:none;z-index:70;
+      border-radius:0 10px 10px 0;transform:translateX(-104%);transition:transform .26s cubic-bezier(.2,.7,.3,1)}
+    .filters.open{transform:none}
+    .overlay.open{opacity:1;pointer-events:auto}
+    .fbtn{display:inline-block}
+    .fclose{display:block;border:0;background:none;font-size:18px;cursor:pointer;color:var(--ink-2);padding:0 2px}
+    .fapply{display:block;position:sticky;bottom:0;margin-top:auto;padding:12px 16px;background:var(--card);
+      border-top:1px solid var(--hair)}
+    .fapply .btn{width:100%}
+    .rows{grid-template-columns:1fr}
+    .rows>.k{padding-bottom:0;border-bottom:0;font-size:12.5px}
+    .lotname{font-size:21px}
+    .bigprice{font-size:27px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div id="bar"></div>
+<div class="overlay" id="ov"></div>
+
+<div class="topbar"><div class="wrap">
+  <span>Торги по имуществу должников в Беларуси</span>
+  <span>Обновлено: <b id="tb-upd"></b></span>
+  <span>Активных лотов: <b id="tb-cnt"></b></span>
+  <span class="demo">ПРОТОТИП</span>
+</div></div>
+
+<header class="main"><div class="wrap hrow">
+  <a class="logo" href="#/">
+    <span class="mark">БЛ</span>
+    <span><span class="nm">БелЛот</span><br><span class="sub">агрегатор торгов Беларуси</span></span>
+  </a>
+  <form class="hsearch" id="hs">
+    <input id="hs-q" type="search" placeholder="Поиск по названию, адресу, должнику" aria-label="Поиск">
+    <button type="submit">Найти</button>
+  </form>
+  <div class="hacts">
+    <a class="btn" href="#/calc">Калькулятор</a>
+    <a class="btn pri" href="#/about">Возможности</a>
+  </div>
+</div></header>
+
+<nav class="main"><div class="wrap"><ul id="nav"></ul></div></nav>
+
+<main id="app"></main>
+
+<footer class="main"><div class="wrap">
+  <div class="fcols">
+    <div>
+      <h4>БелЛот</h4>
+      <p style="margin:0;color:#a9c3dc">Агрегатор торгов по имуществу должников: банкротство, исполнительное производство, залог и конфискат.</p>
+    </div>
+    <div><h4>Разделы</h4><ul id="fnav"></ul></div>
+    <div><h4>Сервисы</h4><ul>
+      <li><a href="#/calc">Калькулятор торгов</a></li>
+      <li><a href="#/about">Возможности платформы</a></li>
+      <li><a href="#/catalog">Весь каталог</a></li>
+      <li><a href="#/catalog?st=arch">Архив торгов</a></li>
+    </ul></div>
+    <div><h4>Источники</h4><ul>
+      <li><a href="https://e-auction.by" target="_blank" rel="noopener">БелЮрОбеспечение</a></li>
+      <li><a href="https://ipmtorgi.by" target="_blank" rel="noopener">ИПМ-Торги</a></li>
+      <li><a href="https://beltorgi.by" target="_blank" rel="noopener">Белреализация</a></li>
+      <li><a href="https://bankrot.gov.by" target="_blank" rel="noopener">Реестр банкротств</a></li>
+    </ul></div>
+  </div>
+  <div class="fbot">Прототип. Данные собираются с открытых площадок дважды в день — в 11:00 и 18:00, последнее обновление <span id="f-upd"></span>. Перед участием в торгах сверяйтесь с карточкой лота на площадке-первоисточнике.</div>
+</div></footer>
+
+<script>
+const DATA = __DATA__;
+const SNAP = __SNAP__;
+const ARCHN = __ARCHN__;          // размер архива по разделам, сам архив — в arch.js
+const SECTIONS = [
+  ['nedvizhimost','Недвижимость','🏢'],
+  ['avto','Легковые авто','🚗'],
+  ['gruz','Грузовые и автобусы','🚚'],
+  ['spec','Спецтехника','🚜'],
+  ['oborud','Оборудование','⚙️']
+];
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nf = n => Math.round(n).toLocaleString('ru-RU');
+const p2 = n => String(n).padStart(2,'0');
+const dt = ts => { const d=new Date(ts*1000); return p2(d.getDate())+'.'+p2(d.getMonth()+1)+'.'+d.getFullYear(); };
+const dtm = ts => { const d=new Date(ts*1000); return dt(ts)+' '+p2(d.getHours())+':'+p2(d.getMinutes()); };
+const plural = (n,a,b,c) => { const m=n%10, h=n%100; return m===1&&h!==11?a : m>=2&&m<=4&&(h<10||h>=20)?b : c; };
+const secName = s => (SECTIONS.find(x=>x[0]===s)||[,s])[1];
+const cnt = s => DATA.filter(l=>l.section===s).length;
+/* календарных дней до конца приёма заявок: 0 — сегодня, 1 — завтра, -1 — уже закрыт */
+const day0 = t => { const d = new Date(t); d.setHours(0,0,0,0); return d.getTime(); };
+const left = l => l.req_to*1000 < Date.now() ? -1 : Math.round((day0(l.req_to*1000) - day0(Date.now()))/86400000);
+const leftTxt = d => d===0 ? 'сегодня' : d===1 ? 'завтра' : d+' '+plural(d,'день','дня','дней');
+const isNew = l => l.first_seen && SNAP - l.first_seen < 36*3600;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const addScript = src => { const s=document.createElement('script'); s.src=src; s.async=true; document.head.appendChild(s); };
+
+/* ───────── подгрузка: фото, подробности, архив ───────── */
+const PH = {}, PHQ = {};
+window.__ph = (n, m) => { Object.assign(PH, m); PHQ[n] = 'ok'; paint(); };
+function paint(){
+  document.querySelectorAll('img[data-ph]').forEach(im=>{
+    const b = PH[im.dataset.ph];
+    if(b){ im.src = 'data:image/jpeg;base64,' + b; im.removeAttribute('data-ph'); }
+    else if(!PHQ[im.dataset.pk]){ PHQ[im.dataset.pk] = 'wait'; addScript(`ph/p${im.dataset.pk}.js`); }
+  });
+}
+const pic = (l, cls) => `<img${cls?` class="${cls}"`:''} data-ph="${esc(l.photo)}" data-pk="${l.pk}" alt="${esc(l.name)}">`;
+
+const DET = {}, DETQ = {};
+window.__det = (n, m) => { Object.assign(DET, m); const w = DETQ[n]; DETQ[n] = 'ok'; if(Array.isArray(w)) w.forEach(f=>f()); };
+function loadDet(l){
+  return new Promise(res=>{
+    if(DETQ[l.pk]==='ok') return res(DET[l.id]||[]);
+    if(!DETQ[l.pk]){ DETQ[l.pk] = []; addScript(`det/p${l.pk}.js`); }
+    DETQ[l.pk].push(()=>res(DET[l.id]||[]));
+  });
+}
+
+let ARCH = null; const ARCHW = [];
+window.__arch = a => { ARCH = a; ARCHW.splice(0).forEach(f=>f()); };
+function loadArch(){
+  return new Promise(res=>{
+    if(ARCH) return res(ARCH);
+    ARCHW.push(()=>res(ARCH));
+    if(ARCHW.length===1) addScript('arch.js');
+  });
+}
+const byId = id => DATA.find(l=>l.id===id) || (ARCH||[]).find(l=>l.id===id);
+
+/* ───────── шапка и меню ───────── */
+$('#tb-upd').textContent = dtm(SNAP);
+$('#f-upd').textContent = dtm(SNAP);
+$('#tb-cnt').textContent = DATA.length;
+$('#nav').innerHTML = '<li><a href="#/">Главная</a></li><li><a href="#/catalog">Все лоты</a></li>'
+  + SECTIONS.map(([s,n])=>`<li><a href="#/s/${s}">${n}</a></li>`).join('')
+  + '<li><a href="#/calc">Калькулятор</a></li><li><a href="#/about">О платформе</a></li>';
+$('#fnav').innerHTML = SECTIONS.map(([s,n])=>`<li><a href="#/s/${s}">${n}</a></li>`).join('');
+$('#hs').addEventListener('submit', e=>{ e.preventDefault();
+  location.hash = '#/catalog?q=' + encodeURIComponent($('#hs-q').value.trim()); });
+
+/* ───────── карточка в сетке ───────── */
+/* насколько стартовая цена ниже медианы похожих предложений, % */
+function discount(l){
+  if(!l.market || !l.market.median || !l.price) return null;
+  return Math.round((l.market.median - l.price) / l.market.median * 100);
+}
+/* изменение цены с первого появления у нас, % */
+function pchg(l){
+  if(!l.prices || l.prices.length<2 || !l.prices[0][1]) return null;
+  return Math.round((l.price - l.prices[0][1]) / l.prices[0][1] * 100);
+}
+
+function lotCard(l){
+  const arch = l.status==='archive', d = left(l), urg = !arch && d>=0 && d<=7, dc = discount(l), pc = pchg(l);
+  const flags = (arch?'<span class="flag arch">архив</span>':'')
+    + (!arch&&isNew(l)?'<span class="flag new">новый</span>':'')
+    + (urg?`<span class="flag">${d===0?'последний день':d===1?'до завтра':d+' дн.'}</span>`:'');
+  return `<a class="lot${arch?' arch':''}" href="#/lot/${encodeURIComponent(l.id)}">
+    <div class="ph">
+      ${l.photo?pic(l):`<div class="noph">нет фото</div>`}
+      <div class="flags">${flags}</div>
+      <span class="flag t">${esc(secName(l.section))}</span>
+      ${!arch&&dc!==null&&dc>=15?`<span class="flag disc">дешевле рынка на ${dc}%</span>`:''}
+    </div>
+    <div class="body">
+      <div class="nm">${esc(l.name)}</div>
+      <div class="pr">${nf(l.price)} <span>BYN</span>${pc!==null&&pc<0?`<em class="down">↓ ${-pc}%</em>`:''}</div>
+      <div class="loc">${esc(l.location||'—')}</div>
+      <div class="ft">${arch
+        ? `<span>${l.why==='removed'?'Снят':'Завершён'} <b>${dt(l.closed)}</b></span>`
+        : `<span>Заявки до <b>${dt(l.req_to)}</b></span>`}<span>${esc(l.platform)}</span></div>
+    </div></a>`;
+}
+
+/* ───────── фильтры ───────── */
+let FSTATE = {};
+function applyFilters(list, f){
+  const arch = f.st==='arch';
+  let out = list.filter(l=>{
+    if(f.region && l.region!==f.region) return false;
+    if(f.pmin && l.price < +f.pmin) return false;
+    if(f.pmax && l.price > +f.pmax) return false;
+    if(!arch && f.dto && l.req_to > new Date(f.dto+'T23:59:59').getTime()/1000) return false;
+    if(f.plat && l.platform!==f.plat) return false;
+    if(f.photo && !l.photo) return false;
+    if(f.mkt && !l.market) return false;
+    if(f.q){ const s=(l.name+' '+(l.location||'')+' '+(l.debtor||'')+' '+l.art).toLowerCase();
+      if(!s.includes(f.q.toLowerCase())) return false; }
+    return true;
+  });
+  const s = f.sort || (arch?'closed':'deadline');
+  out.sort((a,b)=> s==='price-asc'?a.price-b.price : s==='price-desc'?b.price-a.price
+    : s==='name'?a.name.localeCompare(b.name,'ru') : s==='new'?(b.first_seen||0)-(a.first_seen||0)
+    : s==='closed'?(b.closed||0)-(a.closed||0)
+    : s==='disc'?((discount(b)??-999)-(discount(a)??-999)) : a.req_to-b.req_to);
+  return out;
+}
+const nFilters = f => ['q','region','pmin','pmax','dto','plat','photo','mkt'].filter(k=>f[k]).length;
+const SORTS_ACTIVE = [['deadline','Заявки закрываются раньше'],['new','Сначала новые'],['disc','Дисконт к рынку'],
+  ['price-asc','Цена по возрастанию'],['price-desc','Цена по убыванию'],['name','По названию']];
+const SORTS_ARCH = [['closed','Недавно завершённые'],['price-asc','Цена по возрастанию'],
+  ['price-desc','Цена по убыванию'],['name','По названию']];
+
+function filterPanel(list, f, section){
+  const arch = f.st==='arch';
+  const regions=[...new Set(list.map(l=>l.region).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
+  const plats=[...new Set(list.map(l=>l.platform))].sort();
+  const nA = section ? cnt(section) : DATA.length, nX = ARCHN[section||'_']||0;
+  return `<aside class="panel filters" id="fp">
+    <div class="fh"><span>Фильтры</span><button class="lnk" id="f-reset">Сбросить</button>
+      <button class="fclose" id="f-close" aria-label="Закрыть">✕</button></div>
+    <div class="fb">
+      <div class="fg"><label>Показать</label><div class="seg" id="f-st">
+        <button type="button" data-st=""${arch?'':' class="on"'}>Активные <small>${nA}</small></button>
+        <button type="button" data-st="arch"${arch?' class="on"':''}>Архив <small>${nX}</small></button></div></div>
+      <div class="fg"><label for="f-q">Поиск</label><input id="f-q" type="search" value="${esc(f.q||'')}" placeholder="название, адрес"></div>
+      <div class="fg"><label for="f-region">Регион</label><select id="f-region"><option value="">Любой</option>
+        ${regions.map(r=>`<option${f.region===r?' selected':''}>${esc(r)}</option>`).join('')}</select></div>
+      <div class="fg"><label>Цена, BYN</label><div class="two">
+        <input id="f-pmin" type="number" placeholder="от" value="${esc(f.pmin||'')}">
+        <input id="f-pmax" type="number" placeholder="до" value="${esc(f.pmax||'')}"></div></div>
+      ${arch?'':`<div class="fg"><label for="f-dto">Заявки принимают до</label><input id="f-dto" type="date" value="${esc(f.dto||'')}"></div>`}
+      <div class="fg"><label for="f-plat">Площадка</label><select id="f-plat"><option value="">Все</option>
+        ${plats.map(p=>`<option${f.plat===p?' selected':''}>${esc(p)}</option>`).join('')}</select></div>
+      <div class="fg"><label for="f-photo">Фотографии</label><select id="f-photo">
+        <option value="">не важно</option><option value="1"${f.photo?' selected':''}>только с фото</option></select></div>
+      <div class="fg"><label for="f-mkt">Рыночный ориентир</label><select id="f-mkt">
+        <option value="">не важно</option><option value="1"${f.mkt?' selected':''}>только с ориентиром</option></select></div>
+    </div>
+    <div class="fapply"><button class="btn pri" id="f-apply" type="button">Показать</button></div>
+  </aside>`;
+}
+
+/* ───────── страницы ───────── */
+function crumbs(parts){
+  return `<div class="crumbs"><a href="#/">Главная</a>${parts.map(([t,h])=>' → '+(h?`<a href="${h}">${esc(t)}</a>`:esc(t))).join('')}</div>`;
+}
+
+function pageCatalog(section, params){
+  const q = params.get('q');
+  FSTATE = {};
+  if(q) FSTATE.q = q;
+  if(params.get('st')==='arch') FSTATE.st = 'arch';
+  const title = section ? secName(section) : (q ? 'Поиск по каталогу' : 'Все лоты');
+  const STEP = 36; let show = STEP;
+  const baseOf = () => { const src = FSTATE.st==='arch' ? (ARCH||[]) : DATA;
+    return section ? src.filter(l=>l.section===section) : src; };
+  $('#app').innerHTML = `<div class="wrap">
+    ${crumbs(section?[[title]]:[[title]])}
+    <div class="cat-head"><h1>${esc(title)}</h1><p class="lede" id="c-lede"></p></div>
+    <div class="layout"><div id="fwrap"></div><div><div class="toolbar" id="tb"></div><div id="res"></div></div></div></div>`;
+  document.title = title + ' — БелЛот';
+
+  const closeDrawer = () => { $('#fp')?.classList.remove('open'); $('#ov').classList.remove('open'); };
+  const read = () => {
+    const v = id => (document.getElementById(id)||{}).value || '';
+    FSTATE = {st:FSTATE.st, sort:FSTATE.sort, q:v('f-q').trim(), region:v('f-region'), pmin:v('f-pmin'),
+      pmax:v('f-pmax'), dto:v('f-dto'), plat:v('f-plat'), photo:v('f-photo'), mkt:v('f-mkt')};
+  };
+  const drawPanel = () => {
+    $('#fwrap').innerHTML = filterPanel(baseOf(), FSTATE, section);
+    ['f-q','f-region','f-pmin','f-pmax','f-dto','f-plat','f-photo','f-mkt'].forEach(id=>{
+      const el = document.getElementById(id); if(!el) return;
+      el.addEventListener(el.tagName==='SELECT'?'change':'input', ()=>{ read(); render(); });
+    });
+    $('#f-reset').onclick = () => { FSTATE = {st:FSTATE.st}; drawPanel(); render(); };
+    $('#f-close').onclick = closeDrawer;
+    $('#f-apply').onclick = closeDrawer;
+    document.querySelectorAll('#f-st button').forEach(b=>b.onclick = () => {
+      if((FSTATE.st||'')===b.dataset.st) return;
+      FSTATE = {st:b.dataset.st||undefined, q:FSTATE.q};
+      if(FSTATE.st==='arch' && !ARCH){ $('#res').innerHTML = '<div class="skel"></div>';
+        loadArch().then(()=>{ drawPanel(); render(); }); }
+      drawPanel(); render();
+    });
+  };
+  const render = more => {
+    if(more!==true) show = STEP;
+    const arch = FSTATE.st==='arch';
+    $('#c-lede').textContent = arch
+      ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним полгода — для истории цен и поиска.'
+      : 'Лоты с открытым приёмом заявок. Каталог обновляется дважды в день: в 11:00 и 18:00.';
+    if(arch && !ARCH){ $('#tb').innerHTML=''; $('#res').innerHTML = '<div class="skel"></div><div class="skel" style="margin-top:10px"></div>'; return; }
+    const base = baseOf(), list = applyFilters(base, FSTATE), nf_ = nFilters(FSTATE);
+    const sorts = arch ? SORTS_ARCH : SORTS_ACTIVE, cur = FSTATE.sort || sorts[0][0];
+    $('#tb').innerHTML = `<button class="btn fbtn" id="f-open" type="button">Фильтры${nf_?' · '+nf_:''}</button>
+      <span class="cnt">${arch?'В архиве':'Найдено'} <b>${nf(list.length)}</b> ${plural(list.length,'лот','лота','лотов')}${list.length!==base.length?` из ${nf(base.length)}`:''}</span>
+      <select id="f-sort" aria-label="Сортировка">${sorts.map(([v,t])=>`<option value="${v}"${cur===v?' selected':''}>${t}</option>`).join('')}</select>`;
+    $('#f-sort').onchange = e => { FSTATE.sort = e.target.value; render(); };
+    $('#f-open').onclick = () => { $('#fp').classList.add('open'); $('#ov').classList.add('open'); };
+    let hint = '';
+    if(!arch && FSTATE.q){
+      if(ARCH){ const n = applyFilters(section?ARCH.filter(l=>l.section===section):ARCH, {...FSTATE, st:'arch'}).length;
+        if(n) hint = `<div class="hint">В архиве ещё <b>${n}</b> ${plural(n,'совпадение','совпадения','совпадений')} — <a href="#" id="to-arch">показать архив</a></div>`; }
+      else loadArch().then(()=>{ if($('#res')) render(); });
+    }
+    $('#res').innerHTML = hint + (list.length
+      ? `<div class="grid">${list.slice(0,show).map(lotCard).join('')}</div>`
+        + (list.length>show ? `<button class="btn more" id="more" type="button">Показать ещё ${Math.min(STEP,list.length-show)} · осталось ${list.length-show}</button>` : '')
+      : `<div class="panel empty">${arch&&!base.length?'Архив раздела пока пуст — лоты попадают сюда после окончания приёма заявок.':'По этим условиям ничего не нашлось. Попробуйте смягчить фильтры.'}</div>`);
+    const mb = $('#more'); if(mb) mb.onclick = () => { show += STEP; render(true); };
+    const ta = $('#to-arch'); if(ta) ta.onclick = e => { e.preventDefault(); FSTATE = {st:'arch', q:FSTATE.q}; drawPanel(); render(); window.scrollTo({top:0,behavior:'smooth'}); };
+    paint();
+  };
+  $('#ov').onclick = closeDrawer;
+  if(FSTATE.st==='arch' && !ARCH) loadArch().then(()=>{ if($('#fwrap')){ drawPanel(); render(); } });
+  drawPanel(); render();
+}
+
+function marketBlock(l){
+  const m = l.market;
+  const dc = discount(l);
+  const pos = Math.max(0, Math.min(100, Math.round(l.price / m.median * 100)));
+  return `<div class="mkt">
+    <div class="mval">${nf(m.median)} BYN</div>
+    <div class="sub">медиана ${m.n} похожих предложений на ${esc(m.source)}${m.year?`, ${m.year} год`:''}</div>
+    <div class="bar"><span>${nf(m.low)}</span><span class="track"><span class="fill" style="width:${pos}%"></span></span><span>${nf(m.high)}</span></div>
+    <div class="sub" style="margin-top:9px">Стартовая цена лота <b>${nf(l.price)} BYN</b> —
+      ${dc>=0?`это на <b>${dc}%</b> ниже медианы рынка`:`это на <b>${-dc}%</b> выше медианы рынка`}.</div>
+    ${m.sqm?`<div class="sub" style="margin-top:7px">За квадратный метр: у лота <b>${nf(m.lot_sqm)} BYN/м²</b>,
+      на рынке <b>${nf(m.sqm)} BYN/м²</b> по ${m.sqm_n} объявлениям с указанной площадью.</div>`:''}
+    <div class="warn">Состояние объекта не учитывается: на торгах имущество часто требует ремонта, а в сравнении участвуют обычные объявления. Ориентир показывает порядок цен, а не гарантию выгоды.
+      <br><a href="${esc(m.link)}" target="_blank" rel="noopener">Посмотреть похожие предложения ↗</a></div>
+  </div>`;
+}
+
+/* заголовки секций у площадок разные и бывают обрезаны — приводим к одному виду */
+function secTitle(h){
+  const t = String(h||'');
+  if(/предмет|Сведения о лоте/i.test(t)) return 'Об объекте';
+  if(/^Осмотр|осмотр/i.test(t)) return 'Осмотр объекта';
+  if(/Организатор/i.test(t)) return 'Организатор торгов';
+  if(/Орган принудительного/i.test(t)) return 'Орган принудительного исполнения';
+  if(/Судебный исполнитель/i.test(t)) return 'Судебный исполнитель';
+  if(/продавц/i.test(t)) return 'Продавец';
+  if(/Перечисление задатка|задат/i.test(t)) return 'Задаток и оплата';
+  if(/Порядок оплаты/i.test(t)) return 'Оплата и договор';
+  if(/Обязанности|ответственност/i.test(t)) return 'Обязанности победителя';
+  if(/земельн/i.test(t)) return 'Земельный участок';
+  return t.length>60 ? t.slice(0,57)+'…' : t;
+}
+const SEC_ORDER = ['Об объекте','Условия торгов','Земельный участок','Осмотр объекта','Продавец','Задаток и оплата',
+  'Оплата и договор','Обязанности победителя','Организатор торгов','Судебный исполнитель','Орган принудительного исполнения'];
+const acc = (id, title, body, open, c) => `<details class="acc" id="acc-${id}"${open?' open':''}>
+  <summary>${esc(title)}${c?` <span class="c">${c}</span>`:''}</summary><div class="acc-b">${body}</div></details>`;
+const rowsHtml = rows => `<div class="rows">${rows.map(([k,v])=> (!k || String(v).length>180)
+  ? `<div class="wide">${k?`<div class="k2">${esc(k)}</div>`:''}${esc(v)}</div>`
+  : `<div class="k">${esc(k)}</div><div>${esc(v)}</div>`).join('')}</div>`;
+
+function pageLot(id){
+  let l = byId(id);
+  if(!l && !ARCH){
+    $('#app').innerHTML = '<div class="wrap"><div class="skel" style="height:320px"></div></div>';
+    loadArch().then(()=>{ if(CUR==='/lot/'+encodeURIComponent(id)){ pageLot(id); paint(); } });
+    return;
+  }
+  if(!l){ $('#app').innerHTML = `<div class="wrap">${crumbs([['Лот не найден']])}<div class="panel empty">Лот не найден — возможно, он уже удалён из архива.</div></div>`; return; }
+  const arch = l.status==='archive', d = left(l), dc = discount(l), pc = pchg(l);
+  document.title = l.name.slice(0,60) + ' — БелЛот';
+  $('#app').innerHTML = `<div class="wrap">
+    ${crumbs([[secName(l.section), '#/s/'+l.section], ...(arch?[['Архив', `#/s/${l.section}?st=arch`]]:[]), ['Лот '+l.art]])}
+    <div class="lothead">
+      <div class="tags"><span class="tag">${esc(secName(l.section))}</span><span class="tag g">${esc(l.platform)}</span>
+        <span class="tag g mono">№ ${esc(String(l.art))}</span>${arch?'<span class="tag a">Архив</span>':''}${!arch&&isNew(l)?'<span class="tag n">Новый</span>':''}</div>
+      <h1 class="lotname">${esc(l.name)}</h1>
+      <div class="where">${esc(l.location||'')}</div>
+    </div>
+    ${arch?`<div class="banner">${l.why==='removed'
+      ? `<b>Лот снят с площадки ${dt(l.closed)}</b> — раньше окончания приёма заявок.`
+      : `<b>Приём заявок завершён ${dt(l.closed)}.</b>`} Лот в архиве БелЛота: сведения сохранены для истории цен. Итог торгов — на площадке.</div>`:''}
+    <div class="lotpage">
+      <div class="gal">${l.photo?pic(l,'big'):'<div class="panel noph">Фотографий нет</div>'}</div>
+      <aside class="panel buy">
+        <div class="lbl">Стартовая цена</div>
+        <div class="bigprice">${nf(l.price)} BYN</div>
+        ${pc?`<div class="pchg">${pc<0?'↓ снижена на '+(-pc)+'%':'↑ выросла на '+pc+'%'} — было ${nf(l.prices[0][1])} BYN</div>`:''}
+        <dl class="facts">
+          <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
+            :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
+          <dt>Торги</dt><dd>${l.torg?dtm(l.torg):dt(l.req_to+86400)}</dd>
+          <dt>Регион</dt><dd>${esc(l.region||'—')}</dd>
+          ${l.area_num?`<dt>Площадь</dt><dd>${nf(l.area_num)} м²</dd>`:''}
+          <dt>Должник</dt><dd>${esc(l.debtor||'—')}</dd>
+        </dl>
+        ${l.market?`<a class="mini" href="#" id="to-mkt">Рынок ≈ <b>${nf(l.market.median)} BYN</b> · ${dc>=0?'лот дешевле на '+dc+'%':'лот дороже на '+(-dc)+'%'} →</a>`:''}
+        <div class="cta">
+          <a class="btn pri" href="${esc(l.url)}" target="_blank" rel="noopener">На площадке ↗</a>
+          <a class="btn" href="#/calc?price=${l.price}">Задаток</a>
+        </div>
+      </aside>
+    </div>
+    <div class="accs" id="accs">
+      ${l.market?acc('mkt','Рыночный ориентир',marketBlock(l),false):''}
+      <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+    </div>
+    ${arch?'':`<div class="sec"><div class="sec-h"><h2>Похожие лоты</h2><a href="#/s/${l.section}">Весь раздел →</a></div>
+      <div class="grid">${DATA.filter(x=>x.section===l.section&&x.id!==l.id).slice(0,4).map(lotCard).join('')}</div></div>`}
+  </div>`;
+  const tm = $('#to-mkt');
+  if(tm) tm.onclick = e => { e.preventDefault(); const a = $('#acc-mkt'); a.open = true; a.scrollIntoView({behavior:'smooth', block:'start'}); };
+  loadDet(l).then(secs=>{
+    if(CUR!=='/lot/'+encodeURIComponent(id)) return;
+    // одноимённые секции склеиваем, порядок — от важного к справочному
+    const groups = {};
+    secs.forEach(s=>{ const t = secTitle(s.h); (groups[t] = groups[t]||[]).push(...s.rows); });
+    const names = Object.keys(groups).sort((a,b)=>{ const i=SEC_ORDER.indexOf(a), j=SEC_ORDER.indexOf(b);
+      return (i<0?99:i)-(j<0?99:j); });
+    $('#accs').innerHTML = (l.market?acc('mkt','Рыночный ориентир',marketBlock(l),false):'')
+      + names.map((t,i)=>acc('s'+i, t, rowsHtml(groups[t]), i===0,
+          groups[t].length+' '+plural(groups[t].length,'пункт','пункта','пунктов'))).join('')
+      + acc('svc','Помощь с покупкой',`<p class="note" style="margin:10px 0 6px">Платформа может организовать выезд на осмотр с фотоотчётом, проверить объект на обременения и сопроводить сделку. Документы по лоту — на площадке-первоисточнике.</p>`,false)
+      || '<div class="panel empty">Подробных сведений площадка не опубликовала.</div>';
+    const tm2 = $('#to-mkt');
+    if(tm2) tm2.onclick = e => { e.preventDefault(); const a = $('#acc-mkt'); a.open = true; a.scrollIntoView({behavior:'smooth', block:'start'}); };
+  });
+}
+
+function pageCalc(price){
+  document.title = 'Калькулятор торгов — БелЛот';
+  $('#app').innerHTML = `<div class="wrap">
+    ${crumbs([['Калькулятор']])}
+    <h1>Калькулятор торгов</h1>
+    <p class="lede">Считает задаток, цену после шагов аукциона и сумму, которую нужно доплатить после победы. Ставки задатка и шага задаются организатором и указаны в извещении по лоту.</p>
+    <div class="calc">
+      <div class="panel calcform">
+        <div class="fg"><label for="c-price">Стартовая цена, BYN</label><input id="c-price" type="number" min="0" value="${price||50000}"></div>
+        <div class="fg"><label for="c-dep">Задаток, % от стартовой</label><input id="c-dep" type="number" min="0" max="100" value="10"></div>
+        <div class="fg"><label for="c-step">Шаг аукциона, % от стартовой</label><input id="c-step" type="number" min="0" max="100" value="5"></div>
+        <div class="fg"><label for="c-n">Сколько шагов готовы сделать</label><input id="c-n" type="number" min="0" max="100" value="3"></div>
+        <div class="fg"><label for="c-days">Срок оплаты после торгов, дней</label><input id="c-days" type="number" min="1" max="180" value="30"></div>
+      </div>
+      <div class="panel calcout" id="c-out"></div>
+    </div>
+    <div class="sec"><h2>Как это работает</h2>
+      <table class="plain">
+        <tr><th>Шаг</th><th>Что происходит</th></tr>
+        <tr><td>1. Задаток</td><td>Вносится до подачи заявки. Проигравшим возвращается, победителю засчитывается в счёт цены.</td></tr>
+        <tr><td>2. Торги</td><td>Цена растёт шагами от стартовой. Побеждает последняя предложенная цена.</td></tr>
+        <tr><td>3. Договор</td><td>Подписывается в срок, указанный в извещении, обычно в течение нескольких рабочих дней.</td></tr>
+        <tr><td>4. Оплата</td><td>Остаток вносится в установленный срок. Просрочка — потеря задатка.</td></tr>
+      </table></div>
+  </div>`;
+  const calc=()=>{
+    const p=+$('#c-price').value||0, dep=+$('#c-dep').value||0, st=+$('#c-step').value||0,
+          n=+$('#c-n').value||0, days=+$('#c-days').value||0;
+    const deposit=p*dep/100, stepAmt=p*st/100, final=p+stepAmt*n, rest=Math.max(final-deposit,0);
+    const pay=new Date(Date.now()+days*86400000);
+    $('#c-out').innerHTML = `
+      <div class="row"><span class="l">Задаток к внесению</span><span class="r">${nf(deposit)} BYN</span></div>
+      <div class="row"><span class="l">Один шаг аукциона</span><span class="r">${nf(stepAmt)} BYN</span></div>
+      <div class="row"><span class="l">Цена после ${n} шагов</span><span class="r">${nf(final)} BYN</span></div>
+      <div class="row"><span class="l">Доплата после победы</span><span class="r">${nf(rest)} BYN</span></div>
+      <div class="row big"><span class="l">Итого за объект</span><span class="r">${nf(final)} BYN</span></div>
+      <div class="row"><span class="l">Оплатить до</span><span class="r">${pay.toLocaleDateString('ru-RU')}</span></div>
+      <div class="note">Расчёт ориентировочный. Реальные ставки задатка и шага, а также сроки оплаты берутся из извещения по конкретному лоту. Госпошлина и расходы на регистрацию здесь не учитываются.</div>`;
+  };
+  ['c-price','c-dep','c-step','c-n','c-days'].forEach(i=>$('#'+i).addEventListener('input',calc));
+  calc();
+}
+
+const ADV = [
+  ['₽','Сравнение с рынком','Показываем, сколько стоит такой же объект в обычной продаже: медиана похожих предложений и разброс цен. Видно, дешевле лот рынка или нет, ещё до заявки.'],
+  ['8','Все площадки в одном месте','Собираем лоты с площадок Беларуси и сводим в один каталог: банкротство, исполнительное производство, залог, конфискат.'],
+  ['15','Обновление каждые 15 минут','Робот обходит источники круглосуточно. Новый лот появляется в каталоге в течение часа после публикации.'],
+  ['1','Один объект, а не пять карточек','Один и тот же объект часто выставлен сразу на нескольких площадках с разными датами. Мы их склеиваем.'],
+  ['↓','Алерт о снижении цены','На повторных торгах цена падает. Сообщаем, когда объект из вашего списка подешевел.'],
+  ['⏱','Напоминания о дедлайнах','За три дня и за сутки до конца приёма заявок. Пропущенный срок — самая обидная потеря на торгах.'],
+  ['📊','История цен по объекту','Сколько раз выставлялся, по какой цене, чем закончилось. Видно, готов ли продавец уступать.'],
+  ['🔎','Проверка объекта','Обременения, аресты, долги, реальное состояние. До того, как вы внесли задаток.'],
+  ['📷','Выезд на осмотр','Наш человек приезжает, снимает фото и видео, отвечает на вопросы. Особенно для объектов в районах.'],
+  ['🤝','Сопровождение сделки','От подачи заявки до регистрации права. Сроки, документы, оплата — под контролем.'],
+  ['📈','Аналитика рынка','Средний дисконт, доля несостоявшихся торгов, динамика по регионам и категориям.'],
+  ['🔔','Уведомления в Telegram','Настраиваете фильтр один раз — новые подходящие лоты приходят сами.'],
+  ['📁','Личная воронка','Заметки и статусы по объектам: смотрю, еду, подал заявку. Своя работа в одном месте.']
+];
+
+function pageAbout(){
+  document.title = 'О платформе — БелЛот';
+  $('#app').innerHTML = `<div class="wrap">
+    ${crumbs([['О платформе']])}
+    <h1>Возможности платформы</h1>
+    <p class="lede">БелЛот собирает торги по имуществу должников со всех площадок Беларуси, приводит их к одному виду и помогает довести покупку до сделки.</p>
+    <div class="adv">${ADV.map(([ic,t,d])=>`<div class="it"><div class="ic">${ic}</div><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
+    <div class="sec"><h2>Что уже работает в прототипе</h2>
+      <table class="plain">
+        <tr><th>Функция</th><th>Состояние</th></tr>
+        <tr><td>Сбор лотов с площадок</td><td>Работает: e-auction.by, ipmtorgi.by, beltorgi.by — ${DATA.length} активных лотов</td></tr>
+        <tr><td>Обновление каталога</td><td>Работает: дважды в день, в 11:00 и 18:00</td></tr>
+        <tr><td>Архив завершённых торгов</td><td>Работает: ${ARCHN._||0} лотов, хранятся полгода</td></tr>
+        <tr><td>Фильтры, поиск, рыночный ориентир</td><td>Работает</td></tr>
+        <tr><td>Калькулятор торгов</td><td>Работает</td></tr>
+        <tr><td>Уведомления в Telegram</td><td>Работает отдельным ботом</td></tr>
+        <tr><td>Склейка дублей, алерты о снижении цены</td><td>В разработке</td></tr>
+        <tr><td>Осмотр, проверка, сопровождение</td><td>Планируется</td></tr>
+      </table>
+      <div class="note">Это демонстрационная версия. Часть возможностей описана как план и пока не реализована.</div>
+    </div></div>`;
+}
+
+function pageHome(){
+  document.title = 'БелЛот — торги Беларуси';
+  const soon=[...DATA].filter(l=>left(l)>=0).sort((a,b)=>a.req_to-b.req_to).slice(0,8);
+  const fresh=DATA.filter(isNew).sort((a,b)=>b.first_seen-a.first_seen);
+  const regions={}; DATA.forEach(l=>{ if(l.region) regions[l.region]=(regions[l.region]||0)+1; });
+  const topReg=Object.entries(regions).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  const prices=DATA.map(l=>l.price).filter(p=>p>0).sort((a,b)=>a-b);
+  $('#app').innerHTML = `
+  <div class="hero"><div class="wrap">
+    <h1>Все торги Беларуси в одном каталоге</h1>
+    <p>Имущество должников с площадок страны: недвижимость, транспорт, спецтехника и оборудование. Без задержек и без регистрации.</p>
+    <div class="quick">${SECTIONS.map(([s,n])=>`<a href="#/s/${s}">${n} · ${cnt(s)}</a>`).join('')}</div>
+    <div class="stats">
+      <div class="stat"><div class="v">${nf(DATA.length)}</div><div class="k">активных лотов</div></div>
+      <div class="stat"><div class="v">${fresh.length}</div><div class="k">новых за сутки</div></div>
+      <div class="stat"><div class="v">${DATA.filter(l=>left(l)>=0&&left(l)<=7).length}</div><div class="k">закрываются на неделе</div></div>
+      <div class="stat"><div class="v">${nf(prices[Math.floor(prices.length/2)]||0)}</div><div class="k">медианная цена, BYN</div></div>
+      <a class="stat" href="#/catalog?st=arch" style="text-decoration:none"><div class="v">${nf(ARCHN._||0)}</div><div class="k">в архиве торгов →</div></a>
+    </div>
+  </div></div>
+  <div class="wrap">
+    <div class="sec"><div class="sec-h"><h2>Разделы каталога</h2><a href="#/catalog">Все лоты →</a></div>
+      <div class="tiles">${SECTIONS.map(([s,n,ic])=>`<a class="tile" href="#/s/${s}">
+        <div class="ic">${ic}</div><div class="t">${n}</div><div class="n">${cnt(s)} активных лотов</div></a>`).join('')}</div></div>
+
+    ${fresh.length?`<div class="sec"><div class="sec-h"><h2>Новые лоты</h2><a href="#/catalog">Смотреть все →</a></div>
+      <div class="grid">${fresh.slice(0,8).map(lotCard).join('')}</div></div>`:''}
+
+    <div class="sec"><div class="sec-h"><h2>Заявки закрываются первыми</h2><a href="#/catalog">Смотреть все →</a></div>
+      <div class="grid">${soon.map(lotCard).join('')}</div></div>
+
+    <div class="sec"><h2>Преимущества работы с платформой</h2>
+      <div class="adv">${ADV.slice(0,6).map(([ic,t,d])=>`<div class="it"><div class="ic">${ic}</div><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
+      <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p></div>
+
+    <div class="sec"><div class="sec-h"><h2>Лоты по регионам</h2><a href="#/catalog">Фильтр по региону →</a></div>
+      <table class="plain"><tr><th>Регион</th><th>Лотов</th><th>Доля</th></tr>
+      ${topReg.map(([r,n])=>`<tr><td>${esc(r)}</td><td class="mono">${n}</td>
+        <td><span style="display:inline-block;height:9px;border-radius:2px;background:var(--brand);width:${Math.round(n/topReg[0][1]*140)}px"></span></td></tr>`).join('')}
+      </table></div>
+
+    <div class="sec"><h2>Посчитать задаток и итоговую цену</h2>
+      <p class="lede">Сколько внести до торгов, во сколько обойдётся объект после нескольких шагов и когда платить остаток.</p>
+      <a class="btn pri" href="#/calc">Открыть калькулятор</a></div>
+  </div>`;
+}
+
+/* ───────── роутер с переходом страниц ───────── */
+let CUR = null;
+function render(path, params){
+  document.querySelectorAll('nav.main a').forEach(a=>a.classList.toggle('on', a.getAttribute('href')==='#'+path));
+  $('#ov').classList.remove('open');
+  if(path.startsWith('/lot/')) pageLot(decodeURIComponent(path.slice(5)));
+  else if(path.startsWith('/s/')) pageCatalog(path.slice(3), params);
+  else if(path==='/catalog') pageCatalog(null, params);
+  else if(path==='/calc') pageCalc(params.get('price'));
+  else if(path==='/about') pageAbout();
+  else pageHome();
+}
+function go(){
+  const h = location.hash.replace(/^#/,'') || '/';
+  if(h===CUR) return;
+  const first = CUR===null;
+  CUR = h;
+  const [path, qs] = h.split('?');
+  const params = new URLSearchParams(qs||'');
+  const swap = () => { render(path, params); window.scrollTo(0,0); paint(); };
+  if(first || reduced || document.hidden){ swap(); return; }
+  const bar = $('#bar');
+  bar.className = ''; void bar.offsetWidth; bar.className = 'go';
+  const done = () => { bar.className = 'done'; };
+  if(document.startViewTransition){
+    const app = $('#app');
+    app.classList.add('vt');
+    const t = document.startViewTransition(swap);
+    t.ready.catch(()=>{});   // браузер вправе отменить анимацию (быстрые клики) — страница всё равно сменится
+    t.finished.catch(()=>{}).finally(()=>{ app.classList.remove('vt'); done(); });
+  } else {
+    const app = $('#app');
+    app.classList.remove('in'); app.classList.add('out');
+    setTimeout(()=>{ swap(); app.classList.remove('out'); void app.offsetWidth; app.classList.add('in'); done(); }, 140);
+  }
+}
+addEventListener('hashchange', go);
+$('#app').addEventListener('animationend', e=>{ if(e.target.id==='app') e.target.classList.remove('in'); });
+go();
+</script>
