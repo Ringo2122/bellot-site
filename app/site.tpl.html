@@ -539,6 +539,108 @@
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
   .fcont{margin:12px 0 0;line-height:1.7}.fcont a{color:#fff}
   .svc-p{margin:6px 0 0;font-weight:600;color:var(--brand)}
+/* ── личный кабинет ── */
+.ubtn{position:relative;text-decoration:none}
+.ubtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.ubtn.in{background:var(--brand);border-color:var(--brand);color:#fff}
+.udot{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--accent);
+  color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;border:2px solid var(--card)}
+.udot[hidden]{display:none}
+.favb{position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.93);
+  display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18);color:#4a5563;z-index:2;transition:transform .12s}
+.favb:hover{transform:scale(1.08);color:var(--accent)}
+.favb svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
+.favb.on{color:var(--accent)}.favb.on svg{fill:currentColor}
+#ubox .ucta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+#ubox .ucta .btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:13.5px}
+#ubox .ucta svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;flex:none}
+#ubox .ucta .btn.on{border-color:var(--accent);color:var(--accent)}
+#ubox .ucta .btn.on svg{fill:currentColor}
+.uhint{font-size:12.5px;color:var(--ink-3);margin:9px 0 0}
+.unote{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--hair)}
+.unote label{display:grid;gap:4px;font-size:12px;color:var(--ink-3);font-weight:700}
+.unote select,.unote textarea{font:inherit;font-weight:400;font-size:14px;padding:6px 8px;border:1px solid var(--hair-2);border-radius:5px;background:var(--card);color:var(--ink);resize:vertical}
+.ssave{display:inline-flex;align-items:center;gap:6px}
+.ssave svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
+#utoast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:10px 16px;border-radius:8px;
+  opacity:0;pointer-events:none;transition:opacity .2s;z-index:90;max-width:90vw;font-size:14px}
+#utoast.on{opacity:1}#utoast.err{background:#b3261e;color:#fff}
+.login{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:28px;align-items:start;margin:10px 0 40px}
+.login-card{padding:24px}.login-card h1{font-size:24px;margin:0 0 16px}
+.login-why ul{padding-left:18px;line-height:1.6;color:var(--ink-2)}.login-why li{margin-bottom:8px}.login-why b{color:var(--ink)}
+.me{display:grid;grid-template-columns:230px minmax(0,1fr);gap:24px;align-items:start;margin:6px 0 40px}
+.me-nav{position:sticky;top:60px;background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:12px;box-shadow:var(--sh);display:flex;flex-direction:column}
+.me-nav a{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:14.5px}
+.me-nav a:hover{background:var(--bg)}
+.me-nav a.on{background:var(--brand-l);color:var(--brand);font-weight:700}
+.me-nav .n{background:var(--accent);color:#fff;border-radius:10px;padding:0 7px;font-size:12px;font-weight:700}
+.me-nav .n.g{background:var(--hair-2);color:var(--ink-2)}
+.me-nav .lnk{margin:8px 10px 2px;text-align:left}
+.me-who{display:flex;gap:10px;align-items:center;padding:4px 6px 12px;margin-bottom:6px;border-bottom:1px solid var(--hair)}
+.me-who .av{width:38px;height:38px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700;flex:none}
+.me-who small{display:block;color:var(--ink-3);font-size:12px}
+.me-main h1{font-size:26px;margin:0 0 14px}
+.me-main h2{font-size:17px;margin:0 0 10px}
+.me-kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:18px}
+.me-kpi a{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:12px 14px;text-decoration:none;color:var(--ink-2);box-shadow:var(--sh)}
+.me-kpi b{display:block;font-size:26px;color:var(--ink)}
+.me-kpi span{font-size:13px}
+.me-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.me-p{padding:16px;margin-bottom:16px}
+.me-h{display:flex;justify-content:space-between;align-items:baseline}
+.me-empty{padding:20px;margin-bottom:16px}
+.me-tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.me-tabs a{padding:6px 12px;border-radius:16px;border:1px solid var(--hair-2);text-decoration:none;color:var(--ink);background:var(--card);font-size:14px}
+.me-tabs a.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.me-tabs .sp{flex:1}.me-tabs .lnk{margin:0 0 0 12px}
+.evr{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--hair);font-size:14px}
+.evr:last-child{border-bottom:0}
+.evd{flex:none;width:112px;font-weight:700;color:var(--ink-2);font-size:13px}
+.nrow,.orow{display:flex;gap:12px;align-items:flex-start;padding:10px 6px;border-bottom:1px solid var(--hair);text-decoration:none;color:var(--ink)}
+.nrow:last-child,.orow:last-child{border-bottom:0}
+.nrow:hover{background:var(--bg)}
+.nrow.un{background:var(--brand-l)}.nrow.un b{color:var(--brand-d)}
+.ntag{flex:none;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--bg);color:var(--ink-2);margin-top:1px;min-width:92px;text-align:center}
+.ntag.g{background:var(--ok-l);color:var(--ok)}.ntag.a{background:var(--accent-l);color:#9a4f0e}.ntag.b{background:var(--brand-l);color:var(--brand)}
+.nbd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:14px}
+.nbd b{font-weight:600;overflow:hidden;text-overflow:ellipsis}.nbd span{color:var(--ink-2)}
+.nt{flex:none;font-size:12px;color:var(--ink-3);white-space:nowrap}
+.frow{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:14px;background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:var(--sh)}
+.fth{display:block;width:120px;height:90px;border-radius:6px;overflow:hidden;background:var(--brand-l)}
+.fth img{width:100%;height:100%;object-fit:cover}
+.fth .noph{display:grid;place-items:center;height:100%;font-size:12px;color:var(--ink-3)}
+.fnm{font-weight:700;color:var(--ink);text-decoration:none}.fnm:hover{color:var(--brand)}
+.fmeta{font-size:13px;color:var(--ink-2);margin:3px 0 8px}
+.fmeta .dl{color:var(--accent);font-weight:700}
+.fctl{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin-bottom:6px}
+.fctl select{font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--hair-2);border-radius:5px;background:var(--card);color:var(--ink)}
+.chk{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;cursor:pointer;margin:4px 0}
+.me-p .chk{display:flex}
+.chk input{accent-color:var(--brand);width:16px;height:16px}
+.frow textarea{width:100%;font:inherit;font-size:13.5px;padding:6px 8px;border:1px solid var(--hair-2);border-radius:5px;background:var(--card);color:var(--ink);resize:vertical}
+.fact{display:flex;flex-direction:column;gap:6px}
+.btn.sm{padding:6px 10px;font-size:13px}
+.srow{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:14px;margin-bottom:10px}
+.srow .sbd{flex:1;min-width:220px;display:flex;flex-direction:column;gap:3px;font-size:14px}
+.calday{display:grid;grid-template-columns:70px 1fr;gap:14px;background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:10px 14px;margin-bottom:10px}
+.cd{text-align:center;border-right:1px solid var(--hair);padding-right:10px}
+.cd b{display:block;font-size:20px}.cd span{font-size:12px;color:var(--ink-3);text-transform:uppercase}
+.calday .evd{width:48px}
+.report{padding:22px}.report h1{font-size:24px;margin:6px 0 12px}
+.rbody{white-space:pre-wrap;line-height:1.6;margin:12px 0}
+.me-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0 14px}
+@media (max-width:860px){
+  .me{grid-template-columns:1fr}
+  .me-nav{position:static;flex-direction:row;overflow-x:auto;padding:8px;gap:4px}
+  .me-nav a{white-space:nowrap}
+  .me-who,.me-nav .lnk{display:none}
+  .me-2,.login{grid-template-columns:1fr}
+  .frow{grid-template-columns:84px minmax(0,1fr)}
+  .fth{width:84px;height:64px}
+  .fact{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}
+}
+  .h-short{display:none}
+  @media (max-width:520px){ .h-long{display:none} .h-short{display:inline} .hacts{gap:7px} }
 </style>
 
 <div id="bar"></div>
@@ -566,7 +668,8 @@
   </form>
 </div>
   <div class="hacts">
-    <a class="btn pri" href="#/help">Помощь в аукционе</a>
+    <a class="hs-btn ubtn" id="ubtn" href="#/me" aria-label="Личный кабинет" title="Личный кабинет"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span class="udot" id="udot" hidden></span></a>
+    <a class="btn pri" href="#/help"><span class="h-long">Помощь в аукционе</span><span class="h-short">Помощь</span></a>
   </div>
 </div></header>
 
@@ -771,6 +874,7 @@ function lotCard(l){
       <div class="flags">${flags}</div>
       <span class="flag t">${esc(secName(l.section))}</span>
       ${!arch&&dc!==null&&dc>=15?`<span class="flag disc">дешевле рынка на ${dc}%</span>`:''}
+      ${favBtn(l)}
     </div>
     <div class="body">
       <div class="nm">${esc(l.name)}</div>
@@ -929,8 +1033,10 @@ function pageCatalog(section, params){
     const sorts = arch ? SORTS_ARCH : SORTS_ACTIVE, cur = FSTATE.sort || sorts[0][0];
     $('#tb').innerHTML = `<button class="btn fbtn" id="f-open" type="button">Фильтры${nf_?' · '+nf_:''}</button>
       <span class="cnt">${arch?'В архиве':'Найдено'} <b>${nf(list.length)}</b> ${plural(list.length,'лот','лота','лотов')}${list.length!==base.length?` из ${nf(base.length)}`:''}</span>
+      ${arch||!UB?'':`<button class="btn ssave" id="f-save" type="button" title="Новые лоты по этому поиску будут приходить в личный кабинет">${IC.save}<span>Сохранить поиск</span></button>`}
       <select id="f-sort" aria-label="Сортировка">${sorts.map(([v,t])=>`<option value="${v}"${cur===v?' selected':''}>${t}</option>`).join('')}</select>`;
     $('#f-sort').onchange = e => { FSTATE.sort = e.target.value; render(); };
+    const sv = $('#f-save'); if(sv) sv.onclick = () => saveSearch(section);
     $('#f-open').onclick = () => { $('#fp').classList.add('open'); $('#ov').classList.add('open'); };
     let hint = '';
     if(!arch && FSTATE.q){
@@ -1179,15 +1285,16 @@ function pageLot(id){
           <dl class="facts">
             <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
               :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
-            <dt>Торги</dt><dd>${l.torg?dtm(l.torg):dt(l.req_to+86400)}</dd>
+            <dt>Торги</dt><dd>${l.torg?dtm(l.torg):l.platform==='e-auction.by'?'онлайн, до '+dtm(l.req_to):dt(l.req_to+86400)}</dd>
             <dt>Регион</dt><dd>${esc(l.region||'—')}</dd>
             ${l.area_num?`<dt>Площадь</dt><dd>${nf(l.area_num)} м²</dd>`:''}
             <dt>Должник</dt><dd>${esc(l.debtor||'—')}</dd>
           </dl>
           <div class="cta">
             <a class="btn pri" href="${esc(l.url)}" target="_blank" rel="noopener">На площадке ↗</a>
-            <a class="btn" href="#/help?lot=${encodeURIComponent(l.art)}">Помощь с этим лотом</a>
+            <a class="btn" href="#/help?lot=${encodeURIComponent(l.art)}&id=${encodeURIComponent(l.id)}">Помощь с этим лотом</a>
           </div>
+          <div id="ubox"></div>
         </aside>
         ${l.alt?multiBlock(l):''}
         ${l.market?marketBlock(l):''}
@@ -1198,6 +1305,7 @@ function pageLot(id){
     ${arch?'':`<div class="sec"><div class="sec-h"><h2>Похожие лоты</h2><a href="#/s/${l.section}">Весь раздел →</a></div>
       <div class="grid">${DATA.filter(x=>x.section===l.section&&x.id!==l.id).slice(0,4).map(lotCard).join('')}</div></div>`}
   </div>`;
+  bindLotUser(l);
   loadDet(l).then(det=>{
     if(CUR!=='/lot/'+encodeURIComponent(id)) return;
     if(!arch) calcBlock(l, det);
@@ -1233,7 +1341,8 @@ const SICON = {
 
 function pageHelp(params){
   document.title = 'Помощь в аукционе — БелЛот';
-  const lot = params.get('lot') || '';
+  const lot = params.get('lot') || '', lotId = params.get('id') || '', lotRec = lotId ? byId(lotId) : null;
+  const svc = params.get('svc') || '', mine = k => ME && ME[k] && !(k==='name' && ME.login==='guest' && ME[k]==='Гость') ? ME[k] : '';
   $('#app').innerHTML = `<div class="wrap">
     ${crumbs([['Помощь в аукционе']])}
     <div class="help">
@@ -1253,10 +1362,13 @@ function pageHelp(params){
         <h2>Оставить заявку</h2>
         <p class="note" style="margin:0 0 14px">Перезвоним, ответим на вопросы по лоту и предложим, чем помочь.</p>
         <form id="hf" novalidate>
-          <div class="fg"><label for="h-name">Имя</label><input id="h-name" autocomplete="name" required></div>
-          <div class="fg"><label for="h-phone">Номер телефона</label><input id="h-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00" required></div>
-          <div class="fg"><label for="h-mail">Email <small>необязательно</small></label><input id="h-mail" type="email" autocomplete="email"></div>
+          ${lotRec?`<p class="note" style="margin:0 0 12px">Лот: <a href="#/lot/${encodeURIComponent(lotRec.id)}">${esc(lotRec.name.slice(0,90))}</a></p>`:''}
+          <div class="fg"><label for="h-name">Имя</label><input id="h-name" autocomplete="name" value="${esc(mine('name'))}" required></div>
+          <div class="fg"><label for="h-phone">Номер телефона</label><input id="h-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00" value="${esc(mine('phone'))}" required></div>
+          <div class="fg"><label for="h-mail">Email <small>необязательно</small></label><input id="h-mail" type="email" autocomplete="email" value="${esc(mine('email'))}"></div>
           <div class="fg"><label for="h-lot">Номер лота <small>необязательно</small></label><input id="h-lot" value="${esc(lot)}" placeholder="например, 34950"></div>
+          <div class="fg"><label for="h-svc">Что нужно <small>необязательно</small></label><select id="h-svc"><option value="">Пока не знаю — нужна консультация</option>
+            ${svcList().map(([,t])=>`<option${t===svc?' selected':''}>${esc(t)}</option>`).join('')}</select></div>
           <div class="ferr" id="h-err"></div>
           <button class="btn pri" type="submit" style="width:100%">Отправить заявку</button>
           <p class="note">Нажимая «Отправить», вы соглашаетесь, что мы свяжемся с вами по указанным контактам.</p>
@@ -1272,12 +1384,14 @@ function pageHelp(params){
     const btn = $('#hf button[type=submit]'), lotv = $('#h-lot').value.trim(), ph = $('#h-phone').value.trim();
     const done = () => { $('#hform').innerHTML = `<div class="done"><div class="ok">✓</div><h2>Заявка принята</h2>
       <p>${esc(name)}, спасибо! Свяжемся с вами по номеру ${esc(ph)}${lotv?` по лоту № ${esc(lotv)}`:''}.</p>
+      ${ME?'<p><a href="#/me/orders">Заявка появилась в личном кабинете →</a></p>':''}
       <a class="btn" href="#/catalog">Вернуться к лотам</a></div>`; };
     if(!CFG.sb){ done(); return; }   // локальная сборка без базы
     btn.disabled = true; btn.textContent = 'Отправляем…';
     fetch(CFG.sb.url + '/rest/v1/rpc/submit_lead', { method:'POST',
-      headers:{ apikey: CFG.sb.key, 'Content-Type':'application/json' },
-      body: JSON.stringify({ p_name:name, p_phone:ph, p_email:mail||null, p_lot:lotv||null }) })
+      headers:Object.assign({ apikey: CFG.sb.key, 'Content-Type':'application/json' }, UTOK ? { 'x-user-token':UTOK } : {}),
+      body: JSON.stringify({ p_name:name, p_phone:ph, p_email:mail||null, p_lot:lotv||null, p_service:$('#h-svc').value||null,
+        p_lot_name:lotRec?lotRec.name:null, p_lot_id:lotRec?lotRec.id:null }) })
       .then(r => r.ok ? done() : r.json().then(j => { throw new Error(j.message || 'ошибка'); }))
       .catch(e => { btn.disabled = false; btn.textContent = 'Отправить заявку';
         $('#h-err').textContent = 'Не удалось отправить: ' + (e.message||'нет связи') + '. Попробуйте ещё раз.'; });
@@ -1515,6 +1629,414 @@ function pageHome(){
   bindCarousels();
 }
 
+/* ───────── личный кабинет ─────────
+   Данные кабинета — в базе (Supabase), вход по логину и паролю: ключ сессии в заголовке x-user-token.
+   Пока один гостевой вход guest/guest; регистрация по почте — позже. Без базы (локальная сборка) кабинета нет. */
+const UB = CFG.sb || null;
+let UTOK = ''; try{ UTOK = localStorage.getItem('bl_user') || ''; }catch(e){}
+let ME = null, ULOTS = {}, UREADY = null;
+const STAGES = [['look','Изучаю'],['visit','Осмотр'],['apply','Готовлю заявку'],['bid','Участвую'],['won','Выиграл'],['drop','Отказался']];
+const IC = {
+  star:'<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
+  bell:'<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg>',
+  user:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>',
+  save:'<svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>'
+};
+async function uapi(path, o={}){
+  if(!UB) throw new Error('Личный кабинет недоступен в этой версии сайта');
+  const h = { apikey: UB.key, 'Content-Type':'application/json' };
+  if(UTOK) h['x-user-token'] = UTOK;
+  if(o.prefer) h.Prefer = o.prefer;
+  const r = await fetch(UB.url + '/rest/v1/' + path, { method:o.method||'GET', headers:h, body:o.body!==undefined?JSON.stringify(o.body):undefined });
+  if(!r.ok){ let j = {}; try{ j = await r.json(); }catch(e){} throw new Error(j.message || ('ошибка ' + r.status)); }
+  const t = await r.text(); return t ? JSON.parse(t) : null;
+}
+const urpc = (fn, args={}) => uapi('rpc/' + fn, { method:'POST', body:args });
+function utok(t){ UTOK = t || ''; try{ t ? localStorage.setItem('bl_user', t) : localStorage.removeItem('bl_user'); }catch(e){} }
+function uload(){
+  UREADY = (async () => {
+    if(!UB || !UTOK){ ME = null; ULOTS = {}; drawUser(); return; }
+    try{
+      ME = await urpc('user_me');
+      if(!ME){ utok(''); ULOTS = {}; }
+      else ULOTS = Object.fromEntries((await uapi('user_lots?select=lot,fav,watch,stage,note')).map(r=>[r.lot, r]));
+    }catch(e){ /* нет связи с базой — сайт работает без кабинета */ }
+    drawUser();
+  })();
+  return UREADY;
+}
+function drawUser(){
+  const b = $('#ubtn'); if(!b) return;
+  b.classList.toggle('in', !!ME);
+  b.title = ME ? 'Личный кабинет — ' + (ME.name || ME.login) : 'Войти в личный кабинет';
+  const n = ME ? (ME.unread || 0) : 0, d = $('#udot');
+  d.hidden = !n; d.textContent = n > 99 ? '99+' : n;
+  document.querySelectorAll('[data-fav]').forEach(x=>x.classList.toggle('on', !!(ULOTS[x.dataset.fav]||{}).fav));
+}
+function utoast(msg, err){ let t = $('#utoast'); if(!t){ t = document.createElement('div'); t.id = 'utoast'; document.body.appendChild(t); }
+  t.textContent = msg; t.className = 'on' + (err ? ' err' : ''); clearTimeout(t._h); t._h = setTimeout(()=>t.className = '', err ? 4500 : 2600); }
+const needLogin = () => { location.hash = '#/login?next=' + encodeURIComponent(location.hash.slice(1) || '/'); };
+async function ulot(id, patch){
+  if(!ME){ needLogin(); return null; }
+  const cur = ULOTS[id] || { fav:false, watch:false, stage:null, note:null };
+  const row = { lot:id, fav:cur.fav, watch:cur.watch, stage:cur.stage, note:cur.note, ...patch, updated_at:new Date().toISOString() };
+  await uapi('user_lots?on_conflict=user_id,lot', { method:'POST', body:[row], prefer:'resolution=merge-duplicates,return=minimal' });
+  ULOTS[id] = row; drawUser(); return row;
+}
+/* звёздочка на карточке лота */
+document.addEventListener('click', async e=>{
+  const b = e.target.closest('[data-fav]'); if(!b) return;
+  e.preventDefault(); e.stopPropagation();
+  if(!ME){ needLogin(); return; }
+  const on = !(ULOTS[b.dataset.fav]||{}).fav;
+  try{ await ulot(b.dataset.fav, { fav:on }); utoast(on ? 'Добавлено в избранное' : 'Убрано из избранного'); }catch(err){ utoast(err.message, true); }
+}, true);
+const favBtn = l => UB ? `<button class="favb${(ULOTS[l.id]||{}).fav?' on':''}" type="button" data-fav="${esc(l.id)}" aria-label="В избранное" title="В избранное">${IC.star}</button>` : '';
+
+/* страница лота: избранное, слежение, этап и заметка */
+function bindLotUser(l){
+  const box = $('#ubox'); if(!box || !UB) return;
+  const draw = () => {
+    const u = ULOTS[l.id] || {};
+    box.innerHTML = `<div class="ucta">
+        <button class="btn${u.fav?' on':''}" type="button" id="u-fav">${IC.star}<span>${u.fav?'В избранном':'В избранное'}</span></button>
+        <button class="btn${u.watch?' on':''}" type="button" id="u-watch">${IC.bell}<span>${u.watch?'Слежу за изменениями':'Следить за изменениями'}</span></button></div>
+      ${ME && (u.fav || u.watch) ? `<div class="unote">
+        <label>Мой этап<select id="u-stage"><option value="">—</option>${STAGES.map(([k,t])=>`<option value="${k}"${u.stage===k?' selected':''}>${t}</option>`).join('')}</select></label>
+        <label>Заметка — видна только вам<textarea id="u-note" rows="2" placeholder="Например: съездить на осмотр в субботу">${esc(u.note||'')}</textarea></label></div>` : ''}
+      <p class="uhint">${u.watch ? 'Сообщим в личный кабинет, если изменится цена, сроки или лот снимут с торгов.' : ME ? 'Уведомления об изменениях приходят в личный кабинет.' : '<a href="#/login">Войдите</a>, чтобы сохранять лоты и получать уведомления об изменениях.'}</p>`;
+    const act = (id, fn) => { const x = document.getElementById(id); if(x) x.onclick = fn; };
+    act('u-fav', async () => { if(!ME) return needLogin(); try{ await ulot(l.id, { fav:!u.fav }); utoast(!u.fav ? 'Добавлено в избранное' : 'Убрано из избранного'); draw(); }catch(e){ utoast(e.message, true); } });
+    act('u-watch', async () => { if(!ME) return needLogin(); try{ await ulot(l.id, { watch:!u.watch }); utoast(!u.watch ? 'Будем сообщать об изменениях' : 'Слежение выключено'); draw(); }catch(e){ utoast(e.message, true); } });
+    const st = $('#u-stage'), nt = $('#u-note');
+    if(st) st.onchange = async () => { try{ await ulot(l.id, { stage:st.value||null }); utoast('Сохранено'); }catch(e){ utoast(e.message, true); } };
+    if(nt) nt.onchange = async () => { try{ await ulot(l.id, { note:nt.value.trim()||null }); utoast('Заметка сохранена'); }catch(e){ utoast(e.message, true); } };
+  };
+  (UREADY || Promise.resolve()).then(()=>{ draw();
+    if(ME) uapi('user_views?on_conflict=user_id,lot', { method:'POST', body:[{ lot:l.id, at:new Date().toISOString() }], prefer:'resolution=merge-duplicates,return=minimal' }).catch(()=>{}); });
+  draw();
+}
+
+/* сохранённые поиски */
+const SS_KEYS = ['cat','q','region','pmin','pmax','dfrom','dto','plat','photo','mkt'];
+const dRu = s => s.split('-').reverse().join('.');
+function searchTitle(p){
+  const a = [], s = p.sec || p.cat;
+  if(s) a.push(secName(s)); if(p.q) a.push('«' + p.q + '»'); if(p.region) a.push(p.region);
+  if(p.pmin || p.pmax) a.push((p.pmin ? 'от ' + nf(+p.pmin) : '') + (p.pmax ? ' до ' + nf(+p.pmax) : '') + ' BYN');
+  if(p.plat) a.push(p.plat); if(p.dfrom || p.dto) a.push('торги' + (p.dfrom ? ' с ' + dRu(p.dfrom) : '') + (p.dto ? ' по ' + dRu(p.dto) : ''));
+  if(p.photo) a.push('с фото'); if(p.mkt) a.push('с ориентиром');
+  return a.join(', ') || 'Все лоты';
+}
+const searchList = p => applyFilters(p.sec ? DATA.filter(l=>l.section===p.sec) : DATA, p);
+async function saveSearch(section){
+  if(!ME){ needLogin(); return; }
+  const p = {}; if(section) p.sec = section;
+  SS_KEYS.forEach(k=>{ if(FSTATE[k]) p[k] = String(FSTATE[k]); });
+  const name = prompt('Как назвать поиск? Новые лоты по нему будут приходить в личный кабинет.', searchTitle(p));
+  if(name === null) return;
+  try{ await uapi('saved_searches', { method:'POST', body:[{ name:name.trim() || searchTitle(p), params:p, notify:true }], prefer:'return=minimal' });
+    utoast('Поиск сохранён — он в личном кабинете'); }catch(e){ utoast(e.message, true); }
+}
+function openSearch(p){ CARRY = {}; SS_KEYS.forEach(k=>{ if(p[k]) CARRY[k] = p[k]; }); location.hash = p.sec ? '#/s/' + p.sec : '#/catalog'; }
+
+/* вход */
+function pageLogin(params){
+  document.title = 'Вход в личный кабинет — БелЛот';
+  const next = params.get('next') || '/me';
+  $('#app').innerHTML = `<div class="wrap">${crumbs([['Личный кабинет']])}
+    <div class="login">
+      <div class="panel login-card"><h1>Вход в личный кабинет</h1>
+        ${UB ? `<form id="uf" autocomplete="on">
+          <div class="fg"><label for="u-login">Логин</label><input id="u-login" autocomplete="username" required></div>
+          <div class="fg"><label for="u-pass">Пароль</label><input id="u-pass" type="password" autocomplete="current-password" required></div>
+          <div class="ferr" id="u-err"></div>
+          <button class="btn pri" type="submit" style="width:100%">Войти</button></form>
+          <p class="note">Сейчас работает гостевой вход: логин <b>guest</b>, пароль <b>guest</b>. Регистрация по почте появится позже.</p>`
+        : '<p>Личный кабинет недоступен в этой версии сайта.</p>'}</div>
+      <div class="login-why"><h2>Что даёт кабинет</h2><ul>
+        <li><b>Избранное</b> — лоты под рукой, со своим этапом и заметками</li>
+        <li><b>Уведомления</b> — если у лота изменится цена или сроки, его снимут с торгов, или скоро закончится приём заявок</li>
+        <li><b>Сохранённые поиски</b> — новые лоты под ваши условия приходят сами</li>
+        <li><b>Календарь торгов</b> — все сроки по избранному, с выгрузкой в календарь телефона</li>
+        <li><b>Заявки и отчёты</b> — помощь по лоту и отчёты наших специалистов по объектам</li>
+        <li><b>Аналитика рынка</b> — цены, скидки к рынку, регионы и площадки</li></ul></div>
+    </div></div>`;
+  const f = $('#uf'); if(!f) return;
+  $('#u-login').focus();
+  f.addEventListener('submit', async e=>{
+    e.preventDefault(); $('#u-err').textContent = '';
+    try{
+      const tok = await urpc('user_login', { p_login:$('#u-login').value, p_pass:$('#u-pass').value });
+      if(!tok){ $('#u-err').textContent = 'Неверный логин или пароль'; return; }
+      utok(tok); await uload();
+      location.hash = '#' + (next.startsWith('/') ? next : '/me');
+    }catch(err){ $('#u-err').textContent = err.message; }
+  });
+}
+
+/* кабинет */
+const ME_TABS = [['','Обзор'],['fav','Избранное'],['notify','Уведомления'],['searches','Сохранённые поиски'],['calendar','Календарь торгов'],
+  ['orders','Заявки на помощь'],['reports','Отчёты'],['stats','Аналитика рынка'],['profile','Профиль']];
+const withArch = () => ARCH ? Promise.resolve() : loadArch();
+async function pageMe(sub, params){
+  document.title = 'Личный кабинет — БелЛот';
+  if(!UB){ pageLogin(params); return; }
+  $('#app').innerHTML = '<div class="wrap"><div class="skel" style="height:300px;margin-top:24px"></div></div>';
+  await uload();
+  if(!ME){ location.replace('#/login?next=' + encodeURIComponent('/me' + (sub ? '/' + sub : ''))); return; }
+  const [tab, arg] = sub.split('/');
+  const cnt = { notify: ME.unread, reports: ME.reports_new, fav: Object.values(ULOTS).filter(u=>u.fav).length };
+  $('#app').innerHTML = `<div class="wrap">${crumbs(tab ? [['Личный кабинет', '#/me'], [(ME_TABS.find(t=>t[0]===tab)||[,'Кабинет'])[1]]] : [['Личный кабинет']])}
+    <div class="me">
+      <aside class="me-nav">
+        <div class="me-who"><span class="av">${esc((ME.name || ME.login).slice(0,1).toUpperCase())}</span><div><b>${esc(ME.name || ME.login)}</b><small>${ME.login==='guest'?'гостевой вход':esc(ME.login)}</small></div></div>
+        ${ME_TABS.map(([k,t])=>`<a href="#/me${k?'/'+k:''}" class="${k===tab?'on':''}">${t}${cnt[k]?`<span class="n${k==='fav'?' g':''}">${cnt[k]}</span>`:''}</a>`).join('')}
+        <button class="lnk" type="button" id="u-out">Выйти</button>
+      </aside>
+      <section class="me-main" id="mm"><div class="skel"></div></section>
+    </div></div>`;
+  $('#u-out').onclick = async () => { try{ await urpc('user_logout'); }catch(e){} utok(''); ME = null; ULOTS = {}; drawUser(); location.hash = '#/'; };
+  const M = $('#mm');
+  try{
+    const fn = { '':meHome, fav:meFav, notify:meNotify, searches:meSearches, calendar:meCal, orders:meOrders, reports:meReports, stats:meStats, profile:meProfile }[tab] || meHome;
+    await fn(M, arg, params);
+  }catch(err){ M.innerHTML = `<div class="panel empty">Не получилось загрузить: ${esc(err.message)}</div>`; }
+  paint();
+}
+/* лоты кабинета: с сайта (активные и архив), а удалённые из архива — из копии каталога в базе */
+async function meLots(ids){
+  if(!ids.length) return {};
+  const out = {}; await withArch();
+  ids.forEach(id=>{ const l = byId(id); if(l) out[id] = l; });
+  const miss = ids.filter(id=>!out[id]);
+  if(miss.length) (await uapi(`lots?id=in.(${miss.map(x=>'"'+x.replace(/"/g,'')+'"').join(',')})&select=id,name,url,platform,section,price,req_to,torg,status,closed,why,location,art`))
+    .forEach(l=>{ out[l.id] = Object.assign(l, { gone:true }); });
+  return out;
+}
+const leftD = l => Math.ceil((l.req_to - Date.now()/1000) / 86400);
+function lotLine(l){
+  if(!l) return '<span class="muted">лот удалён из архива</span>';
+  const arch = l.status==='archive', d = leftD(l);
+  return `${esc(l.platform)} · ${esc(secName(l.section))} · <b>${nf(l.price)} BYN</b> · ${arch ? (l.why==='removed'?'снят с площадки':'приём заявок завершён') : `заявки до ${dtm(l.req_to)}${d>=0&&d<=7?` <span class="dl">${d<=0?'сегодня':d===1?'завтра':'через '+d+' дн.'}</span>`:''}`}`;
+}
+const NK = { price_down:['Цена ↓','g'], price_up:['Цена ↑',''], deadline:['Сроки',''], torg:['Сроки',''], closed:['Завершён','a'], reopened:['Снова на торгах','g'],
+  remind3:['Напоминание','a'], remind1:['Напоминание','a'], search:['Новые лоты','b'], order:['Заявка','b'], report:['Отчёт','b'] };
+const agoTxt = t => { const s = (Date.now() - new Date(t)) / 1000; return s < 3600 ? Math.max(1, Math.round(s/60)) + ' мин назад' : s < 86400 ? Math.round(s/3600) + ' ч назад' : dtm(new Date(t)/1000); };
+function notifRow(n){
+  const [k, c] = NK[n.kind] || ['Событие',''];
+  return `<a class="nrow${n.read_at?'':' un'}" href="${n.link ? esc(n.link) : n.lot ? '#/lot/' + encodeURIComponent(n.lot) : '#/me/notify'}" data-nid="${n.id}">
+    <span class="ntag ${c}">${k}</span><span class="nbd"><b>${esc(n.title||'')}</b><span>${esc(n.body||'')}</span></span><span class="nt">${agoTxt(n.created_at)}</span></a>`;
+}
+function bindNotif(M){
+  M.querySelectorAll('[data-nid]').forEach(a=>a.addEventListener('click', ()=>{ if(a.classList.contains('un'))
+    uapi(`notifications?id=eq.${a.dataset.nid}`, { method:'PATCH', body:{ read_at:new Date().toISOString() }, prefer:'return=minimal' }).then(()=>uload()).catch(()=>{}); }));
+}
+function events(lots){
+  const now = Date.now()/1000, ev = [];
+  Object.values(lots).forEach(l=>{ if(!l || l.status!=='active') return;
+    if(l.req_to > now) ev.push({ t:l.req_to, kind:'Приём заявок до', l });
+    const tg = l.torg || (l.platform==='e-auction.by' ? null : l.req_to + 86400);
+    if(tg && tg > now) ev.push({ t:tg, kind:l.torg ? 'Торги' : 'Торги (ориентировочно)', l }); });
+  return ev.sort((a,b)=>a.t-b.t);
+}
+
+async function meHome(M){
+  const ids = Object.keys(ULOTS).filter(k=>ULOTS[k].fav || ULOTS[k].watch);
+  const [lots, notes, views, orders] = await Promise.all([ meLots(ids),
+    uapi('notifications?select=*&order=created_at.desc&limit=5'), uapi('user_views?select=lot,at&order=at.desc&limit=8'), uapi('leads?select=id,status') ]);
+  const ev = events(lots).slice(0,6), seen = views.map(v=>byId(v.lot)).filter(Boolean).slice(0,4);
+  const fav = ids.filter(k=>ULOTS[k].fav).length, watch = ids.filter(k=>ULOTS[k].watch).length;
+  M.innerHTML = `<h1>Здравствуйте${ME.name && ME.login!=='guest' ? ', ' + esc(ME.name) : ''}!</h1>
+    <div class="me-kpi">
+      <a href="#/me/fav"><b>${fav}</b><span>в избранном</span></a>
+      <a href="#/me/fav?f=watch"><b>${watch}</b><span>слежу за изменениями</span></a>
+      <a href="#/me/notify"><b>${ME.unread||0}</b><span>новых уведомлений</span></a>
+      <a href="#/me/reports"><b>${ME.reports_new||0}</b><span>новых отчётов</span></a>
+      <a href="#/me/orders"><b>${orders.filter(o=>o.status==='new'||o.status==='work').length}</b><span>заявок в работе</span></a>
+    </div>
+    ${!ids.length ? `<div class="panel me-empty"><h2>Начните с избранного</h2><p>Нажмите звёздочку на карточке лота или «В избранное» на его странице — лот появится здесь. Кнопка «Следить за изменениями» включит уведомления о цене и сроках.</p><a class="btn pri" href="#/catalog">Перейти в каталог</a></div>` : ''}
+    <div class="me-2">
+      <div class="panel me-p"><div class="me-h"><h2>Ближайшие сроки</h2><a href="#/me/calendar">Календарь →</a></div>
+        ${ev.length ? ev.map(e=>`<div class="evr"><span class="evd">${dtm(e.t)}</span><span><span class="muted">${e.kind}</span><br><a href="#/lot/${encodeURIComponent(e.l.id)}">${esc(e.l.name.slice(0,80))}</a></span></div>`).join('') : '<p class="muted">По избранным лотам сроков впереди нет.</p>'}</div>
+      <div class="panel me-p"><div class="me-h"><h2>Уведомления</h2><a href="#/me/notify">Все →</a></div>
+        ${notes.length ? notes.map(notifRow).join('') : '<p class="muted">Пока тихо. Уведомления появятся, когда у лотов, за которыми вы следите, что-то изменится.</p>'}</div>
+    </div>
+    ${seen.length ? `<div class="sec"><div class="sec-h"><h2>Вы недавно смотрели</h2></div><div class="grid">${seen.map(lotCard).join('')}</div></div>` : ''}`;
+  bindNotif(M);
+}
+
+async function meFav(M, arg, params){
+  const f = params.get('f') || '';
+  const ids = Object.keys(ULOTS).filter(k=>ULOTS[k].fav || ULOTS[k].watch);
+  const lots = await meLots(ids);
+  const pick = k => { const u = ULOTS[k]; return f==='watch' ? u.watch : f ? u.stage===f : u.fav; };
+  const list = ids.filter(pick).sort((a,b)=>{ const x = lots[a], y = lots[b]; return (x&&x.status==='active'?0:1)-(y&&y.status==='active'?0:1) || ((x||{}).req_to||0)-((y||{}).req_to||0); });
+  M.innerHTML = `<h1>Избранное</h1>
+    <div class="me-tabs"><a href="#/me/fav" class="${!f?'on':''}">Избранное · ${ids.filter(k=>ULOTS[k].fav).length}</a><a href="#/me/fav?f=watch" class="${f==='watch'?'on':''}">Слежу · ${ids.filter(k=>ULOTS[k].watch).length}</a>
+      ${STAGES.map(([k,t])=>{ const n = ids.filter(x=>ULOTS[x].stage===k).length; return n ? `<a href="#/me/fav?f=${k}" class="${f===k?'on':''}">${t} · ${n}</a>` : ''; }).join('')}</div>
+    ${list.length ? list.map(k=>{ const l = lots[k], u = ULOTS[k];
+      return `<div class="frow" data-lot="${esc(k)}">
+        <a class="fth" href="#/lot/${encodeURIComponent(k)}">${l && l.photo && l.pk!=null ? pic(l) : '<span class="noph">нет фото</span>'}</a>
+        <div class="fbd"><a class="fnm" href="#/lot/${encodeURIComponent(k)}">${esc(l ? l.name : 'Лот ' + k)}</a>
+          <div class="fmeta">${lotLine(l)}</div>
+          <div class="fctl"><select data-stage aria-label="Мой этап"><option value="">Этап: —</option>${STAGES.map(([s,t])=>`<option value="${s}"${u.stage===s?' selected':''}>${t}</option>`).join('')}</select>
+            <label class="chk"><input type="checkbox" data-watch${u.watch?' checked':''}> уведомлять об изменениях</label>
+            <label class="chk"><input type="checkbox" data-favc${u.fav?' checked':''}> в избранном</label></div>
+          <textarea data-note rows="1" placeholder="Заметка — видна только вам">${esc(u.note||'')}</textarea></div>
+        <div class="fact">${l && l.status==='active' ? `<a class="btn sm pri" href="#/help?lot=${encodeURIComponent(l.art||'')}&id=${encodeURIComponent(k)}">Заказать помощь</a>` : ''}
+          <a class="btn sm" href="${esc(l ? l.url : '#')}" target="_blank" rel="noopener">На площадке ↗</a></div></div>`; }).join('')
+      + `<p><button class="btn" type="button" id="fav-csv">Выгрузить в Excel (CSV)</button></p>`
+    : `<div class="panel empty">${f ? 'В этом списке пока пусто.' : 'В избранном пока ничего нет. Нажмите звёздочку на карточке лота в каталоге.'}</div>`}`;
+  M.querySelectorAll('.frow').forEach(r=>{ const id = r.dataset.lot;
+    const save = async (patch, msg) => { try{ await ulot(id, patch); utoast(msg); }catch(e){ utoast(e.message, true); } };
+    r.querySelector('[data-stage]').onchange = e => save({ stage:e.target.value||null }, 'Этап сохранён');
+    r.querySelector('[data-watch]').onchange = e => save({ watch:e.target.checked }, e.target.checked ? 'Будем сообщать об изменениях' : 'Слежение выключено');
+    r.querySelector('[data-favc]').onchange = e => save({ fav:e.target.checked }, e.target.checked ? 'В избранном' : 'Убрано из избранного');
+    r.querySelector('[data-note]').onchange = e => save({ note:e.target.value.trim()||null }, 'Заметка сохранена'); });
+  const c = $('#fav-csv');
+  if(c) c.onclick = () => {
+    const cv = v => { const s = String(v==null?'':v); return /[;"\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+    const rows = list.map(k=>{ const l = lots[k] || {}, u = ULOTS[k];
+      return [l.name, l.platform, secName(l.section), l.price, l.req_to?dtm(l.req_to):'', l.status==='active'?'идёт приём заявок':'завершён', (STAGES.find(s=>s[0]===u.stage)||[,''])[1], u.note, l.url].map(cv).join(';'); });
+    const csv = '﻿' + ['Лот;Площадка;Раздел;Цена, BYN;Заявки до;Статус;Мой этап;Заметка;Ссылка', ...rows].join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' })); a.download = 'bellot-izbrannoe.csv'; a.click();
+  };
+}
+
+async function meNotify(M, arg, params){
+  const only = params.get('f') === 'unread';
+  const rows = await uapi(`notifications?select=*&order=created_at.desc&limit=300${only?'&read_at=is.null':''}`);
+  M.innerHTML = `<h1>Уведомления</h1>
+    <div class="me-tabs"><a href="#/me/notify" class="${only?'':'on'}">Все</a><a href="#/me/notify?f=unread" class="${only?'on':''}">Непрочитанные · ${ME.unread||0}</a>
+      <span class="sp"></span><button class="lnk" type="button" id="n-all">Прочитать все</button><button class="lnk" type="button" id="n-clr">Удалить прочитанные</button></div>
+    <div class="panel me-p">${rows.length ? rows.map(notifRow).join('') : '<p class="muted">Уведомлений нет.</p>'}</div>
+    <p class="muted">Что присылать — в разделе <a href="#/me/profile">Профиль</a>. Уведомления приходят по лотам, за которыми вы следите, по сохранённым поискам, заявкам и отчётам.</p>`;
+  bindNotif(M);
+  $('#n-all').onclick = async () => { try{ await uapi('notifications?read_at=is.null', { method:'PATCH', body:{ read_at:new Date().toISOString() }, prefer:'return=minimal' }); await uload(); pageMe('notify', params); }catch(e){ utoast(e.message, true); } };
+  $('#n-clr').onclick = async () => { try{ await uapi('notifications?read_at=not.is.null', { method:'DELETE' }); pageMe('notify', params); }catch(e){ utoast(e.message, true); } };
+}
+
+async function meSearches(M, arg){
+  const rows = await uapi('saved_searches?select=*&order=created_at.desc');
+  if(arg){ const s = rows.find(x=>String(x.id)===arg); if(s){ openSearch(s.params||{}); return; } }
+  M.innerHTML = `<h1>Сохранённые поиски</h1>
+    <p class="lede">Настройте фильтры в каталоге или разделе и нажмите «Сохранить поиск». Когда на площадках появятся новые подходящие лоты, придёт уведомление.</p>
+    ${rows.length ? rows.map(s=>{ const p = s.params || {}, n = searchList(p).length;
+      return `<div class="panel srow" data-sid="${s.id}"><div class="sbd"><b>${esc(s.name)}</b><span class="muted">${esc(searchTitle(p))}</span>
+          <span>Сейчас подходит: <b>${nf(n)}</b> ${plural(n,'лот','лота','лотов')}</span></div>
+        <label class="chk"><input type="checkbox" data-ntf${s.notify?' checked':''}> присылать новые</label>
+        <button class="btn sm pri" type="button" data-open>Открыть</button><button class="btn sm" type="button" data-del>Удалить</button></div>`; }).join('')
+    : '<div class="panel empty">Сохранённых поисков пока нет. <a href="#/catalog">Перейти в каталог</a></div>'}`;
+  M.querySelectorAll('.srow').forEach(r=>{ const id = r.dataset.sid, s = rows.find(x=>String(x.id)===id);
+    r.querySelector('[data-open]').onclick = () => openSearch(s.params || {});
+    r.querySelector('[data-ntf]').onchange = async e => { try{ await uapi(`saved_searches?id=eq.${id}`, { method:'PATCH', body:{ notify:e.target.checked }, prefer:'return=minimal' }); utoast('Сохранено'); }catch(err){ utoast(err.message, true); } };
+    r.querySelector('[data-del]').onclick = async () => { if(!confirm('Удалить поиск?')) return; try{ await uapi(`saved_searches?id=eq.${id}`, { method:'DELETE' }); r.remove(); }catch(err){ utoast(err.message, true); } }; });
+}
+
+async function meCal(M){
+  const ids = Object.keys(ULOTS).filter(k=>ULOTS[k].fav || ULOTS[k].watch);
+  const ev = events(await meLots(ids)), wd = ['вс','пн','вт','ср','чт','пт','сб'];
+  const days = {}; ev.forEach(e=>{ const k = dt(e.t); (days[k] ||= []).push(e); });
+  M.innerHTML = `<h1>Календарь торгов</h1>
+    <p class="lede">Сроки приёма заявок и даты торгов по лотам из избранного и тем, за которыми вы следите. За сутки и за три дня до окончания приёма заявок придёт напоминание.</p>
+    ${ev.length ? `<p><button class="btn" type="button" id="ics">Добавить в календарь телефона (.ics)</button></p>` + Object.entries(days).map(([d, es])=>{ const t = new Date(es[0].t*1000);
+      return `<div class="calday"><div class="cd"><b>${d.slice(0,5)}</b><span>${wd[t.getDay()]}</span></div><div class="ce">${es.map(e=>`<div class="evr"><span class="evd">${p2(new Date(e.t*1000).getHours())}:${p2(new Date(e.t*1000).getMinutes())}</span>
+        <span><span class="muted">${e.kind}</span><br><a href="#/lot/${encodeURIComponent(e.l.id)}">${esc(e.l.name.slice(0,100))}</a> <span class="muted">· ${nf(e.l.price)} BYN · ${esc(e.l.platform)}</span></span></div>`).join('')}</div></div>`; }).join('')
+    : '<div class="panel empty">Впереди нет сроков по вашим лотам. Добавьте лоты в избранное — их даты появятся здесь.</div>'}`;
+  const b = $('#ics');
+  if(b) b.onclick = () => {
+    const z = t => { const d = new Date(t*1000); return d.getUTCFullYear() + p2(d.getUTCMonth()+1) + p2(d.getUTCDate()) + 'T' + p2(d.getUTCHours()) + p2(d.getUTCMinutes()) + '00Z'; };
+    const ie = s => String(s).replace(/[\;,]/g, m=>'\\' + m).replace(/\n/g, '\\n');
+    const base = location.origin + location.pathname;
+    const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//BelLot//RU','CALSCALE:GREGORIAN'];
+    ev.forEach(e=>L.push('BEGIN:VEVENT', 'UID:' + e.l.id + '-' + e.t + '@bellot', 'DTSTAMP:' + z(Date.now()/1000), 'DTSTART:' + z(e.t), 'DTEND:' + z(e.t + 1800),
+      'SUMMARY:' + ie(e.kind + ': ' + e.l.name.slice(0,80)), 'DESCRIPTION:' + ie(nf(e.l.price) + ' BYN · ' + e.l.platform + '\n' + base + '#/lot/' + e.l.id), 'URL:' + base + '#/lot/' + encodeURIComponent(e.l.id),
+      'BEGIN:VALARM', 'TRIGGER:-P1D', 'ACTION:DISPLAY', 'DESCRIPTION:' + ie(e.kind), 'END:VALARM', 'END:VEVENT'));
+    L.push('END:VCALENDAR');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([L.join('\r\n')], { type:'text/calendar;charset=utf-8' })); a.download = 'bellot-torgi.ics'; a.click();
+  };
+}
+
+async function meOrders(M){
+  const rows = await uapi('leads?select=id,created_at,lot,lot_id,lot_name,service,status&order=created_at.desc');
+  const ST = { new:['Новая','b'], work:['В работе','a'], deal:['Сделка','g'], refused:['Закрыта',''] };
+  M.innerHTML = `<h1>Заявки на помощь</h1>
+    <p class="lede">Проверка объекта, осмотр, участие в торгах под ключ, сопровождение после победы. Специалист свяжется с вами, статус заявки меняется здесь.</p>
+    <p><a class="btn pri" href="#/help">Новая заявка</a></p>
+    ${rows.length ? `<div class="panel me-p">${rows.map(r=>{ const [t,c] = ST[r.status] || ['',''];
+      return `<div class="orow"><span class="ntag ${c}">${t}</span><span class="nbd"><b>${esc(r.service || 'Помощь в аукционе')}</b>
+        <span>${r.lot_id ? `<a href="#/lot/${encodeURIComponent(r.lot_id)}">${esc((r.lot_name||r.lot||r.lot_id).slice(0,90))}</a>` : r.lot ? 'лот № ' + esc(r.lot) : 'без привязки к лоту'}</span></span>
+        <span class="nt">${dtm(new Date(r.created_at)/1000)}</span></div>`; }).join('')}</div>`
+    : '<div class="panel empty">Заявок пока нет. Заказать помощь можно на странице любого лота или в избранном.</div>'}`;
+}
+
+async function meReports(M, arg){
+  if(arg) return meReport(M, arg);
+  const rows = await uapi('reports?select=id,lot,lot_name,title,created_at,read_at,file_name&order=created_at.desc');
+  M.innerHTML = `<h1>Отчёты по объектам</h1>
+    <p class="lede">Сюда специалисты БелЛота присылают отчёты: проверка объекта, осмотр, оценка и стратегия ставок. О новом отчёте придёт уведомление.</p>
+    ${rows.length ? `<div class="panel me-p">${rows.map(r=>`<a class="nrow${r.read_at?'':' un'}" href="#/me/reports/${r.id}"><span class="ntag b">Отчёт</span>
+      <span class="nbd"><b>${esc(r.title)}</b><span>${r.lot_name ? esc(r.lot_name.slice(0,90)) : 'без привязки к лоту'}${r.file_name ? ' · файл' : ''}</span></span><span class="nt">${dt(new Date(r.created_at)/1000)}</span></a>`).join('')}</div>`
+    : '<div class="panel empty">Отчётов пока нет. Закажите проверку или осмотр объекта — отчёт появится здесь. <a href="#/help">Заказать</a></div>'}`;
+}
+async function meReport(M, id){
+  const [r] = await uapi(`reports?id=eq.${encodeURIComponent(id)}&select=*`);
+  if(!r){ M.innerHTML = '<div class="panel empty">Отчёт не найден.</div>'; return; }
+  if(!r.read_at) uapi(`reports?id=eq.${r.id}`, { method:'PATCH', body:{ read_at:new Date().toISOString() }, prefer:'return=minimal' }).then(()=>uload()).catch(()=>{});
+  M.innerHTML = `<p><a href="#/me/reports">← Все отчёты</a></p>
+    <article class="panel report"><div class="muted">${dtm(new Date(r.created_at)/1000)} · отчёт БелЛота</div><h1>${esc(r.title)}</h1>
+      ${r.lot ? `<p>Лот: <a href="#/lot/${encodeURIComponent(r.lot)}">${esc(r.lot_name || r.lot)}</a></p>` : ''}
+      ${r.body ? `<div class="rbody">${esc(r.body)}</div>` : ''}
+      ${r.link && /^https?:\/\//.test(r.link) ? `<p><a href="${esc(r.link)}" target="_blank" rel="noopener">Открыть материалы ↗</a></p>` : ''}
+      ${r.file_name ? `<p><button class="btn pri" type="button" id="rf">Скачать файл: ${esc(r.file_name)}${r.file_size ? ' · ' + Math.max(1, Math.round(r.file_size/1024)) + ' КБ' : ''}</button></p>` : ''}
+      <p class="muted">Есть вопросы по отчёту? <a href="#/help${r.lot ? '?id=' + encodeURIComponent(r.lot) : ''}">Напишите нам</a>.</p></article>`;
+  const b = $('#rf');
+  if(b) b.onclick = async () => { b.disabled = true;
+    try{ const [f] = await uapi(`report_files?report_id=eq.${r.id}&select=data`); if(!f) throw new Error('файл не найден');
+      const bin = atob(f.data), u8 = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i] = bin.charCodeAt(i);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([u8], { type:r.file_type || 'application/octet-stream' })); a.download = r.file_name; a.click();
+    }catch(e){ utoast(e.message, true); } b.disabled = false; };
+}
+
+function loadStatsJs(){ return new Promise((res, rej)=>{ if(window.BLStats) return res(); const s = document.createElement('script'); s.src = 'stats.js';
+  s.onload = res; s.onerror = () => rej(new Error('не загрузилась аналитика')); document.head.appendChild(s); }); }
+async function meStats(M, arg, params){
+  M.innerHTML = '<h1>Аналитика рынка</h1><div class="skel"></div>';
+  await loadStatsJs();
+  const out = []; for(let off = 0; ; off += 1000){ const r = await uapi(`lots?select=${BLStats.FIELDS}&order=key&limit=1000&offset=${off}`); out.push(...r); if(r.length < 1000) break; }
+  const [daily, cfg] = await Promise.all([ uapi('daily?select=day,stats&order=day.asc&limit=400'), uapi('settings?k=eq.cab_stats&select=v') ]);
+  M.innerHTML = '<h1>Аналитика рынка</h1><p class="lede">Торги по имуществу должников со всех площадок, которые собирает БелЛот.</p><div id="mst"></div>';
+  BLStats.render($('#mst'), { lots:out, daily, per:params.get('per')||'30', sec:params.get('sec')||'', blocks:(cfg[0] && cfg[0].v && cfg[0].v.blocks) || BLStats.DEFAULT_CAB,
+    href:(p, s) => '#/me/stats?' + new URLSearchParams(Object.entries({ per:p, sec:s }).filter(([,v])=>v)).toString() });
+}
+
+async function meProfile(M){
+  const nt = ME.notify || {}, on = k => nt[k] !== false, guest = ME.login === 'guest';
+  const NT = [['price','Цена лота изменилась'],['dates','Изменились сроки приёма заявок или дата торгов'],['status','Лот снят с торгов, завершён или снова выставлен'],
+    ['remind','Напоминания: за 3 дня и за сутки до окончания приёма заявок'],['search','Новые лоты по сохранённым поискам']];
+  M.innerHTML = `<h1>Профиль</h1>
+    ${guest ? '<div class="banner" style="margin:0 0 16px">Вы вошли гостем: избранное, заявки и настройки этого входа видят все, кто входит как guest. Скоро появится регистрация по почте.</div>' : ''}
+    <div class="panel me-p"><h2>Контакты</h2><p class="muted" style="margin-top:0">Подставляются в заявку на помощь, чтобы не вводить заново.</p>
+      <div class="me-form"><div class="fg"><label for="p-name">Имя</label><input id="p-name" value="${esc(ME.name && !(guest && ME.name==='Гость') ? ME.name : '')}"></div>
+        <div class="fg"><label for="p-phone">Телефон</label><input id="p-phone" type="tel" value="${esc(ME.phone||'')}" placeholder="+375 (29) 000-00-00"></div>
+        <div class="fg"><label for="p-mail">Email</label><input id="p-mail" type="email" value="${esc(ME.email||'')}"></div>
+        <div class="fg"><label for="p-tg">Telegram</label><input id="p-tg" value="${esc(ME.telegram||'')}" placeholder="@username"></div></div>
+      <button class="btn pri" type="button" id="p-save">Сохранить</button></div>
+    <div class="panel me-p"><h2>Уведомления</h2><p class="muted" style="margin-top:0">Приходят в личный кабинет. Доставка на почту и в Telegram — позже.</p>
+      ${NT.map(([k,t])=>`<label class="chk"><input type="checkbox" data-nt="${k}"${on(k)?' checked':''}> ${t}</label>`).join('')}
+      <p class="muted">Заявки и отчёты приходят всегда.</p></div>
+    <div class="panel me-p"><h2>Пароль</h2>${guest ? '<p class="muted" style="margin:0">У гостевого входа пароль не меняется.</p>' : `<div class="me-form">
+      <div class="fg"><label for="p-old">Текущий пароль</label><input id="p-old" type="password" autocomplete="current-password"></div>
+      <div class="fg"><label for="p-new">Новый пароль</label><input id="p-new" type="password" autocomplete="new-password"></div></div>
+      <button class="btn" type="button" id="p-pw">Сменить пароль</button>`}</div>`;
+  $('#p-save').onclick = async () => { try{ await urpc('user_update', { p:{ name:$('#p-name').value, phone:$('#p-phone').value, email:$('#p-mail').value, telegram:$('#p-tg').value } }); await uload(); utoast('Сохранено'); }catch(e){ utoast(e.message, true); } };
+  M.querySelectorAll('[data-nt]').forEach(i=>i.onchange = async () => { const n = {}; M.querySelectorAll('[data-nt]').forEach(x=>{ if(!x.checked) n[x.dataset.nt] = false; });
+    try{ await urpc('user_update', { p:{ notify:n } }); ME.notify = n; utoast('Сохранено'); }catch(e){ utoast(e.message, true); } });
+  const pw = $('#p-pw');
+  if(pw) pw.onclick = async () => { try{ await urpc('user_passwd', { p_old:$('#p-old').value, p_new:$('#p-new').value }); utoast('Пароль изменён'); $('#p-old').value = $('#p-new').value = ''; }catch(e){ utoast(e.message, true); } };
+}
+
 /* ───────── роутер с переходом страниц ───────── */
 let CUR = null;
 function render(path, params){
@@ -1528,6 +2050,8 @@ function render(path, params){
   else if(path==='/calc') pageCalc(params.get('price'));
   else if(path==='/about') pageAbout();
   else if(path==='/help') pageHelp(params);
+  else if(path==='/login') pageLogin(params);
+  else if(path==='/me' || path.startsWith('/me/')) pageMe(path.slice(4), params);
   else pageHome();
 }
 function go(){
@@ -1555,6 +2079,7 @@ function go(){
   }
 }
 addEventListener('hashchange', go);
+uload();
 $('#app').addEventListener('animationend', e=>{ if(e.target.id==='app') e.target.classList.remove('in'); });
 go();
 </script>

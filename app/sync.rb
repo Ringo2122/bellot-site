@@ -28,6 +28,13 @@ if mirror && ENV['JOB_OK'] != 'false'
                         'stats' => { 'active' => act.size, 'published' => mirror.count { |l| l['status'] == 'active' && l['published'] },
                                      'value' => act.sum { |l| l['price'].to_f }.round, 'by_platform' => cnt.('platform'),
                                      'by_section' => cnt.('section'), 'value_by_section' => val.('section') } }], 'day')
+  # личный кабинет: новые лоты по сохранённым поискам и напоминания о сроках — сразу после обновления каталога
+  begin
+    n = Sb.req('post', 'rpc/cab_tick', {})
+    puts "уведомлений в кабинеты: #{n}"
+  rescue StandardError => e
+    warn "уведомления кабинета не разосланы: #{e.message}"
+  end
 end
 
 # отчёт: итоги обхода по площадкам, итоги сборки, строки журнала с ошибками
