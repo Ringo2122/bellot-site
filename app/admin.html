@@ -411,7 +411,8 @@ async function pDash(){
       <div class="saverow"><button class="btn acc" data-pub="0">Опубликовать изменения</button><button class="btn" data-pub="1">Обновить с площадок сейчас</button>
       <a class="btn" href="${GH_RUNS}" target="_blank" rel="noopener">Журнал GitHub ↗</a></div></div>
     <div class="panel"><h2>Лоты на сайте по площадкам</h2>
-      <table>${PLATS.map(p=>`<tr><td>${esc(PLAT_RU[p])}</td><td><b>${nf((s.by_platform||{})[p]||0)}</b></td></tr>`).join('')}</table></div>
+      <table>${PLATS.map(p=>{ const mg = (s.merged_by_platform||{})[p]||0;
+        return `<tr><td>${esc(PLAT_RU[p])}</td><td><b>${nf((s.by_platform||{})[p]||0)}</b>${mg?` <span class="muted">+ ${nf(mg)} ${plural(mg,'лот склеен','лота склеены','лотов склеены')} с карточками других площадок</span>`:''}</td></tr>`; }).join('')}</table></div>
     <div class="panel"><h2>Последние запуски робота</h2>
       <div class="tw"><table><tr><th>Начало</th><th>Что</th><th>Кто запустил</th><th>Итог</th><th>Новых</th><th>В архив</th><th>На сайте</th><th>Ждут проверки</th></tr>
       ${runs.map(r=>{ const u = (r.stats||{}).update, b = (r.stats||{}).build;

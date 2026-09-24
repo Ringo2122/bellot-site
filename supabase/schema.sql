@@ -223,6 +223,7 @@ begin
     'archive', (select count(*) from lots where status = 'archive'),
     'leads_new', (select count(*) from leads where status = 'new'),
     'by_platform', (select json_object_agg(platform, n) from (select platform, count(*) n from lots where status = 'active' and published group by 1) x),
+    'merged_by_platform', (select json_object_agg(platform, n) from (select platform, count(*) n from lots where status = 'active' and dup_of is not null group by 1) x),
     'changed_at', (select max(t) from (select max(updated_at) t from overrides union all select max(updated_at) from settings where k not in ('publish_req', 'bot', 'hours', 'min_price')
                      union all select max(created_at) from dup_rules union all select max(updated_at) from lot_photos) x),
     'last_build', (select max(at) from runs),
