@@ -168,6 +168,17 @@ PLAN.map do |plat, secs|
               upd['ph_try'] = old['ph_try'].to_i + 1 unless ok
               mx.synchronize { stat[ok ? 'фото докачано' : 'фото не нашлось'] += 1 }
             end
+            # konfiskat: извещение не разобралось (нет города и точного срока) — перечитываем, до трёх раз
+            if c['platform'] == 'konfiskat.by' && old['location'].to_s.empty? && old['kf_try'].to_i < 3
+              d4 = fetch_detail(c)
+              if d4 && d4['location']
+                upd.merge!('location' => d4['location'], 'region' => region_of(d4['location']), 'req_to' => d4['req_to'], 'torg' => d4['torg'])
+                Store.save_details(c['key'], trim(d4['details'] || []))
+                mx.synchronize { stat['konfiskat: извещение дочитано'] += 1 }
+              else
+                upd['kf_try'] = old['kf_try'].to_i + 1
+              end
+            end
             upd['price'] = c['price'] if c['price'].to_f.positive? && c['price'] != old['price']
             if c['platform'] == 'beltorgi.by'
               # срок по обратному отсчёту разошёлся с известным больше чем на сутки — перевыставили
