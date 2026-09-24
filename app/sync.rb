@@ -20,6 +20,14 @@ if mirror && ENV['JOB_OK'] != 'false'
   Sb.upsert('lots', mirror)
   Sb.delete('lots', "synced=lt.#{t0}") if t0   # лоты, удалённые из памяти робота
   puts "в базу админки: #{mirror.size} лотов"
+  # снимок дня для динамики в аналитике: рынок без дублей и скрытых, по площадкам и разделам
+  act = mirror.select { |l| l['status'] == 'active' && !%w[dup hidden].include?(l['hidden_why']) }
+  cnt = ->(k) { act.group_by { |l| l[k] }.map { |g, v| [g, v.size] }.to_h }
+  val = ->(k) { act.group_by { |l| l[k] }.map { |g, v| [g, v.sum { |l| l['price'].to_f }.round] }.to_h }
+  Sb.upsert('daily', [{ 'day' => Time.now.strftime('%Y-%m-%d'), 'updated_at' => Time.now.utc.iso8601,
+                        'stats' => { 'active' => act.size, 'published' => mirror.count { |l| l['status'] == 'active' && l['published'] },
+                                     'value' => act.sum { |l| l['price'].to_f }.round, 'by_platform' => cnt.('platform'),
+                                     'by_section' => cnt.('section'), 'value_by_section' => val.('section') } }], 'day')
 end
 
 # отчёт: итоги обхода по площадкам, итоги сборки, строки журнала с ошибками

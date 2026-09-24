@@ -41,6 +41,10 @@ create table if not exists lots (
   synced bigint
 );
 create index if not exists lots_status on lots (status, hidden_why);
+-- для аналитики: первая цена (если снижалась), площадь недвижимости, продавец/должник
+alter table lots add column if not exists price0 numeric;
+alter table lots add column if not exists area_num numeric;
+alter table lots add column if not exists debtor text;
 
 -- ── решения человека ──
 create table if not exists overrides (
@@ -68,6 +72,11 @@ create table if not exists settings (
 );
 
 -- ── отчёты ──
+create table if not exists daily (                -- снимок каталога на конец дня: динамика в аналитике
+  day date primary key,
+  stats jsonb not null,
+  updated_at timestamptz not null default now()
+);
 create table if not exists runs (
   id bigserial primary key,
   at timestamptz not null default now(),
@@ -110,7 +119,7 @@ $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['lots','overrides','lot_photos','dup_rules','settings','runs','bot_runs','leads'] loop
+  foreach t in array array['lots','overrides','lot_photos','dup_rules','settings','runs','bot_runs','leads','daily'] loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists admin_all on %I', t);
     execute format('create policy admin_all on %I for all to anon, authenticated using ((select is_admin())) with check ((select is_admin()))', t);
@@ -121,7 +130,8 @@ begin
 end $$;
 
 -- Копия каталога вместе с решениями: для списков в админке
-create or replace view lots_v with (security_invoker = true) as
+drop view if exists lots_v;   -- lots.* раскрывается при создании: новые колонки — только пересозданием
+create view lots_v with (security_invoker = true) as
 select l.*, o.mod, coalesce(o.pinned, false) as pinned, coalesce(o.fields, '{}'::jsonb) as fields,
        o.updated_at as ov_at, (o.fields is not null and o.fields <> '{}'::jsonb) as edited,
        case when o.mod = 'hidden' then 'hidden'

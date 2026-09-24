@@ -80,6 +80,9 @@ lots.each do |l|
   if l['status'] == 'active' && l['req_to'].to_i <= now
     l.merge!('status' => 'archive', 'closed' => l['req_to'], 'why' => 'deadline')
   end
+  # konfiskat.by: город есть только в извещении, а часть извещений — сканы. Правило Артёма (24.09):
+  # если площадка не указала иного — Минск
+  l['location'] = 'г. Минск' if l['platform'] == 'konfiskat.by' && l['location'].to_s.strip.empty?
   l['region'] = region_of(l['location']) if l['region'].to_s.empty?
   l['debtor'] = 'Физическое лицо' if ENV['MASK'] && l['debtor'].to_s =~ FIO
   l['id'] = id_of(l['key'])
@@ -270,10 +273,8 @@ order.each_slice(PACK) do |chunk|
   packs += 1
 end
 
-# настройки, которые нужны страницам: тексты, правила калькулятора, часы обновления, форма заявки
-hours = Array(CFG['hours']).map(&:to_i).select { |h| h.between?(0, 23) }.sort
-hours = [11, 18] if hours.empty?
-pub = { 'texts' => CFG['texts'] || {}, 'calc' => CFG['calc'] || {}, 'sec_off' => sec_off, 'hours' => hours }
+# настройки, которые нужны страницам: тексты, правила калькулятора, выключенные разделы, форма заявки
+pub = { 'texts' => CFG['texts'] || {}, 'calc' => CFG['calc'] || {}, 'sec_off' => sec_off }
 pub['sb'] = { 'url' => ENV['SB_URL'], 'key' => ENV['SB_KEY'] } if Sb.on?
 
 archn = arch.group_by { |l| l['section'] }.map { |k, v| [k, v.size] }.to_h.merge('_' => arch.size)
@@ -294,7 +295,8 @@ published = active.map { |l| [l['key'], true] }.to_h
 mirror = lots.map do |l|
   o = orig[l['key']]
   o.merge('photo' => !l['photo'].nil?, 'status' => l['status'], 'closed' => l['closed'], 'why' => l['why'],
-          'first_seen' => l['first_seen'],
+          'first_seen' => l['first_seen'], 'area_num' => l['area_num'], 'debtor' => l['debtor'],
+          'price0' => (l['prices'] || []).size > 1 ? l['prices'].first[1] : nil,
           'market' => l['market'] && l['market'].slice('median', 'n', 'source', 'low', 'high', 'manual', 'link'),
           'reasons' => reasons[l['key']] || [], 'dup_with' => dup_with[l['key']], 'dup_of' => dup_of[l['key']],
           'alt' => l['alt'], 'published' => published[l['key']] || (l['status'] == 'archive' && !hidden_why[l['key']]),
