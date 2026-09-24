@@ -381,7 +381,20 @@
     background:linear-gradient(120deg,#0b2f57,#12508f);color:#fff;border-radius:12px;padding:26px 28px}
   .helpband h2{margin:0 0 6px;color:#fff}
   .helpband p{margin:0;color:#d5e5f5;max-width:60ch}
-  .archline{text-align:center;font-size:14px}
+/* ленты: 4 карточки на экране, дальше — стрелками */
+.sec-sub{font-size:13px;color:var(--ink-3);margin-top:2px}
+.car{position:relative}
+.car-track{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 42px)/4);gap:14px;overflow-x:auto;
+  scroll-snap-type:x mandatory;scrollbar-width:none;padding:3px 2px 8px}
+.car-track::-webkit-scrollbar{display:none}
+.car-track>.lot{scroll-snap-align:start}
+.car-b{position:absolute;top:34%;width:44px;height:44px;border-radius:50%;border:1px solid var(--hair-2);
+  background:var(--card);color:var(--ink);box-shadow:var(--sh-2);font-size:26px;line-height:1;cursor:pointer;z-index:3;
+  display:grid;place-items:center;padding-bottom:3px;transition:opacity .2s,border-color .15s}
+.car-b:hover{border-color:var(--brand);color:var(--brand)}
+.car-b.prev{left:-20px}
+.car-b.next{right:-20px}
+.car-b:disabled{opacity:0;pointer-events:none}
   .hico{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:10px;background:var(--cl,var(--brand-l));color:var(--c,var(--brand));
     vertical-align:-7px;margin-right:12px}
 
@@ -475,6 +488,9 @@
     .hform{position:static}
     .kpis,.how{grid-template-columns:repeat(2,1fr)}
     .stiles{grid-template-columns:repeat(3,1fr)}
+    .car-track{grid-auto-columns:calc((100% - 28px)/3)}
+    .car-b.prev{left:-8px}
+    .car-b.next{right:-8px}
     .cx-time{grid-template-columns:repeat(2,1fr)}
   }
   @media (max-width:760px){
@@ -487,6 +503,8 @@
   }
   @media (max-width:520px){
     .kpis,.how{grid-template-columns:1fr}
+    .car-track{grid-auto-columns:80%}
+    .car-b{display:none}
     .stiles{grid-template-columns:1fr 1fr}
     .stile{min-height:118px;padding:14px}
     .cx-time{grid-template-columns:1fr}
@@ -621,6 +639,7 @@ $('#f-upd').textContent = dtm(SNAP);
 $('#tb-cnt').textContent = DATA.length;
 $('#nav').innerHTML = '<li><a href="#/">Главная</a></li><li><a href="#/catalog">Все лоты</a></li>'
   + SECTIONS.map(([s,n])=>`<li><a href="#/s/${s}">${n}</a></li>`).join('')
+  + '<li><a href="#/catalog?st=arch">Архив</a></li>'
   + '<li><a href="#/calc">Калькулятор</a></li><li><a href="#/about">О платформе</a></li>';
 $('#fnav').innerHTML = SECTIONS.map(([s,n])=>`<li><a href="#/s/${s}">${n}</a></li>`).join('');
 
@@ -734,6 +753,8 @@ function applyFilters(list, f){
     if(f.plat && l.platform!==f.plat) return false;
     if(f.photo && !l.photo) return false;
     if(f.mkt && !l.market) return false;
+    if(f.soon && !isSoon(l)) return false;
+    if(f.fresh && !isNew(l)) return false;
     if(f.q){ const s=(l.name+' '+(l.location||'')+' '+(l.debtor||'')+' '+l.art).toLowerCase();
       if(!s.includes(f.q.toLowerCase())) return false; }
     return true;
@@ -745,7 +766,7 @@ function applyFilters(list, f){
     : s==='disc'?((discount(b)??-999)-(discount(a)??-999)) : a.req_to-b.req_to);
   return out;
 }
-const nFilters = f => ['q','region','pmin','pmax','dto','plat','photo','mkt'].filter(k=>f[k]).length;
+const nFilters = f => ['q','region','pmin','pmax','dto','plat','photo','mkt','soon','fresh'].filter(k=>f[k]).length;
 const SORTS_ACTIVE = [['deadline','Заявки закрываются раньше'],['new','Сначала новые'],['disc','Дисконт к рынку'],
   ['price-asc','Цена по возрастанию'],['price-desc','Цена по убыванию'],['name','По названию']];
 const SORTS_ARCH = [['closed','Недавно завершённые'],['price-asc','Цена по возрастанию'],
@@ -791,7 +812,11 @@ function pageCatalog(section, params){
   FSTATE = {};
   if(q) FSTATE.q = q;
   if(params.get('st')==='arch') FSTATE.st = 'arch';
-  const title = section ? secName(section) : (q ? 'Поиск по каталогу' : 'Все лоты');
+  const view = params.get('view');
+  if(view==='soon') FSTATE.soon = 1;
+  if(view==='new'){ FSTATE.fresh = 1; FSTATE.sort = 'new'; }
+  const title = section ? secName(section) : view==='soon' ? 'Истекающие торги' : view==='new' ? 'Новые лоты'
+    : (q ? 'Поиск по каталогу' : FSTATE.st==='arch' ? 'Архив торгов' : 'Все лоты');
   const STEP = 36; let show = STEP;
   const baseOf = () => { const src = FSTATE.st==='arch' ? (ARCH||[]) : DATA;
     return section ? src.filter(l=>l.section===section) : src; };
@@ -804,7 +829,7 @@ function pageCatalog(section, params){
   const closeDrawer = () => { $('#fp')?.classList.remove('open'); $('#ov').classList.remove('open'); };
   const read = () => {
     const v = id => (document.getElementById(id)||{}).value || '';
-    FSTATE = {st:FSTATE.st, sort:FSTATE.sort, q:v('f-q').trim(), region:v('f-region'), pmin:v('f-pmin'),
+    FSTATE = {st:FSTATE.st, sort:FSTATE.sort, soon:FSTATE.soon, fresh:FSTATE.fresh, q:v('f-q').trim(), region:v('f-region'), pmin:v('f-pmin'),
       pmax:v('f-pmax'), dto:v('f-dto'), plat:v('f-plat'), photo:v('f-photo'), mkt:v('f-mkt')};
   };
   const drawPanel = () => {
@@ -1286,14 +1311,42 @@ function sectionTiles(){
   }).join('')}</div>`;
 }
 
+/* ───────── ленты на главной ───────── */
+const PRIO = ['nedvizhimost','avto','gruz'];                       // остальные разделы — после
+const prio = l => { const i = PRIO.indexOf(l.section); return i<0 ? PRIO.length : i; };
+const isSoon = l => l.req_to*1000 > Date.now() && l.req_to*1000 - Date.now() <= 3*86400000;
+/* отбор: по приоритету раздела, внутри — сначала с фото; порядок внутри группы сохраняется */
+function pickTop(list, n){
+  return list.map((l,i)=>[l,i]).sort((a,b)=> prio(a[0])-prio(b[0]) || (!a[0].photo)-(!b[0].photo) || a[1]-b[1])
+    .slice(0,n).map(x=>x[0]);
+}
+function carousel(title, sub, list, all){
+  if(!list.length) return '';
+  return `<div class="sec"><div class="sec-h"><div><h2>${title}</h2><div class="sec-sub">${sub}</div></div>
+      <a class="btn" href="${all}">Посмотреть все</a></div>
+    <div class="car"><button class="car-b prev" type="button" aria-label="Назад">‹</button>
+      <div class="car-track">${list.map(lotCard).join('')}</div>
+      <button class="car-b next" type="button" aria-label="Вперёд">›</button></div></div>`;
+}
+function bindCarousels(){
+  document.querySelectorAll('.car').forEach(c=>{
+    const t = c.querySelector('.car-track'), p = c.querySelector('.prev'), n = c.querySelector('.next');
+    const upd = () => { p.disabled = t.scrollLeft < 5; n.disabled = t.scrollLeft + t.clientWidth >= t.scrollWidth - 5; };
+    p.onclick = () => t.scrollBy({left:-t.clientWidth, behavior:'smooth'});
+    n.onclick = () => t.scrollBy({left: t.clientWidth, behavior:'smooth'});
+    t.addEventListener('scroll', upd, {passive:true});
+    upd();
+  });
+}
+
 function pageHome(){
   document.title = 'БелЛот — торги по имуществу должников Беларуси';
-  const fresh = DATA.filter(isNew).sort((a,b)=>b.first_seen-a.first_seen);
-  const soon = [...DATA].filter(l=>left(l)>=0).sort((a,b)=>a.req_to-b.req_to);
+  // ленты: до 10 лотов, сначала недвижимость, потом легковые, грузовые и остальное; с фото — вперёд
+  const soon = pickTop(DATA.filter(isSoon), 10).sort((a,b)=>a.req_to-b.req_to);
+  const fresh = pickTop(DATA.filter(isNew).sort((a,b)=>b.first_seen-a.first_seen), 10).sort((a,b)=>b.first_seen-a.first_seen);
   const dcs = DATA.map(discount).filter(x=>x!==null).sort((a,b)=>a-b);
   const medDc = dcs.length ? dcs[Math.floor(dcs.length/2)] : 0;
   const plats = new Set(DATA.map(l=>l.platform)).size;
-  const show = fresh.length >= 4 ? ['Новые лоты', fresh] : ['Заявки закрываются первыми', soon];
   $('#app').innerHTML = `
   <section class="land">
     ${skyline()}
@@ -1337,18 +1390,19 @@ function pageHome(){
       <a class="btn pri big" href="#/help">Оставить заявку</a>
     </div>
 
-    <div class="sec"><div class="sec-h"><h2>${show[0]}</h2><a href="#/catalog">Смотреть все →</a></div>
-      <div class="grid">${show[1].slice(0,8).map(lotCard).join('')}</div></div>
-
-    <div class="sec archline"><a href="#/catalog?st=arch">Архив завершённых торгов — ${nf(ARCHN._||0)} ${plural(ARCHN._||0,'лот','лота','лотов')} →</a></div>
+    ${carousel('Истекающие торги', 'Приём заявок закрывается в ближайшие 3 дня', soon, '#/catalog?view=soon')}
+    ${carousel('Новые лоты', 'Появились на площадках за последние сутки', fresh, '#/catalog?view=new')}
   </div>`;
   attachSuggest($('#ls-q'), $('#ls-sugg'));
+  bindCarousels();
 }
 
 /* ───────── роутер с переходом страниц ───────── */
 let CUR = null;
 function render(path, params){
-  document.querySelectorAll('nav.main a').forEach(a=>a.classList.toggle('on', a.getAttribute('href')==='#'+path));
+  const links = [...document.querySelectorAll('nav.main a')], full = location.hash || '#/';
+  const cur = links.find(a=>a.getAttribute('href')===full) || links.find(a=>a.getAttribute('href')==='#'+path);
+  links.forEach(a=>a.classList.toggle('on', a===cur));
   $('#ov').classList.remove('open');
   if(path.startsWith('/lot/')) pageLot(decodeURIComponent(path.slice(5)));
   else if(path.startsWith('/s/')) pageCatalog(path.slice(3), params);

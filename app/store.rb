@@ -52,13 +52,25 @@ module Store
     File.write(det_path(key), JSON.generate(secs))
   end
 
-  # На Mac есть sips, на сервере GitHub — ImageMagick
+  # На Mac есть sips, на сервере GitHub — ImageMagick. ImageMagick определяет формат по расширению,
+  # а «.raw» для него — отдельный формат «сырых пикселей»: так 24.09 все новые фото молча не сохранились.
+  # Поэтому формат узнаём по первым байтам файла и передаём явно: «jpg:файл».
+  def sniff(path)
+    head = File.binread(path, 12).to_s
+    return 'jpg' if head.start_with?("\xFF\xD8".b)
+    return 'png' if head.start_with?("\x89PNG".b)
+    return 'gif' if head.start_with?('GIF8')
+    return 'webp' if head[0, 4] == 'RIFF' && head[8, 4] == 'WEBP'
+    nil
+  end
+
   def shrink(src, dst)
     if system('which sips >/dev/null 2>&1')
       system('sips', '-s', 'format', 'jpeg', '-s', 'formatOptions', Q.to_s, '-Z', W.to_s,
              src, '--out', dst, out: File::NULL, err: File::NULL)
     else
-      system('convert', "#{src}[0]", '-auto-orient', '-resize', "#{W}x#{W}>", '-strip',
+      fmt = sniff(src) or return false
+      system('convert', "#{fmt}:#{src}[0]", '-auto-orient', '-resize', "#{W}x#{W}>", '-strip',
              '-quality', Q.to_s, dst, out: File::NULL, err: File::NULL)
     end
     File.exist?(dst) && File.size(dst) > 700

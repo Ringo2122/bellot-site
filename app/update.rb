@@ -144,6 +144,14 @@ PLAN.map do |plat, secs|
                 mx.synchronize { stat['дозаполнены условия'] += 1 }
               end
             end
+            # фото не скачалось — пробуем ещё, не больше трёх прогонов подряд (у части лотов фото нет вовсе)
+            if !old['photo'] && old['ph_try'].to_i < 3 && !File.exist?(Store.ph_path(c['key']))
+              d3 = fetch_detail(c)
+              ok = Store.save_photo([d3 && d3['photo_url'], c['thumb']], c['key'], Src::UA)
+              upd['photo'] = ok
+              upd['ph_try'] = old['ph_try'].to_i + 1 unless ok
+              mx.synchronize { stat[ok ? 'фото докачано' : 'фото не нашлось'] += 1 }
+            end
             upd['price'] = c['price'] if c['price'].to_f.positive? && c['price'] != old['price']
             if c['platform'] == 'beltorgi.by'
               # срок по обратному отсчёту разошёлся с известным больше чем на сутки — перевыставили
