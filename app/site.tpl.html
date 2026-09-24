@@ -1423,7 +1423,7 @@ function pageHome(){
   const fresh = pickTop(DATA.filter(isNew).sort((a,b)=>b.first_seen-a.first_seen), 10).sort((a,b)=>b.first_seen-a.first_seen);
   const dcs = DATA.map(discount).filter(x=>x!==null).sort((a,b)=>a-b);
   const medDc = dcs.length ? dcs[Math.floor(dcs.length/2)] : 0;
-  const plats = new Set(DATA.map(l=>l.platform)).size;
+  const plats = new Set(DATA.flatMap(l=>[l.platform, ...(l.alt||[]).map(a=>a.platform)])).size;   // склеенные площадки тоже в счёт
   $('#app').innerHTML = `
   <section class="land">
     ${skyline()}
