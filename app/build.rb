@@ -17,7 +17,7 @@ require_relative 'regions'
 OUT  = ENV['OUT'] || File.join(Store::ROOT, '_site')
 PACK = 40
 KEEP = %w[id art name price req_to torg url location region debtor area_num platform section
-          photo pk market prices status closed why first_seen].freeze
+          photo pk market prices status closed why first_seen alt].freeze
 
 # Персональные данные: MASK=1 скрывает ФИО должников-физлиц и контактных лиц по осмотру.
 # По умолчанию выключено — решение владельца, вопрос открыт для юриста (закон 99-З).
@@ -61,6 +61,28 @@ end
 
 active = lots.select { |l| l['status'] == 'active' }.sort_by { |l| l['req_to'].to_i }
 arch = lots.select { |l| l['status'] == 'archive' }.sort_by { |l| -l['closed'].to_i }
+
+# Один лот на нескольких площадках — одна карточка. ЦПО показывает лоты своих торгов на ИПМ,
+# бывает и так, что объект выставлен на двух площадках с разными датами. Признак дубля —
+# одинаковые название и стартовая цена на РАЗНЫХ площадках (на одной площадке это разные лоты).
+# Главная запись — та, где торги раньше; остальные уходят в «alt»: площадка, ссылка, сроки.
+# У ИПМ и ЦПО общий номер лота (12 цифр) — он надёжнее: у лотов в долларах ЦПО не показывает цену в рублях
+sig = lambda do |l|
+  next "n|#{l['art']}" if %w[ipmtorgi.by cpo.by].include?(l['platform']) && l['art'].to_s =~ /\A\d{9,}\z/
+  l['name'].to_s.downcase.tr('ё', 'е').gsub(/[^a-zа-я0-9]/, '') + '|' + l['price'].to_f.round.to_s
+end
+when_ = ->(l) { l['torg'] || l['req_to'].to_i + 86_400 }
+hidden = {}
+active.group_by(&sig).each_value do |g|
+  next if g.map { |l| l['platform'] }.uniq.size < 2
+  # при равных сроках главная — торговая площадка (ИПМ), а не витрина организатора (ЦПО)
+  main = g.min_by { |l| [when_.(l), l['req_to'].to_i, l['platform'] == 'cpo.by' ? 1 : 0, l['price'].to_f.positive? ? 0 : 1] }
+  others = g.reject { |l| l['platform'] == main['platform'] }.group_by { |l| l['platform'] }.map { |_, v| v.min_by(&when_) }
+  main['alt'] = ([main] + others).sort_by(&when_).map { |l| { 'platform' => l['platform'], 'url' => l['url'], 'req_to' => l['req_to'], 'torg' => l['torg'] } }
+  others.each { |l| hidden[l['key']] = true }
+end
+active.reject! { |l| hidden[l['key']] }
+puts "склеено дублей: #{hidden.size}" unless hidden.empty?
 
 FileUtils.rm_rf(OUT)
 FileUtils.mkdir_p([File.join(OUT, 'ph'), File.join(OUT, 'det')])

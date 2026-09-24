@@ -270,6 +270,7 @@
   .lot .flags{position:absolute;top:8px;left:8px;display:flex;flex-wrap:wrap;gap:5px;max-width:65%}
   .lot .flags .flag{position:static}
   .flag.new{background:var(--ok)}
+  .flag.two{background:#6a4fb3}
   .flag.arch{background:#6b7480}
   .lot.arch .ph img{filter:grayscale(.6)}
   .lot.arch .pr{color:var(--ink-2)}
@@ -400,7 +401,16 @@
 
   /* ── страница лота: ориентир под карточкой, калькулятор ── */
   .rcol{display:flex;flex-direction:column;gap:14px}
-  .rcol .mkt{margin-top:0}
+.rcol .mkt{margin-top:0}
+.multi{padding:14px 16px;border-color:#6a4fb3}
+.multi .hd{font-size:12px;font-weight:700;color:#6a4fb3;text-transform:uppercase;letter-spacing:.05em}
+.multi .sub{font-size:13px;color:var(--ink-2);margin:5px 0 8px}
+.mrow{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--hair);border-radius:7px;margin-top:6px;color:var(--ink)}
+.mrow:hover{border-color:#6a4fb3;text-decoration:none;background:var(--bg)}
+.mrow .mp{font-weight:700;min-width:110px}
+.mrow .mp em{font-style:normal;font-weight:400;font-size:11px;color:#fff;background:#6a4fb3;border-radius:8px;padding:1px 6px;margin-left:4px}
+.mrow .md{font-size:13px;color:var(--ink-2);flex:1}
+.mrow .mg{color:var(--ink-3)}
   .calcx{margin-top:22px;padding:20px 22px}
   .cx-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:16px}
   .cx-head h2{margin:0}
@@ -566,6 +576,8 @@
       <li><a href="https://e-auction.by" target="_blank" rel="noopener">БелЮрОбеспечение</a></li>
       <li><a href="https://ipmtorgi.by" target="_blank" rel="noopener">ИПМ-Торги</a></li>
       <li><a href="https://beltorgi.by" target="_blank" rel="noopener">Белреализация</a></li>
+      <li><a href="https://www.cpo.by" target="_blank" rel="noopener">Центр промышленной оценки</a></li>
+      <li><a href="https://konfiskat.by" target="_blank" rel="noopener">Торговый дом «Восточный»</a></li>
       <li><a href="https://bankrot.gov.by" target="_blank" rel="noopener">Реестр банкротств</a></li>
     </ul></div>
   </div>
@@ -723,7 +735,8 @@ function lotCard(l){
   const arch = l.status==='archive', d = left(l), urg = !arch && d>=0 && d<=7, dc = discount(l), pc = pchg(l);
   const flags = (arch?'<span class="flag arch">архив</span>':'')
     + (!arch&&isNew(l)?'<span class="flag new">новый</span>':'')
-    + (urg?`<span class="flag">${d===0?'последний день':d===1?'до завтра':d+' дн.'}</span>`:'');
+    + (urg?`<span class="flag">${d===0?'последний день':d===1?'до завтра':d+' дн.'}</span>`:'')
+    + (!arch&&l.alt?`<span class="flag two">${l.alt.length} ${plural(l.alt.length,'площадка','площадки','площадок')}</span>`:'');
   return `<a class="lot${arch?' arch':''}" href="#/lot/${encodeURIComponent(l.id)}">
     <div class="ph">
       ${l.photo?pic(l):`<div class="noph">нет фото</div>`}
@@ -737,7 +750,7 @@ function lotCard(l){
       <div class="loc">${esc(l.location||'—')}</div>
       <div class="ft">${arch
         ? `<span>${l.why==='removed'?'Снят':'Завершён'} <b>${dt(l.closed)}</b></span>`
-        : `<span>Заявки до <b>${dt(l.req_to)}</b></span>`}<span>${esc(l.platform)}</span></div>
+        : `<span>Заявки до <b>${dt(l.req_to)}</b></span>`}<span>${esc(l.alt?l.alt.map(a=>a.platform).join(' + '):l.platform)}</span></div>
     </div></a>`;
 }
 
@@ -750,7 +763,7 @@ function applyFilters(list, f){
     if(f.pmin && l.price < +f.pmin) return false;
     if(f.pmax && l.price > +f.pmax) return false;
     if(!arch && f.dto && l.req_to > new Date(f.dto+'T23:59:59').getTime()/1000) return false;
-    if(f.plat && l.platform!==f.plat) return false;
+    if(f.plat && l.platform!==f.plat && !(l.alt||[]).some(a=>a.platform===f.plat)) return false;
     if(f.photo && !l.photo) return false;
     if(f.mkt && !l.market) return false;
     if(f.soon && !isSoon(l)) return false;
@@ -775,7 +788,7 @@ const SORTS_ARCH = [['closed','Недавно завершённые'],['price-a
 function filterPanel(list, f, section){
   const arch = f.st==='arch';
   const regions=[...new Set(list.map(l=>l.region).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
-  const plats=[...new Set(list.map(l=>l.platform))].sort();
+  const plats=[...new Set(list.flatMap(l=>l.alt?l.alt.map(a=>a.platform):[l.platform]))].sort();
   const nA = section ? cnt(section) : DATA.length, nX = ARCHN[section||'_']||0;
   return `<aside class="panel filters" id="fp">
     <div class="fh"><span>Фильтры</span><button class="lnk" id="f-reset">Сбросить</button>
@@ -955,7 +968,9 @@ function calcBlock(l, det){
   const feeNote = !known ? 'Площадка не указала сборы по этому лоту — впишите, если знаете.'
     : l.platform==='beltorgi.by'
       ? 'Из карточки лота на площадке.' + (t.fee_later ? ' Сумму затрат площадка объявит до начала торгов — впишите её, когда узнаете.' : '')
-    : l.platform==='ipmtorgi.by'
+    : l.platform==='konfiskat.by'
+      ? 'Затраты на организацию и проведение торгов оплачиваются отдельно — сумму сообщает организатор (РУП «Торговый дом «Восточный»). Задаток — 10% по извещению.'
+    : ['ipmtorgi.by','cpo.by'].includes(l.platform)
       ? 'Из карточки лота на площадке. Точную сумму затрат площадка сообщает до начала торгов.'
       : 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.';
   const feesHtml = `<div class="cx-fees"><div class="cx-fh">Расходы сверх цены лота</div>
@@ -1051,6 +1066,19 @@ const rowsHtml = rows => `<div class="rows">${rows.map(([k,v])=> (!k || String(v
   ? `<div class="wide">${k?`<div class="k2">${esc(k)}</div>`:''}${esc(v)}</div>`
   : `<div class="k">${esc(k)}</div><div>${esc(v)}</div>`).join('')}</div>`;
 
+/* Лот выставлен на нескольких площадках — показываем все, с их сроками. Данные карточки — с той,
+   где торги раньше (она первая в списке). */
+function multiBlock(l){
+  const n = l.alt.length;
+  return `<div class="panel multi"><div class="hd">Торги на ${n===2?'двух':n} ${plural(n,'источнике','источниках','источниках')}</div>
+    <p class="sub">Один и тот же лот выставлен на ${n} ${plural(n,'площадке','площадках','площадках')}. Сведения на странице — с площадки, где торги раньше.</p>
+    ${l.alt.map((a,i)=>`<a class="mrow" href="${esc(a.url)}" target="_blank" rel="noopener">
+      <span class="mp">${esc(a.platform)}${i===0?' <em>основная</em>':''}</span>
+      <span class="md">заявки до <b>${a.req_to?dtm(a.req_to):'—'}</b>${a.torg?` · торги ${dtm(a.torg)}`:''}</span>
+      <span class="mg">↗</span></a>`).join('')}
+  </div>`;
+}
+
 function pageLot(id){
   let l = byId(id);
   if(!l && !ARCH){
@@ -1064,7 +1092,7 @@ function pageLot(id){
   $('#app').innerHTML = `<div class="wrap">
     ${crumbs([[secName(l.section), '#/s/'+l.section], ...(arch?[['Архив', `#/s/${l.section}?st=arch`]]:[]), ['Лот '+l.art]])}
     <div class="lothead">
-      <div class="tags"><span class="tag">${esc(secName(l.section))}</span><span class="tag g">${esc(l.platform)}</span>
+      <div class="tags"><span class="tag">${esc(secName(l.section))}</span>${(l.alt?l.alt.map(a=>a.platform):[l.platform]).map(p=>`<span class="tag g">${esc(p)}</span>`).join('')}
         <span class="tag g mono">№ ${esc(String(l.art))}</span>${arch?'<span class="tag a">Архив</span>':''}${!arch&&isNew(l)?'<span class="tag n">Новый</span>':''}</div>
       <h1 class="lotname">${esc(l.name)}</h1>
       <div class="where">${esc(l.location||'')}</div>
@@ -1092,6 +1120,7 @@ function pageLot(id){
             <a class="btn" href="#/help?lot=${encodeURIComponent(l.art)}">Помощь с этим лотом</a>
           </div>
         </aside>
+        ${l.alt?multiBlock(l):''}
         ${l.market?marketBlock(l):''}
       </div>
     </div>
@@ -1380,10 +1409,6 @@ function pageHome(){
         <div><span class="hn">4</span><h3>Покупаете с нами</h3><p>Проверим объект, съездим на осмотр, проведём через торги и сделку — если нужна помощь.</p></div>
       </div></div>
 
-    <div class="sec"><h2>Почему БелЛот</h2>
-      <div class="adv">${ADV.slice(0,6).map(([ic,t,d])=>`<div class="it"><div class="ic">${ic}</div><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
-      <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p></div>
-
     <div class="helpband">
       <div><h2>Первый раз на торгах?</h2>
         <p>Проверим объект до задатка, съездим на осмотр, подскажем разумный предел цены и проведём через аукцион.</p></div>
@@ -1392,6 +1417,10 @@ function pageHome(){
 
     ${carousel('Истекающие торги', 'Приём заявок закрывается в ближайшие 3 дня', soon, '#/catalog?view=soon')}
     ${carousel('Новые лоты', 'Появились на площадках за последние сутки', fresh, '#/catalog?view=new')}
+
+    <div class="sec"><h2>Почему БелЛот</h2>
+      <div class="adv">${ADV.slice(0,6).map(([ic,t,d])=>`<div class="it"><div class="ic">${ic}</div><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
+      <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p></div>
   </div>`;
   attachSuggest($('#ls-q'), $('#ls-sugg'));
   bindCarousels();

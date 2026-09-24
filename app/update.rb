@@ -18,7 +18,7 @@ require_relative 'store'
 
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
-WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3 }.freeze
+WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'cpo.by' => 2, 'konfiskat.by' => 1 }.freeze   # konfiskat.by банит частые запросы
 MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
 # Условия покупки (задаток, шаг, сборы) появились позже самих лотов. У известных лотов без них
 # робот дозаполняет их постепенно — не больше TERMS_CAP страниц за прогон, чтобы не нагружать площадки.
@@ -35,7 +35,12 @@ PLAN = {
   'ipmtorgi.by'  => [['/auctions/nedvizhimost/', 'nedvizhimost'], ['/auctions/transport-i-spetstekhnika/', nil],
                      ['/auctions/stanki-oborudovanie/', 'oborud']],
   'beltorgi.by'  => [['nedvizhimost', 'nedvizhimost'], ['legkovye-avto', 'avto'], ['gruzovye-avto', 'gruz'],
-                     ['avtobusy', 'gruz'], ['specztexnika', 'spec'], ['stanki-i-oborudovanie', 'oborud']]
+                     ['avtobusy', 'gruz'], ['specztexnika', 'spec'], ['stanki-i-oborudovanie', 'oborud']],
+  # ЦПО — сайт организатора торгов на ИПМ: лоты почти все те же, склеиваются при сборке сайта (build.rb)
+  'cpo.by'       => [['nedvizhimost', 'nedvizhimost'], ['transport-i-spetstekhnika', nil], ['stanki-oborudovanie', 'oborud']],
+  # konfiskat.by: 'auto' — легковые и грузовые вперемешку, разносим по названию
+  'konfiskat.by' => [['avtotransport/auktsiony', 'auto'], ['nedvizhimost/auktsiony', 'nedvizhimost'],
+                     ['own-property/auctions', 'oborud']]
 }.freeze
 
 # У ИПМ-Торгов транспорт и спецтехника — один раздел; разносим по началу названия
@@ -47,10 +52,17 @@ def ipm_kind(name)
   'spec'
 end
 
+# konfiskat.by: автотранспорт одним списком — грузовое узнаём по названию
+def kf_kind(name)
+  name.downcase =~ /грузов|тягач|самосвал|автобус|прицеп|фургон|рефрижер|бортов|цистерн|\bмаз\b|камаз|\bmaz\b|kamaz|scania|\bdaf\b|\bman\b|iveco|actros|atego|magnum/ ? 'gruz' : 'avto'
+end
+
 def list(plat, path)
   case plat
   when 'e-auction.by' then Src.ea_list(path)
   when 'ipmtorgi.by'  then Src.ipm_list(path)
+  when 'cpo.by'       then Src.cpo_list(path)
+  when 'konfiskat.by' then Src.kf_list(path)
   else Src.bt_list(path)
   end
 end
@@ -60,9 +72,11 @@ def fetch_detail(c)
   d = case c['platform']
       when 'e-auction.by' then Src.ea_detail(html)
       when 'ipmtorgi.by'  then Src.ipm_detail(html)
+      when 'cpo.by'       then Src.ipm_detail(html, Src::CPO)
+      when 'konfiskat.by' then Src.kf_detail(html, c)
       else Src.bt_detail(html)
       end
-  sleep 0.4
+  sleep c['platform'] == 'konfiskat.by' ? 1.5 : 0.4
   d
 end
 
@@ -74,13 +88,13 @@ end
 
 def new_lot(c, sec, d, src, now)
   plat = c['platform']
-  loc = plat == 'ipmtorgi.by' ? c['location'].to_s : d['location'].to_s
+  loc = %w[ipmtorgi.by cpo.by].include?(plat) ? c['location'].to_s : d['location'].to_s
   if plat == 'beltorgi.by' && loc !~ /обл|г\.\s*Минск/
     loc = [c['region'], loc].reject { |x| x.to_s.empty? }.join(', ')
   end
   price = c['price'].to_f.positive? ? c['price'] : d['price_byn'].to_f
   { 'key' => c['key'], 'status' => 'active', 'src' => src, 'first_seen' => now, 'last_seen' => now,
-    'art' => plat == 'ipmtorgi.by' && !d['lotno'].to_s.empty? ? d['lotno'] : c['art'],
+    'art' => %w[ipmtorgi.by cpo.by].include?(plat) && !d['lotno'].to_s.empty? ? d['lotno'] : c['art'],
     'name' => plat == 'beltorgi.by' && !d['title'].to_s.empty? ? d['title'] : c['name'],
     'price' => price, 'prices' => [[now, price]],
     # у ИПМ точное время — в карточке лота; у beltorgi в списке его нет вовсе
@@ -114,7 +128,9 @@ PLAN.map do |plat, secs|
       STDERR.puts "#{src}: в списке #{cards.size}"
       cards.each do |c|
         next if plat == 'beltorgi.by' && !c['open']          # ещё не принимают заявки
-        s = sec || ipm_kind(c['name'])
+        # у konfiskat в карточке — дата аукциона, заявки закрываются в 12:00 накануне: закрытые не качаем
+        next if c['day'] && plat == 'konfiskat.by' && c['day'] - 12 * 3600 < Time.now.to_i
+        s = sec == 'auto' ? kf_kind(c['name']) : (sec || ipm_kind(c['name']))
         min = MIN_PRICE[s]
         next if min && c['price'].to_f.positive? && c['price'] < min
         todo << [c, s, src]

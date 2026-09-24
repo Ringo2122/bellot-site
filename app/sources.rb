@@ -6,6 +6,8 @@
 # Страница лота: details (секции «ключ — значение»), location, debtor, area, torg, photo.
 require 'json'
 require 'time'
+require 'tmpdir'
+require_relative 'pdftext'
 Encoding.default_external = Encoding::UTF_8
 Encoding.default_internal = Encoding::UTF_8
 ENV['TZ'] = 'Europe/Minsk'   # площадки пишут минское время без зоны
@@ -15,6 +17,8 @@ module Src
   EA = 'https://e-auction.by'
   IPM = 'https://ipmtorgi.by'
   BT = 'https://beltorgi.by'
+  CPO = 'https://www.cpo.by'
+  KF = 'https://konfiskat.by'
   MAX_PAGES = 40
 
   EA_SUBS = {
@@ -180,7 +184,7 @@ module Src
     out
   end
 
-  def ipm_detail(html)
+  def ipm_detail(html, host = IPM)
     # заголовок секции стоит ПЕРЕД блоком строк — сшиваем по порядку
     heads = html.scan(/aution-inform-zag">(.*?)<\/div>/m).flatten.map { |h| txt(h) }
     secs = []
@@ -200,11 +204,11 @@ module Src
       'lotno' => txt(html[/aution-main__lot">.*?<b>(.*?)<\/b>/m, 1]),
       # цена бывает в USD/EUR — площадка сама показывает пересчёт в BYN
       'price_byn' => num(html[/class="valute_price">\s*<div><b>([\d\s.,]+)<\/b>\s*BYN/, 1]),
-      'req_to' => ts(txt(html[/Время окончания приёма заявок:<\/b>\s*<br\s*\/?>\s*([0-9:. ]+)/m, 1])),
-      'torg' => ts(txt(html[/Время начала торгов:<\/b>\s*<br\s*\/?>\s*([0-9:. ]+)/m, 1])),
+      'req_to' => ts(txt(html[/Время окончания приёма заявок:<\/b>\s*<br\s*\/?>\s*([^<]+)/m, 1]).gsub('&nbsp;', ' ')),
+      'torg' => ts(txt(html[/Время начала торгов:<\/b>\s*<br\s*\/?>\s*([^<]+)/m, 1]).gsub('&nbsp;', ' ')),
       'area_num' => arow && area_m2(arow[0], arow[1]),
       'debtor' => (seller.find { |k, _| k =~ /Наименование/ } || [])[1],
-      'photo_url' => pic && IPM + pic, 'terms' => ipm_terms(html) }
+      'photo_url' => pic && host + pic, 'terms' => ipm_terms(html) }
   end
 
   # «Шаг аукциона: 5% от текущей цены», «Сумма задатка: 3 336.96 BYN»,
@@ -338,4 +342,124 @@ module Src
     t['v'] = 2
     t
   end
+  # ---------------- cpo.by (ЗАО «Центр промышленной оценки») ----------------
+  # Сайт организатора; торги он проводит на ipmtorgi.by, поэтому лоты почти все те же, с тем же
+  # номером и сроками. Список — по 9, по дате аукциона от поздних к ранним, с архивом: стоп на первой
+  # странице, где есть прошедшие даты. Страница лота — шаблон ИПМ (ipm_detail с хостом ЦПО).
+  def cpo_list(section)
+    out = []
+    seen = {}
+    today = Time.now.to_i - 86_400
+    (1..MAX_PAGES).each do |p|
+      html = get("#{CPO}/auctions/filter/section-is-#{section}/apply/" + (p > 1 ? "?PAGEN_1=#{p}" : '')) or break
+      got = html.split('class="sales__item"').drop(1).map do |ch|
+        ch = ch[0, 5000]
+        slug = ch[%r{href="https://www\.cpo\.by/auctions/([^/"]+)/"}, 1] or next
+        day = ts(ch[/sales__item-title-date.*?(\d{2}\.\d{2}\.\d{4})/m, 1].to_s + ' 00:00')
+        pr = txt(ch[/sales__item-price__bottom[^>]*>(.*?)<div class="valute_price"/m, 1]).gsub('&nbsp;', '')
+        img = ch[/background-image: url\('(\/upload\/[^']+)'\)/, 1]
+        { 'key' => "cpo-#{slug}", 'platform' => 'cpo.by', 'art' => slug,
+          'name' => txt(ch[/sales__item-title-title">(.*?)<\/div>/m, 1]),
+          'price' => pr.include?('BYN') ? num(pr[/[\d\s.,]+(?=\s*BYN)/]) : 0.0,
+          'day' => day, 'location' => txt(ch[/location--addr"><span>(.*?)<\/span>/m, 1]),
+          'url' => "#{CPO}/auctions/#{slug}/", 'thumb' => img && CPO + img }
+      end.compact
+      break if got.empty?
+      fresh = got.reject { |c| seen[c['key']] }
+      break if fresh.empty?
+      fresh.each { |c| seen[c['key']] = true }
+      out.concat(fresh.select { |c| c['day'].to_i >= today })
+      break if got.map { |c| c['day'] }.compact.min.to_i < today
+      sleep 0.6
+  end
+    out
+  end
+
+  # ---------------- konfiskat.by (РУП «Торговый дом «Восточный») ----------------
+  # Аукционы: автотранспорт (основное), недвижимость, прочее имущество. В карточке — дата аукциона,
+  # срок заявок и задаток — только в PDF-извещении (одно на аукцион, ссылка — на странице лота):
+  # «состоится 20.10.26 в 12:00 г. Минск», «Не позднее 12.00 дня, предшествующего дню проведения
+  # электронных торгов…», «Размер задатка – 10% от начальной цены продажи».
+  def kf_list(path)
+    out = []
+    seen = {}
+    (1..MAX_PAGES).each do |p|
+      html = get("#{KF}/#{path}/" + (p > 1 ? "?PAGEN_1=#{p}" : '')) or break
+      got = html.split('class="product-card grid-card-style"').drop(1).map do |ch|
+        href = ch[/class="product-name"[^>]*href="([^"]+)"|href="([^"]+)"[^>]*class="product-name"/, 1] ||
+               ch[/href="([^"]+)"[^>]*class="product-name"/, 1]
+        id = href.to_s[%r{/(\d+)/\z}, 1] or next
+        img = ch[/<img src="(\/upload\/[^"]+)"/, 1]
+        { 'key' => "kf-#{id}", 'platform' => 'konfiskat.by', 'art' => ch[/Лот №\s*(\d+)/, 1] || id,
+          'name' => txt(ch[/class="product-name"[^>]*>(.*?)<\/a>/m, 1]),
+          'price' => num(txt(ch[/product-price-new[^>]*>\s*<span>([^<]+)/m, 1]).gsub('&nbsp;', '')),
+          'day' => ts(txt(ch[/auction-date.*?<\/svg>(.*?)<\/span>/m, 1]).gsub('&nbsp;', ' ')[/\d{2}\.\d{2}\.\d{4}/].to_s + ' 00:00'),
+          'url' => KF + href, 'thumb' => img && KF + img }
+      end.compact
+      break if got.empty?
+      fresh = got.reject { |c| seen[c['key']] }
+      break if fresh.empty?
+      fresh.each { |c| seen[c['key']] = true }
+      out.concat(fresh)
+      sleep 1.5   # konfiskat.by закрывает доступ при частых запросах
+  end
+    out
+  end
+
+  NOTICES = {}
+  NOTICE_LOCK = Mutex.new
+
+  # Извещение читаем один раз на прогон: оно общее для десятков лотов одного аукциона
+  def kf_notice(url)
+    NOTICE_LOCK.synchronize do
+      return NOTICES[url] if NOTICES.key?(url)
+      tmp = File.join(Dir.tmpdir, "kf-notice-#{url.hash.abs}.pdf")
+      system('curl', '-sS', '-L', '-m', '60', '-A', UA, '-o', tmp, url, out: File::NULL, err: File::NULL)
+      t = (File.exist?(tmp) ? PdfText.text(tmp) : '').gsub(/\s+/, ' ') rescue ''
+      File.delete(tmp) if File.exist?(tmp)
+      n = {}
+      if (m = t.match(/состоится\s+(\d{2})\.(\d{2})\.(\d{2,4})\s+в\s+(\d{1,2})[:.](\d{2})/))
+        y = m[3].size == 2 ? 2000 + m[3].to_i : m[3].to_i
+        n['torg'] = Time.local(y, m[2].to_i, m[1].to_i, m[4].to_i, m[5].to_i).to_i
+        n['city'] = t[/состоится\s+[\d.]+\s+в\s+[\d:.]+\s*(?:г\.)?\s*г\.\s*([А-ЯЁ][а-яё-]+)/, 1] ||
+                    t[/состоится.{0,40}?г\.\s*([А-ЯЁ][а-яё-]+)/, 1]
+      end
+      if n['torg'] && (m = t.match(/Не позднее\s+(\d{1,2})[.:](\d{2})\s+дня,\s+предшествующего дню проведения/i))
+        d = Time.at(n['torg'] - 86_400)
+        n['req_to'] = Time.local(d.year, d.month, d.day, m[1].to_i, m[2].to_i).to_i
+      end
+      n['deposit_pct'] = num(t[/Размер задатка\s*[–-]\s*([\d.,]+)\s*%/, 1])
+      n['pay'] = t[/окончательные расчеты[^.]{0,120}?(в течение\s+\d+[^.,;]{0,40})/i, 1]
+      NOTICES[url] = n if n['torg']   # не скачалось — попробуем для следующего лота
+      n
+  end
+  end
+
+  def kf_detail(html, card = {})
+    secs = []
+    extra = txt(html[/Дополнительная информация:\s*<\/p>(.*?)<\/div>/m, 1] || html[/Дополнительная информация:(.*?)<\/p>\s*<p/m, 1])
+    rows = html.scan(/<li><p><span>([^<]+):<\/span>(.*?)<\/p><\/li>/m).map { |k, v| [txt(k), txt(v)] }
+               .reject { |k, v| v.empty? || k =~ /Ссылка на извещение/ }
+    secs << { 'h' => 'Информация о предмете торгов', 'rows' => rows } unless rows.empty?
+    secs.first['rows'].unshift(['Описание', extra]) if !extra.empty? && secs.first
+    pdf = html[%r{href="(/upload/[^"]+\.pdf)"}i, 1]
+    n = pdf ? kf_notice(KF + pdf) : {}
+    day = card['day'] || ts(html[/Дата проведения аукциона:.*?(\d{2}\.\d{2}\.\d{4})/m, 1].to_s + ' 00:00')
+    torg = n['torg'] || (day && day + 12 * 3600)
+    # правило из извещений: заявки — до 12:00 дня, предшествующего аукциону
+    req = n['req_to'] || (torg && Time.at(torg - 86_400).then { |d| Time.local(d.year, d.month, d.day, 12, 0).to_i })
+    cond = [['Дата аукциона', torg && Time.at(torg).strftime('%d.%m.%Y %H:%M')],
+            ['Приём заявок до', req && Time.at(req).strftime('%d.%m.%Y %H:%M')],
+            ['Задаток', "#{(n['deposit_pct'] || 10).to_s.sub(/\.0\z/, '')}% от начальной цены"],
+            ['Извещение', pdf && KF + pdf]].select { |_, v| v }
+    secs.unshift({ 'h' => 'Условия торгов', 'rows' => cond })
+    pics = html.scan(%r{src="(/upload/(?:avto|iblock|resize_cache)[^"]+\.(?:jpg|jpeg|png))"}i).flatten.uniq
+    owner = extra[/Находится в собственности\s+([^.]+)/, 1]
+    { 'details' => secs, 'req_to' => req, 'torg' => torg,
+      'location' => n['city'] ? "г. #{n['city']}" : nil, 'debtor' => owner ? owner.strip : 'Конфискованное имущество',
+      'photo_url' => pics.first && KF + pics.first,
+      'terms' => { 'deposit' => card['price'].to_f * (n['deposit_pct'] || 10) / 100, 'fee_later' => true,
+                   'pay_term' => n['pay'], 'v' => 2 }.reject { |_, v| v.nil? || v == 0.0 } }
+  end
+
 end
