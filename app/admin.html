@@ -139,27 +139,27 @@
   .radios{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0}
   .radios label{display:flex;gap:5px;align-items:center}
 
-/* аналитика */
-.grid2c{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.grid2c>.panel{margin-bottom:16px}
-.cols{display:flex;align-items:flex-end;gap:3px;height:190px;padding-top:4px}
-.col{flex:1;min-width:4px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;text-align:center}
-.col b{font-size:10px;font-weight:600;color:var(--ink-2);min-height:13px;line-height:13px}
-.col .stk{display:flex;flex-direction:column-reverse;border-radius:3px 3px 0 0;overflow:hidden;min-height:0}
-.col .stk i{display:block;min-height:1px}
-.col span{font-size:10px;color:var(--ink-3);height:14px;line-height:14px;margin-top:3px;white-space:nowrap;overflow:visible}
-.lg{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink-2)}
-.lg i,.dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
-.hb-r{display:grid;grid-template-columns:minmax(110px,34%) 1fr auto;gap:10px;align-items:center;padding:4px 0}
-.hb-l{font-size:13px;color:var(--ink-2)}
-.hb-t{background:#eef1f4;border-radius:4px;height:14px;overflow:hidden}
-.hb-t i{display:block;height:100%;border-radius:4px}
-.hb-v{font-size:13px;font-weight:600;white-space:nowrap}
-.hb-v small{font-weight:400;color:var(--ink-3)}
-table.at td,table.at th{white-space:nowrap}
-table.at td:first-child{white-space:normal;min-width:160px}
-.heat{display:inline-block;min-width:34px;text-align:center;border-radius:4px;padding:1px 6px;color:var(--ink);font-weight:600}
-@media (max-width:860px){ .grid2c{grid-template-columns:1fr} }
+  /* аналитика */
+  .grid2c{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid2c>.panel{margin-bottom:16px}
+  .cols{display:flex;align-items:flex-end;gap:3px;height:190px;padding-top:4px}
+  .col{flex:1;min-width:4px;max-width:56px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;text-align:center}
+  .col b{font-size:10px;font-weight:600;color:var(--ink-2);min-height:13px;line-height:13px}
+  .col .stk{display:flex;flex-direction:column-reverse;border-radius:3px 3px 0 0;overflow:hidden;min-height:0}
+  .col .stk i{display:block;min-height:1px}
+  .col span{font-size:10px;color:var(--ink-3);height:14px;line-height:14px;margin-top:3px;white-space:nowrap;overflow:visible}
+  .lg{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink-2)}
+  .lg i,.dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .hb-r{display:grid;grid-template-columns:minmax(110px,34%) 1fr auto;gap:10px;align-items:center;padding:4px 0}
+  .hb-l{font-size:13px;color:var(--ink-2)}
+  .hb-t{background:#eef1f4;border-radius:4px;height:14px;overflow:hidden}
+  .hb-t i{display:block;height:100%;border-radius:4px}
+  .hb-v{font-size:13px;font-weight:600;white-space:nowrap}
+  .hb-v small{font-weight:400;color:var(--ink-3)}
+  table.at td,table.at th{white-space:nowrap}
+  table.at td:first-child{white-space:normal;min-width:160px}
+  .heat{display:inline-block;min-width:34px;text-align:center;border-radius:4px;padding:1px 6px;color:var(--ink);font-weight:600}
+  @media (max-width:860px){ .grid2c{grid-template-columns:1fr} }
   #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;z-index:80;max-width:90vw}
   #toast.on{opacity:1}
   #toast.err{background:var(--bad)}
@@ -830,7 +830,7 @@ async function pStats(params){
   const secRows = SECS.filter(([s])=>!sec||s===sec).map(([s,t])=>{ const m = market.filter(l=>l.section===s), pr = m.map(l=>+l.price).filter(x=>x>0);
     const ds = m.map(disc).filter(x=>x!==null);
     return [`<span class="dot" style="background:${SEC_COL[s]}"></span>${t}`, nf(m.length), nf(fresh.filter(l=>l.section===s).length), nf(done.filter(l=>l.section===s).length), big(val(m)),
-      nf(med(pr)), pr.length?nf(Math.min(...pr)):'—', pr.length?big(Math.max(...pr)):'—', ds.length?med(ds)+'%':'—']; });
+      nf(med(pr)), pr.length?nf(Math.min(...pr)):'—', pr.length?big(Math.max(...pr)):'—', ds.length?Math.round(med(ds))+'%':'—']; });
   // регионы × разделы
   const REG = ['г. Минск','Минская область','Брестская область','Витебская область','Гомельская область','Гродненская область','Могилевская область'];
   const regOf = l => REG.includes(l.region) ? l.region : 'не указан / другое';
@@ -844,7 +844,7 @@ async function pStats(params){
   const PB = [[0,5e3,'до 5 тыс.'],[5e3,2e4,'5–20 тыс.'],[2e4,5e4,'20–50 тыс.'],[5e4,1e5,'50–100 тыс.'],[1e5,5e5,'100–500 тыс.'],[5e5,Infinity,'от 500 тыс.']];
   const priceRows = PB.map(([a,b,t])=>{ const n = market.filter(l=>l.price>=a && l.price<b).length; return [t+' BYN', n, pc(n, market.length)]; });
   // недвижимость: цена м²
-  const realty = lots.filter(l=>l.status==='active' && !['dup','hidden'].includes(l.hidden_why) && l.section==='nedvizhimost' && +l.area_num>0 && +l.price>0);
+  const realty = lots.filter(l=>l.status==='active' && !['dup','hidden'].includes(l.hidden_why) && l.section==='nedvizhimost' && +l.area_num>0 && +l.area_num<=1000 && +l.price>0);
   const sqm = regs.map(r=>{ const a = realty.filter(l=>regOf(l)===r).map(l=>l.price/l.area_num); return a.length ? [r, Math.round(med(a)), `${a.length} ${plural(a.length,'объект','объекта','объектов')}`] : null; }).filter(Boolean).sort((a,b)=>b[1]-a[1]);
   // дисконт к рынку
   const DB = [[-1e9,0,'дороже рынка'],[0,20,'дешевле на 0–20%'],[20,40,'на 20–40%'],[40,60,'на 40–60%'],[60,1e9,'на 60% и больше']];
@@ -853,7 +853,7 @@ async function pStats(params){
   // снижение цены
   const drops = market.filter(l=>+l.price0>0 && +l.price<+l.price0).map(l=>[l, Math.round((l.price0-l.price)/l.price0*100)]).sort((a,b)=>b[1]-a[1]);
   // продавцы
-  const sellers = {}; market.forEach(l=>{ const d = (l.debtor||'').trim(); if(!d) return; const x = sellers[d] ||= { n:0, v:0 }; x.n++; x.v += +l.price||0; });
+  const sellers = {}; market.forEach(l=>{ const d = (l.debtor||'').trim(); if(!d || /^(Конфискованное имущество|Физическое лицо)$/.test(d)) return; const x = sellers[d] ||= { n:0, v:0 }; x.n++; x.v += +l.price||0; });
   const topSell = Object.entries(sellers).sort((a,b)=>b[1].n-a[1].n).slice(0,12);
   // качество данных
   const qRows = PLATS.map(p=>{ const m = market.filter(l=>l.platform===p); if(!m.length) return null;
@@ -879,7 +879,7 @@ async function pStats(params){
       <div class="kpi"><b>${nf(done.filter(l=>l.why==='deadline').length)}</b><span>закрыт приём заявок за ${perTxt}</span></div>
       <div class="kpi"><b>${nf(done.filter(l=>l.why==='removed').length)}</b><span>снято площадками досрочно</span></div>
       <div class="kpi"><b>${big(val(market))}</b><span>BYN — сумма стартовых цен на рынке</span></div>
-      <div class="kpi"><b>${discs.length?med(discs)+'%':'—'}</b><span>медианная скидка к рынку (${nf(discs.length)} лотов с ориентиром)</span></div>
+      <div class="kpi"><b>${discs.length?Math.round(med(discs))+'%':'—'}</b><span>медианная скидка к рынку (${nf(discs.length)} ${plural(discs.length,'лот','лота','лотов')} с ориентиром)</span></div>
     </div>
     <div class="panel"><h2>Новые лоты по дням</h2>${freshDays.length?cols(freshDays):'<p class="muted">Нет данных.</p>'}${legend()}</div>
     <div class="panel"><h2>Размер рынка по дням</h2>${dyn.length>=2 ? cols(dyn) + (sec?'':legend()) : `<p class="muted">Снимок каталога сохраняется после каждой сборки, по одному на день. Первый — ${dyn[0]?dshort(dyn[0].key):'сегодня'}; график появится со второго дня.</p>`}</div>
@@ -893,12 +893,12 @@ async function pStats(params){
     </div>
     <div class="panel"><h2>Закрытие приёма заявок — ближайшие 14 дней</h2>${cols(soonDays)}${legend()}</div>
     <div class="grid2c">
-      <div class="panel"><h2>Недвижимость: медианная цена м²</h2>${sqm.length?hbars(sqm.map(([r,v,n])=>[r,v,n]),' BYN'):'<p class="muted">Нет лотов с указанной площадью.</p>'}<p class="muted">Стартовая цена, делённая на площадь; все типы недвижимости вместе.</p></div>
-      <div class="panel"><h2>Крупнейшие продавцы</h2>${topSell.length?tbl(['Должник / продавец','Лотов','Сумма, BYN'], topSell.map(([d,x])=>[esc(d.slice(0,80)), nf(x.n), big(x.v)])):'<p class="muted">Нет данных.</p>'}</div>
+      <div class="panel"><h2>Недвижимость: медианная цена м²</h2>${sqm.length?hbars(sqm.map(([r,v,n])=>[r,v,n]),' BYN'):'<p class="muted">Нет лотов с указанной площадью.</p>'}<p class="muted">Стартовая цена, делённая на площадь. Объекты до 1 000 м² — квартиры, дома, помещения; комплексы и заводы искажают картину и не учитываются.</p></div>
+      <div class="panel"><h2>Крупнейшие продавцы</h2><p class="muted" style="margin-top:0">По числу лотов на рынке; конфискат и физлица не в счёт.</p>${topSell.length?tbl(['Должник / продавец','Лотов','Сумма, BYN'], topSell.map(([d,x])=>[esc(d.slice(0,80)), nf(x.n), big(x.v)])):'<p class="muted">Нет данных.</p>'}</div>
     </div>
     <div class="panel"><h2>Самая большая скидка к рынку</h2>${topDisc.length?tbl(['Лот','Площадка','Цена, BYN','Рынок, BYN','Скидка'], topDisc.map(l=>[link(l), esc(l.platform), nf(l.price), nf(l.market.median), `<b>${disc(l)}%</b>`])):'<p class="muted">Нет данных.</p>'}
       <p class="muted">Большая скидка бывает и ошибкой сравнения — проверьте в разделе «Ориентиры».</p></div>
-    <div class="panel"><h2>Снижение цены (повторные торги)</h2>${drops.length?`<p style="margin-top:0">${nf(drops.length)} ${plural(drops.length,'лот подешевел','лота подешевели','лотов подешевели')} с момента появления, медиана снижения — ${med(drops.map(x=>x[1]))}%.</p>`+tbl(['Лот','Площадка','Было, BYN','Стало, BYN','Снижение'], drops.slice(0,10).map(([l,d])=>[link(l), esc(l.platform), nf(l.price0), nf(l.price), `<b>−${d}%</b>`])):'<p class="muted">Пока ни один лот не подешевел — история цен копится с запуска робота.</p>'}</div>
+    <div class="panel"><h2>Снижение цены (повторные торги)</h2>${drops.length?`<p style="margin-top:0">${nf(drops.length)} ${plural(drops.length,'лот подешевел','лота подешевели','лотов подешевели')} с момента появления, медиана снижения — ${Math.round(med(drops.map(x=>x[1])))}%.</p>`+tbl(['Лот','Площадка','Было, BYN','Стало, BYN','Снижение'], drops.slice(0,10).map(([l,d])=>[link(l), esc(l.platform), nf(l.price0), nf(l.price), `<b>−${d}%</b>`])):'<p class="muted">Пока ни один лот не подешевел — история цен копится с запуска робота.</p>'}</div>
     <div class="panel"><h2>Качество данных площадок</h2>${tbl(['Площадка','Лотов','Без фото','Без цены','Без города','Срок по правилу','С ориентиром'], qRows)}</div>
     <div class="grid2c">
       <div class="panel"><h2>Заявки за ${perTxt}</h2><p style="margin-top:0"><b>${nf(lp.length)}</b> ${plural(lp.length,'заявка','заявки','заявок')}${lp.length?': '+Object.entries(LS).map(([k,t])=>`${t} — ${lp.filter(r=>r.status===k).length}`).join(', '):''}.</p>
