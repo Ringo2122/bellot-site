@@ -33,18 +33,19 @@
   const dshort = k => k.slice(8,10) + '.' + k.slice(5,7);
   const dt = s => { const d = new Date(s*1000); return `${p2(d.getDate())}.${p2(d.getMonth()+1)}.${d.getFullYear()}`; };
 
+  // классы с приставкой bk-: у сайта свои .kpis/.kpi (на главной сдвинуты вверх) — не пересекаемся
   const CSS = `
-  .bls .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px}
-  .bls .kpi{background:#fff;border:1px solid #dde2e8;border-radius:10px;padding:12px 14px;box-shadow:0 1px 3px rgba(20,30,45,.08)}
-  .bls .kpi b{display:block;font-size:24px}
-  .bls .kpi span{color:#4a5563;font-size:13px}
+  .bls .bk-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+  .bls .bk-kpi{background:#fff;border:1px solid #dde2e8;border-radius:10px;padding:12px 14px;box-shadow:0 1px 3px rgba(20,30,45,.08)}
+  .bls .bk-kpi b{display:block;font-size:24px}
+  .bls .bk-kpi span{color:#4a5563;font-size:13px}
   .bls .pnl{background:#fff;border:1px solid #dde2e8;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(20,30,45,.08);margin-bottom:16px}
   .bls .pnl h2{font-size:16px;margin:0 0 10px}
   .bls .mut{color:#77818d;font-size:13px}
   .bls .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
   .bls .tabs a{padding:6px 12px;border-radius:16px;border:1px solid #c6cdd6;text-decoration:none;color:#1a2330;background:#fff;font-size:14px}
   .bls .tabs a.on{background:#12508f;border-color:#12508f;color:#fff}
-  .bls .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .bls .g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
   .bls .cols{display:flex;align-items:flex-end;gap:3px;height:190px;padding-top:4px}
   .bls .col{flex:1;min-width:4px;max-width:56px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;text-align:center}
   .bls .col b{font-size:10px;font-weight:600;color:#4a5563;min-height:13px;line-height:13px}
@@ -204,13 +205,13 @@
     el.innerHTML = `<div class="bls">
       <div class="tabs">${[['7','7 дней'],['30','30 дней'],['90','90 дней'],['all','Всё время']].map(([k,t])=>`<a href="${href(k, sec)}" class="${k===per?'on':''}">${t}</a>`).join('')}
         <span style="width:12px"></span><a href="${href(per,'')}" class="${!sec?'on':''}">Все разделы</a>${SECS.map(([k,t])=>`<a href="${href(per,k)}" class="${k===sec?'on':''}">${t}</a>`).join('')}</div>
-      ${on.has('kpi')?`<div class="kpis">
-        <div class="kpi"><b>${nf(market.length)}</b><span>лотов на рынке сейчас${o.admin?` (на сайте ${nf(onSite.length)})`:''}</span></div>
-        <div class="kpi"><b>${nf(fresh.length)}</b><span>новых за ${perTxt}</span></div>
-        <div class="kpi"><b>${nf(done.filter(l=>l.why==='deadline').length)}</b><span>закрыт приём заявок за ${perTxt}</span></div>
-        <div class="kpi"><b>${nf(done.filter(l=>l.why==='removed').length)}</b><span>снято площадками досрочно</span></div>
-        <div class="kpi"><b>${big(val(market))}</b><span>BYN — сумма стартовых цен на рынке</span></div>
-        <div class="kpi"><b>${discs.length?Math.round(med(discs))+'%':'—'}</b><span>медианная скидка к рынку (${nf(discs.length)} ${plural(discs.length,'лот','лота','лотов')} с ориентиром)</span></div>
+      ${on.has('kpi')?`<div class="bk-kpis">
+        <div class="bk-kpi"><b>${nf(market.length)}</b><span>лотов на рынке сейчас${o.admin?` (на сайте ${nf(onSite.length)})`:''}</span></div>
+        <div class="bk-kpi"><b>${nf(fresh.length)}</b><span>новых за ${perTxt}</span></div>
+        <div class="bk-kpi"><b>${nf(done.filter(l=>l.why==='deadline').length)}</b><span>закрыт приём заявок за ${perTxt}</span></div>
+        <div class="bk-kpi"><b>${nf(done.filter(l=>l.why==='removed').length)}</b><span>снято площадками досрочно</span></div>
+        <div class="bk-kpi"><b>${big(val(market))}</b><span>BYN — сумма стартовых цен на рынке</span></div>
+        <div class="bk-kpi"><b>${discs.length?Math.round(med(discs))+'%':'—'}</b><span>медианная скидка к рынку (${nf(discs.length)} ${plural(discs.length,'лот','лота','лотов')} с ориентиром)</span></div>
       </div>`:''}
       ${P.join('')}
       ${on.has('csv')?`<p><button class="btn2" type="button" data-bls-csv>Выгрузить рынок в Excel (CSV)</button> <span class="mut">${nf(market.length)} лотов с текущими фильтрами</span></p>`:''}
