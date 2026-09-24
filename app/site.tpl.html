@@ -170,14 +170,17 @@
   .lot .ft b{color:var(--ink-2)}
 
   /* ── фильтры ── */
-  .fg{margin-bottom:15px}
+  .fg{margin-bottom:13px}
   .fg:last-child{margin-bottom:0}
-  .fg label{display:block;font-size:12px;font-weight:700;color:var(--ink-3);margin-bottom:5px;
+  .fg label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-3);margin-bottom:5px;
     text-transform:uppercase;letter-spacing:.04em}
   .fg input,.fg select{width:100%;padding:7px 9px;border:1px solid var(--hair-2);border-radius:5px;
     background:var(--card);color:var(--ink);min-width:0}
   .fg .two{display:flex;gap:7px}
   .fg .two input{width:50%}
+  .fg .chk{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:400;color:var(--ink);text-transform:none;
+    letter-spacing:0;margin:0;padding:4px 0;cursor:pointer}
+  .fg .chk input{width:17px;height:17px;margin:0;accent-color:var(--brand);flex:none}
   .fcount{font-size:13px;color:var(--ink-2);margin-bottom:13px}
   .fcount b{color:var(--ink)}
   .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
@@ -237,12 +240,23 @@
   .cat-head{margin-bottom:18px}
   .cat-head h1{margin:0}
   .cat-head .lede{margin:5px 0 0}
-  .layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:22px;align-items:start}
-  .filters{position:sticky;top:62px;max-height:calc(100vh - 78px);overflow:auto;scrollbar-width:thin;
-    display:flex;flex-direction:column}
-  .filters .fh{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--hair);
-    font-weight:700;position:sticky;top:0;background:var(--card);z-index:1}
-  .filters .fb{padding:14px 16px 16px}
+  .layout{display:grid;grid-template-columns:272px minmax(0,1fr);gap:24px;align-items:start}
+  .layout>#fwrap{align-self:stretch}   /* обёртка во всю высоту колонки — иначе липкой панели некуда ехать */
+  /* фильтр прилипает под полосой разделов (top считает fitFilters) и целиком помещается в экран;
+     на низком экране едет со страницей, пока не покажется его низ, и прилипает уже низом.
+     Своей прокрутки у панели нет */
+  .filters{position:sticky;top:60px;display:flex;flex-direction:column;overflow:hidden;padding:0;
+    border:1px solid var(--hair);border-top:3px solid var(--brand);border-radius:12px;
+    box-shadow:0 12px 28px rgba(20,30,45,.13),0 2px 6px rgba(20,30,45,.07)}
+  .filters .fg{margin-bottom:10px}
+  .filters .fg:last-child{margin-bottom:0}
+  .filters .fg label{margin-bottom:4px}
+  .filters .fg input,.filters .fg select{padding:6px 9px}
+  .filters .fg input[type=date]{font-size:13px;padding:6px 5px}
+  .filters .seg button{padding:5px 4px}
+  .filters .fh{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--hair);
+    font-weight:700;background:var(--brand-l);color:var(--brand-d)}
+  .filters .fb{padding:12px 16px 13px}
   .lnk{margin-left:auto;border:0;background:none;color:var(--brand);cursor:pointer;font-size:13px;padding:0}
   .lnk:hover{text-decoration:underline}
   .fclose,.fapply{display:none}
@@ -479,8 +493,8 @@
   }
   @media (max-width:760px){
     .layout{grid-template-columns:1fr}
-    .filters{position:fixed;top:0;bottom:0;left:0;width:min(86vw,330px);max-height:none;z-index:70;
-      border-radius:0 10px 10px 0;transform:translateX(-104%);transition:transform .26s cubic-bezier(.2,.7,.3,1)}
+    .filters{position:fixed;top:0 !important;bottom:0;left:0;width:min(86vw,330px);max-height:none;z-index:70;overflow:auto;
+      border-radius:0 10px 10px 0;border-top-width:1px;transform:translateX(-104%);transition:transform .26s cubic-bezier(.2,.7,.3,1)}
     .filters.open{transform:none}
     .overlay.open{opacity:1;pointer-events:auto}
     .fbtn{display:inline-block}
@@ -776,7 +790,9 @@ function applyFilters(list, f){
     if(f.region && l.region!==f.region) return false;
     if(f.pmin && l.price < +f.pmin) return false;
     if(f.pmax && l.price > +f.pmax) return false;
-    if(!arch && f.dto && l.req_to > new Date(f.dto+'T23:59:59').getTime()/1000) return false;
+    if(f.cat && l.section!==f.cat) return false;
+    if(f.dfrom && torgAt(l) < new Date(f.dfrom+'T00:00:00').getTime()/1000) return false;
+    if(f.dto && torgAt(l) > new Date(f.dto+'T23:59:59').getTime()/1000) return false;
     if(f.plat && l.platform!==f.plat && !(l.alt||[]).some(a=>a.platform===f.plat)) return false;
     if(f.photo && !l.photo) return false;
     if(f.mkt && !l.market) return false;
@@ -794,7 +810,20 @@ function applyFilters(list, f){
     : s==='disc'?((discount(b)??-999)-(discount(a)??-999)) : a.req_to-b.req_to);
   return out;
 }
-const nFilters = f => ['q','region','pmin','pmax','dto','plat','photo','mkt','soon','fresh'].filter(k=>f[k]).length;
+const nFilters = f => ['q','cat','region','pmin','pmax','dfrom','dto','plat','photo','mkt','soon','fresh'].filter(k=>f[k]).length;
+/* дата торгов: у e-auction торги идут онлайн и заканчиваются вместе с приёмом заявок */
+const torgAt = l => l.torg || l.req_to;
+/* фильтры, которые переносятся при смене категории на странице раздела */
+let CARRY = null;
+const CARRY_KEYS = ['st','q','region','pmin','pmax','dfrom','dto','plat','photo','mkt','sort'];
+function fitFilters(){
+  const fp = $('#fp'); if(!fp) return;
+  if(innerWidth <= 760){ fp.style.top = ''; return; }
+  const top = (document.querySelector('nav.main')||{offsetHeight:48}).offsetHeight + 12;
+  // не помещается — прилипает низом: отрицательный top у sticky держит низ панели у края экрана
+  fp.style.top = Math.min(top, innerHeight - fp.offsetHeight - 12) + 'px';
+}
+addEventListener('resize', fitFilters);
 const SORTS_ACTIVE = [['deadline','Заявки закрываются раньше'],['new','Сначала новые'],['disc','Дисконт к рынку'],
   ['price-asc','Цена по возрастанию'],['price-desc','Цена по убыванию'],['name','По названию']];
 const SORTS_ARCH = [['closed','Недавно завершённые'],['price-asc','Цена по возрастанию'],
@@ -813,18 +842,21 @@ function filterPanel(list, f, section){
         <button type="button" data-st=""${arch?'':' class="on"'}>Активные <small>${nA}</small></button>
         <button type="button" data-st="arch"${arch?' class="on"':''}>Архив <small>${nX}</small></button></div></div>
       <div class="fg"><label for="f-q">Поиск</label><input id="f-q" type="search" value="${esc(f.q||'')}" placeholder="название, адрес"></div>
+      <div class="fg"><label for="f-cat">Категория</label><select id="f-cat"><option value="">Все категории</option>
+        ${SECTIONS.map(([s,n])=>{ const c = (arch?(ARCH||[]):DATA).filter(l=>l.section===s).length;
+          return `<option value="${s}"${(section||f.cat)===s?' selected':''}>${n} · ${nf(c)}</option>`; }).join('')}</select></div>
       <div class="fg"><label for="f-region">Регион</label><select id="f-region"><option value="">Любой</option>
         ${regions.map(r=>`<option${f.region===r?' selected':''}>${esc(r)}</option>`).join('')}</select></div>
       <div class="fg"><label>Цена, BYN</label><div class="two">
         <input id="f-pmin" type="number" placeholder="от" value="${esc(f.pmin||'')}">
         <input id="f-pmax" type="number" placeholder="до" value="${esc(f.pmax||'')}"></div></div>
-      ${arch?'':`<div class="fg"><label for="f-dto">Заявки принимают до</label><input id="f-dto" type="date" value="${esc(f.dto||'')}"></div>`}
+      <div class="fg"><label for="f-dfrom">Дата торгов: от — до</label><div class="two">
+        <input id="f-dfrom" type="date" value="${esc(f.dfrom||'')}" aria-label="Дата торгов от">
+        <input id="f-dto" type="date" value="${esc(f.dto||'')}" aria-label="Дата торгов до"></div></div>
       <div class="fg"><label for="f-plat">Площадка</label><select id="f-plat"><option value="">Все</option>
         ${plats.map(p=>`<option${f.plat===p?' selected':''}>${esc(p)}</option>`).join('')}</select></div>
-      <div class="fg"><label for="f-photo">Фотографии</label><select id="f-photo">
-        <option value="">не важно</option><option value="1"${f.photo?' selected':''}>только с фото</option></select></div>
-      <div class="fg"><label for="f-mkt">Рыночный ориентир</label><select id="f-mkt">
-        <option value="">не важно</option><option value="1"${f.mkt?' selected':''}>только с ориентиром</option></select></div>
+      <div class="fg"><label class="chk"><input type="checkbox" id="f-photo"${f.photo?' checked':''}> только с фото</label>
+        <label class="chk"><input type="checkbox" id="f-mkt"${f.mkt?' checked':''}> только с рыночным ориентиром</label></div>
     </div>
     <div class="fapply"><button class="btn pri" id="f-apply" type="button">Показать</button></div>
   </aside>`;
@@ -837,7 +869,7 @@ function crumbs(parts){
 
 function pageCatalog(section, params){
   const q = params.get('q');
-  FSTATE = {};
+  FSTATE = CARRY || {}; CARRY = null;
   if(q) FSTATE.q = q;
   if(params.get('st')==='arch') FSTATE.st = 'arch';
   const view = params.get('view');
@@ -858,15 +890,23 @@ function pageCatalog(section, params){
   const closeDrawer = () => { $('#fp')?.classList.remove('open'); $('#ov').classList.remove('open'); };
   const read = () => {
     const v = id => (document.getElementById(id)||{}).value || '';
+    const c = id => (document.getElementById(id)||{}).checked ? '1' : '';
     FSTATE = {st:FSTATE.st, sort:FSTATE.sort, soon:FSTATE.soon, fresh:FSTATE.fresh, pin:FSTATE.pin, q:v('f-q').trim(), region:v('f-region'), pmin:v('f-pmin'),
-      pmax:v('f-pmax'), dto:v('f-dto'), plat:v('f-plat'), photo:v('f-photo'), mkt:v('f-mkt')};
+      pmax:v('f-pmax'), dfrom:v('f-dfrom'), dto:v('f-dto'), plat:v('f-plat'), photo:c('f-photo'), mkt:c('f-mkt'), cat:section?'':v('f-cat')};
   };
   const drawPanel = () => {
     $('#fwrap').innerHTML = filterPanel(baseOf(), FSTATE, section);
-    ['f-q','f-region','f-pmin','f-pmax','f-dto','f-plat','f-photo','f-mkt'].forEach(id=>{
+    ['f-q','f-cat','f-region','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt'].forEach(id=>{
       const el = document.getElementById(id); if(!el) return;
-      el.addEventListener(el.tagName==='SELECT'?'change':'input', ()=>{ read(); render(); });
+      el.addEventListener(el.tagName==='SELECT'||el.type==='checkbox'||el.type==='date'?'change':'input', ()=>{
+        read();
+        // на странице раздела категория — это сам раздел: переходим, забрав остальные фильтры с собой
+        if(id==='f-cat' && section){ const v = el.value; CARRY = {};
+          CARRY_KEYS.forEach(k=>{ if(FSTATE[k]) CARRY[k] = FSTATE[k]; });
+          location.hash = v ? '#/s/' + v : '#/catalog'; return; }
+        render(); });
     });
+    requestAnimationFrame(fitFilters);
     $('#f-reset').onclick = () => { FSTATE = {st:FSTATE.st}; drawPanel(); render(); };
     $('#f-close').onclick = closeDrawer;
     $('#f-apply').onclick = closeDrawer;
@@ -883,7 +923,7 @@ function pageCatalog(section, params){
     const arch = FSTATE.st==='arch';
     $('#c-lede').textContent = arch
       ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним полгода — для истории цен и поиска.'
-      : 'Лоты с открытым приёмом заявок. Каталог обновляется дважды в день: в 11:00 и 18:00.';
+      : 'Лоты с открытым приёмом заявок. Каталог обновляется автоматически.';
     if(arch && !ARCH){ $('#tb').innerHTML=''; $('#res').innerHTML = '<div class="skel"></div><div class="skel" style="margin-top:10px"></div>'; return; }
     const base = baseOf(), list = applyFilters(base, FSTATE), nf_ = nFilters(FSTATE);
     const sorts = arch ? SORTS_ARCH : SORTS_ACTIVE, cur = FSTATE.sort || sorts[0][0];
@@ -1032,7 +1072,7 @@ function calcBlock(l, det){
     <ol class="cx-time">
       <li><b>Задаток</b><span>до ${dtm(t.deposit_to || l.req_to)}</span></li>
       <li><b>Заявка</b><span>до ${dtm(l.req_to)}</span></li>
-      <li><b>Торги</b><span>${l.torg?dtm(l.torg):dt(l.req_to+86400)}</span></li>
+      <li><b>Торги</b><span>${l.torg?dtm(l.torg):l.platform==='e-auction.by'?'онлайн, до '+dtm(l.req_to):dt(l.req_to+86400)}</span></li>
       <li><b>Оплата остатка</b><span>${pay?esc(pay):'в срок из извещения'}</span></li>
     </ol>`;
   const run = () => {
