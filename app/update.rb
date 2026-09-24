@@ -15,11 +15,23 @@
 require_relative 'sources'
 require_relative 'regions'
 require_relative 'store'
+require_relative 'sb'
+require 'fileutils'
 
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
 WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'cpo.by' => 2, 'konfiskat.by' => 1 }.freeze   # konfiskat.by банит частые запросы
 MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
+# Настройки из админки: выключенные площадки не обходим, минимальная цена по разделам — своя.
+# База недоступна — работаем по умолчаниям.
+CFG = begin
+  Sb.on? ? Sb.settings : {}
+rescue StandardError => e
+  STDERR.puts "настройки админки не прочитаны: #{e.message}"
+  {}
+end
+PLAT_OFF = (CFG['platforms'] || {}).select { |_, v| v == false }.keys
+MINP = MIN_PRICE.merge((CFG['min_price'] || {}).map { |k, v| [k, v.to_f] }.to_h)
 # Условия покупки (задаток, шаг, сборы) появились позже самих лотов. У известных лотов без них
 # робот дозаполняет их постепенно — не больше TERMS_CAP страниц за прогон, чтобы не нагружать площадки.
 TERMS_CAP = (ENV['TERMS_CAP'] || 800).to_i
@@ -113,9 +125,10 @@ mx = Mutex.new
 seen = {}          # ключи, которые площадки показали в этом прогоне
 lists = {}         # src → сколько карточек прочитано (nil — список не прочитан)
 stat = Hash.new(0)
+pstat = Hash.new { |h, k| h[k] = Hash.new(0) }   # по площадкам — для отчёта в админке
 terms_left = TERMS_CAP
 
-PLAN.map do |plat, secs|
+PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }.map do |plat, secs|
   Thread.new do
     todo = Queue.new
     secs.each do |path, sec|
@@ -131,8 +144,8 @@ PLAN.map do |plat, secs|
         # у konfiskat в карточке — дата аукциона, заявки закрываются в 12:00 накануне: закрытые не качаем
         next if c['day'] && plat == 'konfiskat.by' && c['day'] - 12 * 3600 < Time.now.to_i
         s = sec == 'auto' ? kf_kind(c['name']) : (sec || ipm_kind(c['name']))
-        min = MIN_PRICE[s]
-        next if min && c['price'].to_f.positive? && c['price'] < min
+        min = MINP[s].to_f
+        next if min.positive? && c['price'].to_f.positive? && c['price'] < min
         todo << [c, s, src]
       end
     end
@@ -218,6 +231,7 @@ PLAN.map do |plat, secs|
             mx.synchronize do
               db[c['key']] = rec
               stat['новых'] += 1
+              pstat[plat]['new'] += 1
             end
           end
         end
@@ -234,12 +248,14 @@ db.each_value do |l|
   if l['req_to'].to_i <= now
     l.merge!('status' => 'archive', 'closed' => l['req_to'], 'why' => 'deadline')
     stat['в архив: срок истёк'] += 1
+    pstat[l['platform']]['archived'] += 1
   elsif !seen[l['key']]
     n = lists[l['src']]
     # список раздела не прочитан или короче половины известного — не верим, ждём следующего прогона
     next if n.nil? || n < active_by_src[l['src']] / 2
     l.merge!('status' => 'archive', 'closed' => now, 'why' => 'removed')
     stat['в архив: снят с площадки'] += 1
+    pstat[l['platform']]['archived'] += 1
   end
 end
 
@@ -253,6 +269,11 @@ end
 
 Store.save(db.values)
 act = db.values.count { |l| l['status'] == 'active' }
+# отчёт для админки: что нового по каждой площадке и какие разделы не прочитались
+FileUtils.mkdir_p(File.join(Store::ROOT, 'tmp'))
+File.write(File.join(Store::ROOT, 'tmp', 'run.json'), JSON.generate(
+  'platforms' => pstat, 'stat' => stat, 'unread' => lists.select { |_, n| n.nil? }.keys, 'off' => PLAT_OFF,
+  'active_before' => before, 'active' => act, 'archive' => db.size - act, 'minutes' => ((Time.now - t0) / 60).round(1)))
 STDERR.puts stat.map { |k, v| "#{k}: #{v}" }.join(', ') unless stat.empty?
 STDERR.puts "активных #{before} → #{act}, в архиве #{db.size - act}, за #{((Time.now - t0) / 60).round(1)} мин"
 abort('подозрительно мало активных лотов — проверьте парсеры') if act < 100

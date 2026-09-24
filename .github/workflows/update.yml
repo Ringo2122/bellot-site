@@ -1,9 +1,12 @@
 name: Обновление сайта
 
+# Раз в 10 минут робот заглядывает в админку (gate.rb) и решает, что делать:
+#   • наступил час обхода (по умолчанию 11:00 и 18:00 по Минску, меняется в админке) — обойти площадки и собрать сайт;
+#   • в админке нажали «Опубликовать» или «Обновить с площадок» — собрать сайт (и обойти площадки);
+#   • иначе — ничего, проверка занимает полминуты.
 on:
   schedule:
-    - cron: '0 8 * * *'     # 11:00 по Минску
-    - cron: '0 15 * * *'    # 18:00 по Минску
+    - cron: '*/10 * * * *'
   workflow_dispatch:
     inputs:
       collect:
@@ -19,12 +22,40 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: site
-  cancel-in-progress: false
-
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      collect: ${{ steps.g.outputs.collect }}
+      build: ${{ steps.g.outputs.build }}
+      run_id: ${{ steps.g.outputs.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: app     # память робота с фото не нужна — только скрипты
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - id: g
+        name: Пора ли работать
+        env:
+          TZ: Europe/Minsk
+          EVENT: ${{ github.event_name }}
+          INPUT_COLLECT: ${{ inputs.collect }}
+          SB_URL: ${{ secrets.SB_URL }}
+          SB_KEY: ${{ secrets.SB_KEY }}
+          SB_TOKEN: ${{ secrets.SB_TOKEN }}
+        run: ruby app/gate.rb
+
   update:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
+    concurrency:
+      group: site
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment:
@@ -32,7 +63,11 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     env:
       TZ: Europe/Minsk
-      COLLECT: ${{ github.event_name == 'schedule' || inputs.collect == true }}
+      COLLECT: ${{ needs.gate.outputs.collect }}
+      RUN_ID: ${{ needs.gate.outputs.run_id }}
+      SB_URL: ${{ secrets.SB_URL }}
+      SB_KEY: ${{ secrets.SB_KEY }}
+      SB_TOKEN: ${{ secrets.SB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +80,11 @@ jobs:
 
       - name: Обход площадок
         if: env.COLLECT == 'true'
-        run: ruby app/update.rb
+        shell: bash
+        run: |
+          mkdir -p tmp
+          ruby app/update.rb 2>&1 | tee tmp/update.log
+          exit ${PIPESTATUS[0]}
 
       - name: Рыночный ориентир (Kufar)
         if: env.COLLECT == 'true'
@@ -72,3 +111,10 @@ jobs:
 
       - id: deploy
         uses: actions/deploy-pages@v4
+
+      - name: Отчёт и копия каталога — в админку
+        if: always()
+        continue-on-error: true
+        env:
+          JOB_OK: ${{ job.status == 'success' }}
+        run: ruby app/sync.rb

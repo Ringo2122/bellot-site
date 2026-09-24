@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Админка БелЛот</title>
+<style>
+  :root{
+    --brand:#12508f; --brand-d:#0d3c6e; --brand-l:#e8f0f8;
+    --accent:#d9761f; --accent-l:#fdf1e4;
+    --ok:#1d7a4d; --ok-l:#e6f3ec; --bad:#b3261e; --bad-l:#fbeaea;
+    --ink:#1a2330; --ink-2:#4a5563; --ink-3:#77818d;
+    --bg:#f2f4f7; --card:#fff; --hair:#dde2e8; --hair-2:#c6cdd6;
+    --sh:0 1px 3px rgba(20,30,45,.08); --sh-2:0 10px 40px rgba(20,30,45,.22);
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{margin:0}
+  body{font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  a{color:var(--brand)}
+  h1{font-size:22px;margin:0 0 4px}
+  h2{font-size:16px;margin:0 0 10px}
+  .lede{color:var(--ink-2);margin:0 0 18px;max-width:760px}
+  button,input,select,textarea{font:inherit;color:inherit}
+  input,select,textarea{border:1px solid var(--hair-2);border-radius:6px;padding:7px 9px;background:#fff;min-width:0}
+  textarea{width:100%;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hair-2);background:#fff;border-radius:6px;padding:7px 12px;cursor:pointer;white-space:nowrap;text-decoration:none;color:var(--ink)}
+  .btn:hover{border-color:var(--brand)}
+  .btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.acc{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+  .btn.bad{color:var(--bad);border-color:#e5b4b0}
+  .btn.sm{padding:4px 9px;font-size:13px}
+  .btn:disabled{opacity:.55;cursor:default}
+  .muted{color:var(--ink-3)}
+  .panel{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:16px;box-shadow:var(--sh);margin-bottom:16px}
+
+  /* вход */
+  #login{min-height:100vh;display:grid;place-items:center;padding:16px}
+  #login form{width:100%;max-width:340px;background:#fff;border-radius:12px;padding:26px;box-shadow:var(--sh-2)}
+  #login h1{margin-bottom:16px}
+  #login label{display:block;margin:10px 0 4px;color:var(--ink-2);font-size:13px}
+  #login input{width:100%}
+  #login .btn{width:100%;justify-content:center;margin-top:16px;padding:10px}
+  .err{color:var(--bad);min-height:18px;margin-top:8px;font-size:13px}
+
+  /* каркас */
+  #shell{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+  .side{background:var(--brand-d);color:#dbe6f1;padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+  .brand{font-weight:800;font-size:18px;color:#fff;padding:0 8px 16px}
+  .brand small{font-weight:400;opacity:.7;font-size:12px;margin-left:4px}
+  #nav a{display:flex;justify-content:space-between;align-items:center;color:#dbe6f1;text-decoration:none;padding:8px 10px;border-radius:6px;margin-bottom:2px}
+  #nav a:hover{background:rgba(255,255,255,.08)}
+  #nav a.on{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+  #nav .n{background:var(--accent);color:#fff;border-radius:10px;padding:0 7px;font-size:12px;font-weight:700}
+  .side-f{margin-top:18px;padding:12px 10px;border-top:1px solid rgba(255,255,255,.15)}
+  .side-f a{color:#fff;display:block;margin-bottom:6px}
+  .main{padding:22px 26px 60px;min-width:0}
+  #pubbar:empty{display:none}
+  #pubbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--accent-l);border:1px solid #f0c9a0;border-radius:10px;padding:10px 14px;margin-bottom:18px}
+  #pubbar.run{background:var(--brand-l);border-color:#b9d0e8}
+  #pubbar .t{flex:1;min-width:200px}
+
+  /* сводка */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:#fff;border:1px solid var(--hair);border-radius:10px;padding:12px 14px;text-decoration:none;color:inherit;box-shadow:var(--sh)}
+  .kpi b{display:block;font-size:24px}
+  .kpi span{color:var(--ink-2);font-size:13px}
+  .kpi.warn b{color:var(--accent)}
+  table{border-collapse:collapse;width:100%}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--hair);vertical-align:top}
+  th{font-weight:600;color:var(--ink-2);font-size:12px;text-transform:uppercase;letter-spacing:.02em}
+  tr.click{cursor:pointer}
+  tr.click:hover td{background:#f7f9fb}
+  .tw{overflow-x:auto}
+  pre.log{white-space:pre-wrap;background:#f6f7f9;border:1px solid var(--hair);border-radius:6px;padding:10px;font-size:12px;max-height:340px;overflow:auto;margin:8px 0 0}
+  .okc{color:var(--ok);font-weight:700}.badc{color:var(--bad);font-weight:700}
+
+  /* списки лотов */
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .bar input[type=search]{flex:1;min-width:200px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .tabs a{padding:6px 12px;border-radius:16px;border:1px solid var(--hair-2);text-decoration:none;color:var(--ink);background:#fff}
+  .tabs a.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .lot{display:grid;grid-template-columns:24px 84px 1fr auto;gap:12px;align-items:start;background:#fff;border:1px solid var(--hair);border-radius:10px;padding:10px;margin-bottom:8px}
+  .lot .th{width:84px;height:62px;border-radius:6px;overflow:hidden;background:#eef1f4;display:grid;place-items:center;font-size:11px;color:var(--ink-3)}
+  .lot .th img{width:100%;height:100%;object-fit:cover}
+  .lot .nm{font-weight:600;text-decoration:none;color:var(--ink);display:block}
+  .lot .nm:hover{color:var(--brand)}
+  .lot .meta{color:var(--ink-2);font-size:13px;margin-top:2px}
+  .lot .acts{display:flex;flex-direction:column;gap:5px;align-items:stretch}
+  .lot .ck{padding-top:4px}
+  .chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+  .chip{font-size:12px;padding:1px 8px;border-radius:10px;background:#eef1f4;color:var(--ink-2)}
+  .chip.r{background:var(--accent-l);color:#9a4f0e}
+  .chip.g{background:var(--ok-l);color:var(--ok)}
+  .chip.b{background:var(--bad-l);color:var(--bad)}
+  .chip.bl{background:var(--brand-l);color:var(--brand)}
+  .pager{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:14px}
+  .empty{padding:30px;text-align:center;color:var(--ink-3);background:#fff;border:1px dashed var(--hair-2);border-radius:10px}
+  .sim{margin-top:8px;padding:8px 10px;background:#f7f9fb;border-radius:6px;font-size:13px}
+
+  /* формы настроек */
+  .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+  .fld{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+  .fld>span{font-size:13px;color:var(--ink-2)}
+  .fld .hint{font-size:12px;color:var(--ink-3)}
+  .fld .hint a{cursor:pointer}
+  .tog{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--hair)}
+  .tog:last-child{border-bottom:0}
+  .tog .d{flex:1}
+  .tog small{display:block;color:var(--ink-3)}
+  .sw{position:relative;width:40px;height:22px;flex:none}
+  .sw input{opacity:0;width:0;height:0;position:absolute}
+  .sw i{position:absolute;inset:0;background:#c6cdd6;border-radius:12px;transition:.15s;cursor:pointer}
+  .sw i:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}
+  .sw input:checked+i{background:var(--ok)}
+  .sw input:checked+i:before{transform:translateX(18px)}
+  .hours{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;max-width:560px}
+  .hours label{border:1px solid var(--hair-2);border-radius:6px;text-align:center;padding:5px 0;cursor:pointer;font-size:13px;background:#fff}
+  .hours input{display:none}
+  .hours label.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .ctab td input,.ctab td textarea{width:100%}
+  .ctab td{min-width:90px}
+  .saverow{display:flex;gap:10px;align-items:center;margin-top:8px}
+
+  /* карточка лота (шторка) */
+  .drawer{position:fixed;inset:0;background:rgba(15,25,40,.45);z-index:50;display:flex;justify-content:flex-end}
+  .drawer[hidden]{display:none}
+  .dw{width:min(720px,100%);height:100%;overflow:auto;background:var(--bg);box-shadow:var(--sh-2);padding:18px 20px 90px}
+  .dw-h{display:flex;gap:10px;align-items:flex-start;margin-bottom:14px}
+  .dw-h h2{flex:1;font-size:18px;margin:0}
+  .dw-foot{position:fixed;bottom:0;right:0;width:min(720px,100%);background:#fff;border-top:1px solid var(--hair);padding:12px 20px;display:flex;gap:10px;align-items:center}
+  .ph-edit{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .ph-edit img{width:200px;height:140px;object-fit:cover;border-radius:8px;background:#eef1f4}
+  .orig{font-size:12px;color:var(--ink-3);margin-top:3px;max-height:90px;overflow:auto}
+  .radios{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0}
+  .radios label{display:flex;gap:5px;align-items:center}
+
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;z-index:80;max-width:90vw}
+  #toast.on{opacity:1}
+  #toast.err{background:var(--bad)}
+  .x{border:0;background:none;font-size:24px;line-height:1;cursor:pointer;color:var(--ink-3)}
+
+  @media (max-width:860px){
+    #shell{grid-template-columns:1fr}
+    .side{position:sticky;top:0;height:auto;z-index:20;padding:8px 10px;display:flex;gap:10px;align-items:center;overflow-x:auto}
+    .brand{padding:0 6px;white-space:nowrap}
+    #nav{display:flex;gap:4px}
+    #nav a{white-space:nowrap;padding:6px 9px}
+    .side-f{display:none}
+    .main{padding:16px 16px 60px}
+    .lot{grid-template-columns:20px 64px 1fr}
+    .lot .th{width:64px;height:48px}
+    .lot .acts{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}
+    .hours{grid-template-columns:repeat(6,1fr)}
+  }
+</style>
+</head>
+<body>
+
+<div id="login" hidden>
+  <form id="lf" autocomplete="on">
+    <h1>БелЛот · админка</h1>
+    <label for="l-u">Логин</label><input id="l-u" autocomplete="username" required>
+    <label for="l-p">Пароль</label><input id="l-p" type="password" autocomplete="current-password" required>
+    <button class="btn pri" type="submit">Войти</button>
+    <div class="err" id="l-err"></div>
+  </form>
+</div>
+
+<div id="shell" hidden>
+  <aside class="side">
+    <div class="brand">БелЛот<small>админка</small></div>
+    <nav id="nav"></nav>
+    <div class="side-f"><a href="../" target="_blank" rel="noopener">Открыть сайт ↗</a><a href="#" id="logout">Выйти</a></div>
+  </aside>
+  <div class="main"><div id="pubbar"></div><main id="view"></main></div>
+</div>
+<div id="drawer" class="drawer" hidden></div>
+<div id="toast"></div>
+
+<script>
+const SB = '__SB_URL__', KEY = '__SB_KEY__';
+const RAW = 'https://raw.githubusercontent.com/Ringo2122/bellot-site/main/data/';
+const GH_RUNS = 'https://github.com/Ringo2122/bellot-site/actions';
+const PLATS = ['e-auction.by','ipmtorgi.by','beltorgi.by','cpo.by','konfiskat.by'];
+const PLAT_RU = {'e-auction.by':'e-auction.by (БелЮрОбеспечение)','ipmtorgi.by':'ipmtorgi.by (ИПМ-Торги)','beltorgi.by':'beltorgi.by (Белреализация)',
+  'cpo.by':'cpo.by (Центр промышленной оценки)','konfiskat.by':'konfiskat.by (ТД «Восточный»)'};
+const SECS = [['nedvizhimost','Недвижимость'],['avto','Легковые авто'],['gruz','Грузовые и автобусы'],['spec','Спецтехника'],['oborud','Оборудование']];
+const SEC_RU = Object.fromEntries(SECS);
+const MIN_DEF = {oborud:3000};
+const REASON = {no_photo:'нет фото', no_price:'нет цены', no_city:'нет города', rule_deadline:'срок заявок по правилу (извещение — скан)', dup_maybe:'похож на лот другой площадки'};
+const HIDDEN = {mod:'ждёт проверки', hidden:'скрыт вами', dup:'склеен с другим лотом', plat_off:'площадка выключена', sec_off:'раздел выключен'};
+const TRIG = {schedule:'по расписанию', admin:'из админки', push:'обновление кода', workflow_dispatch:'вручную на GitHub', manual:'вручную', setup:'подключение админки'};
+// разделы, которые читает Telegram-бот (tgbot.rb, SECTIONS)
+const BOT_SECS = [['e-auction.by','Недвижимость'],['e-auction.by','Легковые авто'],['e-auction.by','Грузовые и автобусы'],
+  ['ipmtorgi.by','Недвижимость'],['ipmtorgi.by','Транспорт и спецтехника'],['beltorgi.by','Недвижимость'],['beltorgi.by','Легковые авто'],
+  ['beltorgi.by','Грузовые и автобусы'],['cpo.by','Недвижимость'],['cpo.by','Транспорт и спецтехника'],
+  ['konfiskat.by','Автотранспорт'],['konfiskat.by','Недвижимость']];
+
+/* ── мелочи ── */
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf = n => n==null||n==='' ? '—' : Math.round(+n).toLocaleString('ru-RU');
+const p2 = n => String(n).padStart(2,'0');
+const dt = s => { if(!s) return '—'; const d = new Date(typeof s==='number'||/^\d+$/.test(s) ? s*1000 : s);
+  return `${p2(d.getDate())}.${p2(d.getMonth()+1)}.${d.getFullYear()} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+const toLocal = s => { if(!s) return ''; const d = new Date(s*1000); return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+const fromLocal = v => v ? Math.round(new Date(v).getTime()/1000) : null;
+const enc = encodeURIComponent;
+const inq = keys => `in.(${keys.map(k=>'"'+String(k).replace(/"/g,'')+'"').join(',')})`;
+const nowIso = () => new Date().toISOString();
+function toast(msg, err){ const t = $('#toast'); t.textContent = msg; t.className = 'on' + (err?' err':''); clearTimeout(t._h); t._h = setTimeout(()=>t.className='', err?5000:2500); }
+const plural = (n,a,b,c) => { n = Math.abs(n)%100; const m = n%10; return n>10&&n<20?c : m>1&&m<5?b : m===1?a : c; };
+
+/* ── связь с базой ── */
+let TOKEN = ''; try{ TOKEN = localStorage.getItem('bl_adm') || ''; }catch(e){}
+async function api(path, o={}){
+  const h = { apikey: KEY, 'Content-Type':'application/json' };
+  if(TOKEN) h['x-admin-token'] = TOKEN;
+  if(o.prefer) h.Prefer = o.prefer;
+  if(o.count) h.Prefer = 'count=exact';
+  const r = await fetch(SB + '/rest/v1/' + path, { method:o.method||'GET', headers:h, body:o.body!==undefined?JSON.stringify(o.body):undefined });
+  if(!r.ok){ let j = {}; try{ j = await r.json(); }catch(e){}
+    if(/Нет доступа/.test(j.message||'') && !o.login){ logout(true); }
+    throw new Error(j.message || ('ошибка ' + r.status)); }
+  if(o.count){ const rows = await r.json(); return { rows, total: +((r.headers.get('content-range')||'').split('/')[1]) || rows.length }; }
+  const t = await r.text(); return t ? JSON.parse(t) : null;
+}
+const rpc = (fn, args={}, o={}) => api('rpc/'+fn, Object.assign({ method:'POST', body:args }, o));
+const upsert = (table, rows, conflict='key') => api(`${table}?on_conflict=${conflict}`, { method:'POST', body:rows, prefer:'resolution=merge-duplicates,return=minimal' });
+
+/* ── вход ── */
+function showLogin(){ $('#shell').hidden = true; $('#login').hidden = false; $('#l-u').focus(); }
+$('#lf').addEventListener('submit', async e=>{
+  e.preventDefault(); $('#l-err').textContent = '';
+  try{
+    const tok = await rpc('admin_login', { p_login:$('#l-u').value, p_pass:$('#l-p').value }, { login:true });
+    if(!tok){ $('#l-err').textContent = 'Неверный логин или пароль'; return; }
+    TOKEN = tok; try{ localStorage.setItem('bl_adm', tok); }catch(e){}
+    $('#l-p').value = ''; start();
+  }catch(err){ $('#l-err').textContent = err.message; }
+});
+async function logout(silent){
+  if(!silent){ try{ await rpc('admin_logout'); }catch(e){} }
+  TOKEN = ''; try{ localStorage.removeItem('bl_adm'); }catch(e){}
+  $('#drawer').hidden = true; showLogin();
+}
+$('#logout').addEventListener('click', e=>{ e.preventDefault(); logout(); });
+
+/* ── общее состояние ── */
+let STATS = {}, SET = {}, LASTRUN = null;
+async function loadSettings(){ SET = Object.fromEntries((await api('settings?select=k,v')).map(r=>[r.k, r.v])); }
+async function saveSetting(k, v){ await upsert('settings', [{ k, v, updated_at: nowIso() }], 'k'); SET[k] = v; }
+async function refreshStats(){
+  [STATS, LASTRUN] = await Promise.all([ rpc('admin_stats'), api('runs?select=id,at,finished_at,kind,ok,trigger&order=at.desc&limit=1').then(r=>r[0]||null) ]);
+  const pr = await api('settings?k=eq.publish_req&select=v'); SET.publish_req = pr[0] ? pr[0].v : null;
+  drawNav(); drawPubbar();
+}
+
+const PAGES = [
+  ['dash','Сводка'], ['queue','Проверка'], ['lots','Лоты'], ['dups','Дубли'], ['market','Ориентиры'], ['leads','Заявки'],
+  ['sources','Площадки и разделы'], ['calc','Калькулятор'], ['bot','Telegram-бот'], ['texts','Тексты сайта'], ['access','Доступ']
+];
+function drawNav(){
+  const cur = (location.hash.slice(1).split('?')[0]) || 'dash';
+  const badge = { queue: STATS.queue, leads: STATS.leads_new };
+  $('#nav').innerHTML = PAGES.map(([k,t])=>`<a href="#${k}" class="${k===cur?'on':''}">${t}${badge[k]?`<span class="n">${badge[k]}</span>`:''}</a>`).join('');
+}
+function drawPubbar(){
+  const b = $('#pubbar'); b.className = '';
+  const running = LASTRUN && !LASTRUN.finished_at && (Date.now() - new Date(LASTRUN.at)) < 90*60000;
+  const req = SET.publish_req, lastAt = LASTRUN ? new Date(LASTRUN.at).getTime() : 0;
+  const waiting = req && req.at*1000 > lastAt;
+  const changed = STATS.changed_at && (!STATS.last_build || new Date(STATS.changed_at) > new Date(STATS.last_build));
+  if(running){
+    b.className = 'run';
+    b.innerHTML = `<div class="t">⏳ Робот работает с ${dt(LASTRUN.at)}: ${LASTRUN.kind==='collect'?'обходит площадки и собирает сайт (10–25 минут)':'собирает сайт (2–4 минуты)'}.
+      ${changed && new Date(STATS.changed_at) > new Date(LASTRUN.at) ? 'Правки, сделанные после начала, попадут в следующую публикацию.' : ''}</div>
+      <a class="btn sm" href="${GH_RUNS}" target="_blank" rel="noopener">Ход работы ↗</a>`;
+  } else if(waiting){
+    b.className = 'run';
+    b.innerHTML = `<div class="t">🕓 ${req.collect?'Обновление с площадок':'Публикация'} запрошена в ${dt(req.at)}. ${STATS.github?'Робот запускается.':'Робот проверяет запросы каждые 10 минут — начнёт в ближайшее время.'}</div>`;
+  } else if(changed){
+    b.innerHTML = `<div class="t"><b>Есть изменения, которых ещё нет на сайте.</b> Сделайте все правки и опубликуйте разом — сайт пересоберётся за несколько минут.</div>
+      <button class="btn acc" data-pub="0">Опубликовать изменения</button>`;
+  } else b.innerHTML = '';
+}
+document.addEventListener('click', async e=>{
+  const p = e.target.closest('[data-pub]'); if(!p) return;
+  const collect = p.dataset.pub === '1';
+  if(collect && !confirm('Обойти все площадки сейчас? Это займёт 10–25 минут, потом сайт обновится.')) return;
+  p.disabled = true;
+  try{ const r = await rpc('request_publish', { p_collect: collect });
+    toast(r==='dispatched' ? 'Робот запущен' : 'Запрос принят — робот начнёт в течение 10 минут'); await refreshStats();
+    if((location.hash.slice(1)||'dash')==='dash') route(); }
+  catch(err){ toast(err.message, true); p.disabled = false; }
+});
+
+/* ── строка лота ── */
+function stateChips(l){
+  const c = [];
+  if(l.status==='archive') c.push(['архив','']);
+  else if(l.mstate==='hidden') c.push(['скрыт вами','b']);
+  else if(l.mstate==='queue') c.push([l.published?'на проверке — снимется с сайта после публикации':'ждёт проверки','r']);
+  else if(l.mstate==='ok') c.push([l.published?'одобрен · на сайте':'одобрен — появится после публикации','g']);
+  else if(l.published) c.push(['на сайте','g']);
+  else if(l.hidden_why) c.push([HIDDEN[l.hidden_why]||l.hidden_why, l.hidden_why==='dup'?'bl':'']);
+  if(l.edited) c.push(['изменён вами','bl']);
+  if(l.pinned) c.push(['★ в «Рекомендуем»','bl']);
+  if(l.ov_at && l.synced && new Date(l.ov_at).getTime()/1000 > l.synced) c.push(['правки не опубликованы','r']);
+  (l.reasons||[]).forEach(r=>c.push([REASON[r]||r,'r']));
+  return `<div class="chips">${c.map(([t,k])=>`<span class="chip ${k}">${esc(t)}</span>`).join('')}</div>`;
+}
+function lotRow(l, acts, extra){
+  const f = l.fields||{};
+  const name = f.name || l.name, price = f.price || l.price, req = f.req_to || l.req_to, loc = f.location || l.location;
+  const img = l.photo ? `<img src="${RAW}ph/${enc(l.key)}.jpg" loading="lazy" alt="" onerror="this.replaceWith('нет фото')">` : 'нет фото';
+  return `<div class="lot" data-key="${esc(l.key)}">
+    <label class="ck"><input type="checkbox" class="sel" value="${esc(l.key)}" aria-label="Выбрать"></label>
+    <div class="th">${img}</div>
+    <div><a class="nm" href="#" data-act="edit">${esc(name)}</a>
+      <div class="meta">${esc(l.platform)} · ${esc(SEC_RU[f.section||l.section]||l.section)} · <b>${nf(price)} BYN</b> · заявки до ${dt(req)}${loc?' · '+esc(loc):''}
+        · <a href="${esc(l.url)}" target="_blank" rel="noopener">на площадке ↗</a>${l.published&&l.status==='active'?` · <a href="../#/lot/${enc(l.id)}" target="_blank" rel="noopener">на сайте ↗</a>`:''}</div>
+      ${stateChips(l)}${extra||''}</div>
+    <div class="acts">${acts(l)}</div></div>`;
+}
+const B = (act, text, cls='') => `<button class="btn sm ${cls}" data-act="${act}">${text}</button>`;
+const selected = () => [...document.querySelectorAll('#view .sel:checked')].map(i=>i.value);
+
+async function setMod(keys, mod){
+  if(!keys.length) return;
+  await upsert('overrides', keys.map(k=>({ key:k, mod, updated_at:nowIso() })));
+  toast(mod==='approved'?'Одобрено':mod==='hidden'?'Скрыто':mod==='review'?'Отправлено на проверку':'Решение снято');
+}
+async function setPin(key, on){ await upsert('overrides', [{ key, pinned:on, updated_at:nowIso() }]); toast(on?'Закреплено в «Рекомендуем»':'Откреплено'); }
+
+/* действия со строками: одна точка для всех страниц */
+let RELOAD = () => {};
+document.getElementById('view').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  e.preventDefault();
+  const row = b.closest('[data-key]'), key = row && row.dataset.key, act = b.dataset.act;
+  try{
+    if(act==='edit') return openEditor(key);
+    b.disabled = true;
+    if(act==='approve') await setMod([key],'approved');
+    else if(act==='hide') await setMod([key],'hidden');
+    else if(act==='review') await setMod([key],'review');
+    else if(act==='auto') await setMod([key],null);
+    else if(act==='pin') await setPin(key, true);
+    else if(act==='unpin') await setPin(key, false);
+    else if(act==='bulk-approve' || act==='bulk-hide'){ const k = selected(); if(!k.length){ toast('Отметьте лоты галочками', true); b.disabled=false; return; }
+      await setMod(k, act==='bulk-approve'?'approved':'hidden'); }
+    else if(act==='merge' || act==='split'){ await upsert('dup_rules', [{ a:b.dataset.a, b:b.dataset.b, kind:act }], 'a,b'); toast(act==='merge'?'Лоты будут склеены':'Лоты больше не будут склеиваться'); }
+    else if(act==='rule-del'){ await api(`dup_rules?a=eq.${enc(b.dataset.a)}&b=eq.${enc(b.dataset.b)}`, { method:'DELETE' }); toast('Правило удалено'); }
+    else if(act==='mk-off' || act==='mk-auto'){ await setMarket(key, act==='mk-off' ? {off:true} : null); }
+    else if(act==='mk-own'){ const v = prompt('Рыночная цена, BYN'); if(!v || !(+v>0)){ b.disabled=false; return; }
+      const note = prompt('Комментарий для посетителей (необязательно)') || ''; await setMarket(key, { median:+v, note }); }
+    await refreshStats(); await RELOAD();
+  }catch(err){ toast(err.message, true); b.disabled = false; }
+});
+document.getElementById('view').addEventListener('change', e=>{
+  if(e.target.id==='selall') document.querySelectorAll('#view .sel').forEach(i=>i.checked = e.target.checked);
+});
+async function setMarket(key, m){
+  const [o] = await api(`overrides?key=eq.${enc(key)}&select=fields`);
+  const fields = Object.assign({}, o ? o.fields : {});
+  if(m) fields.market = m; else delete fields.market;
+  await upsert('overrides', [{ key, fields, updated_at:nowIso() }]);
+  toast(m ? (m.off?'Ориентир отключён':'Своя оценка сохранена') : 'Ориентир — снова автоматический');
+}
+
+/* ── страницы ── */
+const V = () => $('#view');
+async function route(){
+  const [page, qs] = (location.hash.slice(1) || 'dash').split('?');
+  const params = new URLSearchParams(qs||'');
+  drawNav(); RELOAD = () => {};
+  V().innerHTML = '<p class="muted">Загрузка…</p>';
+  const fn = { dash:pDash, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, sources:pSources, calc:pCalc, bot:pBot, texts:pTexts, access:pAccess }[page] || pDash;
+  try{ await fn(params); }catch(err){ V().innerHTML = `<div class="empty">Не получилось загрузить: ${esc(err.message)}</div>`; }
+}
+addEventListener('hashchange', route);
+
+/* Сводка */
+async function pDash(){
+  const s = STATS;
+  const runs = await api('runs?select=*&order=at.desc&limit=15');
+  const since = new Date(Date.now() - 7*86400000).toISOString();
+  const bots = await api(`bot_runs?select=at,sent,errors&at=gte.${since}&order=at.desc&limit=1000`);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const botToday = bots.filter(r=>new Date(r.at) >= today).reduce((a,r)=>a+r.sent,0), botWeek = bots.reduce((a,r)=>a+r.sent,0);
+  const k = (n, t, href, warn) => `<a class="kpi${warn&&n?' warn':''}" href="${href}"><b>${nf(n||0)}</b><span>${t}</span></a>`;
+  const sum = (o, f) => Object.values(o||{}).reduce((a,x)=>a+(x[f]||0),0);
+  V().innerHTML = `<h1>Сводка</h1><p class="lede">Сайт обновляется с площадок автоматически в ${(SET.hours||[11,18]).map(h=>p2(h)+':00').join(' и ')} по Минску. Ваши правки попадают на сайт после кнопки «Опубликовать».</p>
+    <div class="kpis">
+      ${k(s.published,'лотов на сайте','#lots?st=site')}
+      ${k(s.queue,'ждут проверки','#queue',true)}
+      ${k(s.remarks,'на сайте с замечаниями','#queue?tab=remarks')}
+      ${k(s.hidden,'скрыто вами','#queue?tab=hidden')}
+      ${k(s.merged,'склеено дублей','#dups')}
+      ${k(s.archive,'в архиве','#lots?st=arch')}
+      ${k(s.leads_new,'новых заявок','#leads',true)}
+    </div>
+    <div class="panel"><h2>Публикация</h2>
+      <p class="muted" style="margin-top:0">«Опубликовать» — пересобрать сайт с вашими правками (2–4 минуты). «Обновить с площадок» — внеочередной обход всех площадок и сборка (10–25 минут).</p>
+      <div class="saverow"><button class="btn acc" data-pub="0">Опубликовать изменения</button><button class="btn" data-pub="1">Обновить с площадок сейчас</button>
+      <a class="btn" href="${GH_RUNS}" target="_blank" rel="noopener">Журнал GitHub ↗</a></div></div>
+    <div class="panel"><h2>Лоты на сайте по площадкам</h2>
+      <table>${PLATS.map(p=>`<tr><td>${esc(PLAT_RU[p])}</td><td><b>${nf((s.by_platform||{})[p]||0)}</b></td></tr>`).join('')}</table></div>
+    <div class="panel"><h2>Последние запуски робота</h2>
+      <div class="tw"><table><tr><th>Начало</th><th>Что</th><th>Кто запустил</th><th>Итог</th><th>Новых</th><th>В архив</th><th>На сайте</th><th>Ждут проверки</th></tr>
+      ${runs.map(r=>{ const u = (r.stats||{}).update, b = (r.stats||{}).build;
+        const res = !r.finished_at ? ((Date.now()-new Date(r.at))<90*60000?'<span class="muted">идёт…</span>':'<span class="badc">не завершился</span>')
+          : r.ok ? `<span class="okc">✓</span> ${Math.round((new Date(r.finished_at)-new Date(r.at))/60000)} мин` : '<span class="badc">✗ ошибка</span>';
+        return `<tr class="click" data-run="${r.id}"><td>${dt(r.at)}</td><td>${r.kind==='collect'?'обход и сборка':'сборка'}</td><td>${esc(TRIG[r.trigger]||r.trigger||'')}</td>
+          <td>${res}</td><td>${u?nf(sum(u.platforms,'new')):'—'}</td><td>${u?nf(sum(u.platforms,'archived')):'—'}</td><td>${b?nf(b.published):'—'}</td><td>${b?nf(b.queue):'—'}</td></tr>
+          <tr hidden id="run-${r.id}"><td colspan="8">${runDetails(r)}</td></tr>`; }).join('')}</table></div>
+      <p class="muted">Нажмите на строку — подробности по площадкам и журнал.</p></div>
+    <div class="panel"><h2>Telegram-бот</h2>
+      <p style="margin:0">Сегодня отправлено <b>${nf(botToday)}</b>, за 7 дней — <b>${nf(botWeek)}</b>. Последняя проверка: ${bots[0]?dt(bots[0].at):'нет данных'}${(SET.bot||{}).paused?' · <span class="badc">бот на паузе</span>':''}. <a href="#bot">Настройки бота →</a></p></div>`;
+  V().querySelectorAll('tr[data-run]').forEach(tr=>tr.addEventListener('click', ()=>{ const d = $('#run-'+tr.dataset.run); d.hidden = !d.hidden; }));
+}
+function runDetails(r){
+  const u = (r.stats||{}).update, b = (r.stats||{}).build;
+  let h = '';
+  if(u){
+    h += `<table style="margin:4px 0 8px"><tr><th>Площадка</th><th>Новых</th><th>В архив</th></tr>${PLATS.map(p=>{ const x = (u.platforms||{})[p]||{};
+      return `<tr><td>${esc(p)}${(u.off||[]).includes(p)?' <span class="chip">выключена</span>':''}</td><td>${nf(x.new||0)}</td><td>${nf(x.archived||0)}</td></tr>`; }).join('')}</table>`;
+    if((u.unread||[]).length) h += `<p class="badc" style="margin:4px 0">Не прочитались разделы: ${u.unread.map(esc).join(', ')}</p>`;
+    const st = Object.entries(u.stat||{}).map(([k,v])=>`${esc(k)}: ${nf(v)}`).join(' · ');
+    if(st) h += `<p class="muted" style="margin:4px 0">${st}</p>`;
+    h += `<p class="muted" style="margin:4px 0">Активных было ${nf(u.active_before)}, стало ${nf(u.active)}; обход занял ${u.minutes} мин.</p>`;
+  }
+  if(b) h += `<p class="muted" style="margin:4px 0">Сборка: на сайте ${nf(b.published)}, ждут проверки ${nf(b.queue)}, склеено ${nf(b.merged)}, с фото ${nf(b.photos)}.</p>`;
+  if(r.log) h += `<details><summary>Журнал</summary><pre class="log">${esc(r.log)}</pre></details>`;
+  return h || '<span class="muted">Подробностей нет.</span>';
+}
+
+/* Проверка */
+async function pQueue(params){
+  const tab = params.get('tab') || 'wait';
+  const q = { wait:'status=eq.active&mstate=eq.queue', remarks:'status=eq.active&published=is.true&mstate=eq.auto&reasons=neq.{}', hidden:'mstate=eq.hidden' }[tab];
+  const acts = tab==='hidden'
+    ? l => B('auto','Вернуть') + B('edit','Изменить')
+    : tab==='remarks'
+      ? l => B('approve','Всё верно','ok') + B('review','Снять на проверку') + B('hide','Скрыть','bad') + B('edit','Изменить')
+      : l => B('approve','Одобрить','ok') + B('hide','Скрыть','bad') + B('edit','Изменить');
+  RELOAD = async () => {
+    const { rows, total } = await api(`lots_v?${q}&select=*&order=first_seen.desc.nullslast&limit=200`, { count:true });
+    const dk = rows.map(l=>l.dup_with).filter(Boolean);
+    const dmap = dk.length ? Object.fromEntries((await api(`lots?key=${inq(dk)}&select=key,name,platform,price,url,req_to`)).map(x=>[x.key,x])) : {};
+    const sim = l => { const d = l.dup_with && dmap[l.dup_with]; if(!d) return '';
+      return `<div class="sim">Похож на: <a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.name)}</a> — ${esc(d.platform)}, ${nf(d.price)} BYN, заявки до ${dt(d.req_to)}
+        <div class="saverow"><button class="btn sm" data-act="merge" data-a="${esc(d.key)}" data-b="${esc(l.key)}">Это один лот — склеить</button>
+        <button class="btn sm" data-act="split" data-a="${esc(d.key)}" data-b="${esc(l.key)}">Это разные лоты</button></div></div>`; };
+    $('#qlist').innerHTML = rows.length
+      ? `<div class="bar"><label><input type="checkbox" id="selall"> выбрать все на странице</label>
+          ${tab!=='hidden'?B('bulk-approve',tab==='remarks'?'Всё верно у выбранных':'Одобрить выбранные','ok')+B('bulk-hide','Скрыть выбранные','bad'):''}
+          <span class="muted">${nf(total)} ${plural(total,'лот','лота','лотов')}${total>rows.length?`, показаны первые ${rows.length}`:''}</span></div>` + rows.map(l=>lotRow(l, acts, sim(l))).join('')
+      : `<div class="empty">${tab==='wait'?'Очередь пуста — все новые лоты в порядке.':tab==='remarks'?'Замечаний нет.':'Скрытых лотов нет.'}</div>`;
+  };
+  V().innerHTML = `<h1>Проверка лотов</h1>
+    <p class="lede">Новый лот с замечаниями — нет фото, цены или города, срок заявок поставлен по правилу, похож на лот другой площадки — не показывается на сайте, пока вы его не одобрите. Уже опубликованные лоты тоже можно снять на проверку или скрыть.</p>
+    <div class="tabs"><a href="#queue" class="${tab==='wait'?'on':''}">Ждут проверки</a><a href="#queue?tab=remarks" class="${tab==='remarks'?'on':''}">На сайте с замечаниями</a><a href="#queue?tab=hidden" class="${tab==='hidden'?'on':''}">Скрытые</a></div>
+    <div id="qlist"><p class="muted">Загрузка…</p></div>`;
+  await RELOAD();
+}
+
+/* Лоты */
+async function pLots(params){
+  const st = params.get('st') || 'active', q = params.get('q') || '', plat = params.get('plat') || '', sec = params.get('sec') || '',
+        sort = params.get('sort') || 'new', page = +(params.get('p') || 0);
+  const F = { active:'status=eq.active', site:'status=eq.active&published=is.true', queue:'status=eq.active&mstate=eq.queue', hidden:'mstate=eq.hidden',
+    dup:'status=eq.active&dup_of=not.is.null', arch:'status=eq.archive', edited:'edited=is.true', pinned:'pinned=is.true', all:'' };
+  const S = { new:'first_seen.desc.nullslast', deadline:'req_to.asc', price_d:'price.desc', price_a:'price.asc' };
+  let filt = [F[st]||F.active];
+  if(q){ const t = q.replace(/[,()"*\\]/g,' ').trim(); if(t) filt.push(`or=(name.ilike.*${enc(t)}*,key.eq.${enc(t)},id.eq.${enc(t)},art.eq.${enc(t)},location.ilike.*${enc(t)}*)`); }
+  if(plat) filt.push('platform=eq.'+enc(plat));
+  if(sec) filt.push('section=eq.'+enc(sec));
+  const acts = l => (l.mstate==='hidden' ? B('auto','Вернуть') : B('hide','Скрыть','bad'))
+    + (l.mstate==='queue' ? B('approve','Одобрить','ok') : l.status==='active' ? B('review','На проверку') : '')
+    + (l.status==='active' ? (l.pinned ? B('unpin','Открепить') : B('pin','★ Закрепить')) : '') + B('edit','Изменить');
+  const set = (k, v) => { const p = new URLSearchParams({ st, q, plat, sec, sort }); p.set(k, v); p.delete('p'); if(k==='p') p.set('p', v);
+    [...p.keys()].forEach(x=>{ if(!p.get(x)) p.delete(x); }); location.hash = 'lots?' + p.toString(); };
+  V().innerHTML = `<h1>Лоты</h1><p class="lede">Все лоты, которые знает робот, включая скрытые и архив. Нажмите на название — откроется карточка для правки.</p>
+    <div class="bar"><input type="search" id="lq" placeholder="Название, город, номер лота" value="${esc(q)}">
+      <select id="lst">${[['active','Все активные'],['site','На сайте'],['queue','Ждут проверки'],['hidden','Скрытые вами'],['dup','Склеенные (дубли)'],['edited','Изменённые вами'],['pinned','В «Рекомендуем»'],['arch','Архив'],['all','Все, включая архив']].map(([k,t])=>`<option value="${k}"${k===st?' selected':''}>${t}</option>`).join('')}</select>
+      <select id="lpl"><option value="">Все площадки</option>${PLATS.map(p=>`<option${p===plat?' selected':''}>${p}</option>`).join('')}</select>
+      <select id="lse"><option value="">Все разделы</option>${SECS.map(([k,t])=>`<option value="${k}"${k===sec?' selected':''}>${t}</option>`).join('')}</select>
+      <select id="lso">${[['new','Сначала новые'],['deadline','Срок заявок'],['price_d','Дороже'],['price_a','Дешевле']].map(([k,t])=>`<option value="${k}"${k===sort?' selected':''}>${t}</option>`).join('')}</select></div>
+    <div id="llist"><p class="muted">Загрузка…</p></div>`;
+  $('#lq').addEventListener('keydown', e=>{ if(e.key==='Enter') set('q', $('#lq').value.trim()); });
+  $('#lq').addEventListener('search', ()=>set('q', $('#lq').value.trim()));
+  $('#lst').onchange = e=>set('st', e.target.value); $('#lpl').onchange = e=>set('plat', e.target.value);
+  $('#lse').onchange = e=>set('sec', e.target.value); $('#lso').onchange = e=>set('sort', e.target.value);
+  RELOAD = async () => {
+    const { rows, total } = await api(`lots_v?${filt.filter(Boolean).join('&')}&select=*&order=${S[sort]||S.new}&limit=50&offset=${page*50}`, { count:true });
+    const pages = Math.ceil(total/50);
+    $('#llist').innerHTML = (rows.length ? `<p class="muted">${nf(total)} ${plural(total,'лот','лота','лотов')}</p>` + rows.map(l=>lotRow(l, acts)).join('') : '<div class="empty">Ничего не нашлось.</div>')
+      + (pages>1 ? `<div class="pager">${page>0?`<a class="btn sm" href="#" id="pp">← Назад</a>`:''}<span>страница ${page+1} из ${pages}</span>${page<pages-1?`<a class="btn sm" href="#" id="pn">Дальше →</a>`:''}</div>` : '');
+    const pp = $('#pp'), pn = $('#pn');
+    if(pp) pp.onclick = e=>{ e.preventDefault(); set('p', page-1); };
+    if(pn) pn.onclick = e=>{ e.preventDefault(); set('p', page+1); };
+  };
+  await RELOAD();
+}
+
+/* Дубли */
+async function pDups(){
+  RELOAD = async () => {
+    const [members, cands, rules] = await Promise.all([
+      api('lots_v?status=eq.active&dup_of=not.is.null&select=key,dup_of,name,platform,url,req_to,price&limit=1000'),
+      api('lots_v?status=eq.active&reasons=cs.{dup_maybe}&select=key,name,platform,price,url,req_to,dup_with&limit=500'),
+      api('dup_rules?select=*&order=created_at.desc')
+    ]);
+    const mainKeys = [...new Set(members.map(m=>m.dup_of))];
+    const mains = mainKeys.length ? Object.fromEntries((await api(`lots?key=${inq(mainKeys)}&select=key,name,platform,url,req_to,price,id`)).map(x=>[x.key,x])) : {};
+    const groups = mainKeys.map(k=>[mains[k], members.filter(m=>m.dup_of===k)]).filter(g=>g[0]);
+    const seen = {}, pairs = [];
+    const byKey = Object.fromEntries(cands.map(c=>[c.key,c]));
+    cands.forEach(c=>{ const d = byKey[c.dup_with]; const id = [c.key, c.dup_with].sort().join('|'); if(d && !seen[id]){ seen[id] = 1; pairs.push([c, d]); } });
+    const ln = l => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.platform)}</a> · ${nf(l.price)} BYN · заявки до ${dt(l.req_to)}`;
+    $('#d1').innerHTML = groups.length ? `<div class="tw"><table><tr><th>Главная карточка (на сайте)</th><th>Склеены с ней</th></tr>${groups.map(([m, ms])=>`<tr>
+        <td><b>${esc(m.name)}</b><br><span class="muted">${ln(m)}</span></td>
+        <td>${ms.map(x=>`<div style="margin-bottom:6px">${ln(x)} <button class="btn sm" data-act="split" data-a="${esc(m.key)}" data-b="${esc(x.key)}">Разъединить</button></div>`).join('')}</td></tr>`).join('')}</table></div>`
+      : '<div class="empty">Склеенных карточек нет.</div>';
+    $('#d2').innerHTML = pairs.length ? pairs.map(([a,b])=>`<div class="panel" style="margin-bottom:8px;padding:12px">
+        <div><b>${esc(a.name)}</b><br><span class="muted">${ln(a)}</span></div>
+        <div style="margin-top:6px"><b>${esc(b.name)}</b><br><span class="muted">${ln(b)}</span></div>
+        <div class="saverow"><button class="btn sm ok" data-act="merge" data-a="${esc(a.key)}" data-b="${esc(b.key)}">Это один лот — склеить</button>
+        <button class="btn sm" data-act="split" data-a="${esc(a.key)}" data-b="${esc(b.key)}">Это разные лоты</button></div></div>`).join('')
+      : '<div class="empty">Похожих пар не найдено.</div>';
+    $('#d4').innerHTML = rules.length ? `<table><tr><th>Правило</th><th>Лот A</th><th>Лот B</th><th></th></tr>${rules.map(r=>`<tr><td>${r.kind==='merge'?'склеить':'не склеивать'}</td>
+        <td>${esc(r.a)}</td><td>${esc(r.b)}</td><td><button class="btn sm bad" data-act="rule-del" data-a="${esc(r.a)}" data-b="${esc(r.b)}">Удалить</button></td></tr>`).join('')}</table>`
+      : '<p class="muted">Своих правил пока нет.</p>';
+  };
+  V().innerHTML = `<h1>Дубли</h1><p class="lede">Один и тот же лот на разных площадках робот склеивает в одну карточку «Торги на нескольких площадках». Здесь можно разъединить ошибочную склейку или склеить лоты вручную. Изменения вступают в силу после публикации.</p>
+    <div class="panel"><h2>Склеенные карточки</h2><div id="d1"><p class="muted">Загрузка…</p></div></div>
+    <div class="panel"><h2>Похожие лоты — возможно, дубли</h2><p class="muted" style="margin-top:0">Та же цена и похожее название на разных площадках, но робот не уверен.</p><div id="d2"></div></div>
+    <div class="panel"><h2>Склеить вручную</h2>
+      <div class="grid2"><div class="fld"><span>Лот A</span><input id="ma" placeholder="Начните вводить название"><div id="ma-s"></div></div>
+      <div class="fld"><span>Лот B</span><input id="mb" placeholder="Начните вводить название"><div id="mb-s"></div></div></div>
+      <button class="btn pri" id="mgo" disabled>Склеить A и B</button></div>
+    <div class="panel"><h2>Ваши правила</h2><div id="d4"></div></div>`;
+  const pick = {};
+  ['ma','mb'].forEach(id=>{
+    let h;
+    $('#'+id).addEventListener('input', e=>{ clearTimeout(h); pick[id] = null; $('#mgo').disabled = true; const t = e.target.value.replace(/[,()"*\\]/g,' ').trim();
+      if(t.length < 3){ $('#'+id+'-s').innerHTML = ''; return; }
+      h = setTimeout(async ()=>{ const r = await api(`lots?status=eq.active&name=ilike.*${enc(t)}*&select=key,name,platform,price&limit=8`);
+        $('#'+id+'-s').innerHTML = r.map(x=>`<a href="#" class="chip bl" style="display:block;margin-top:4px;text-decoration:none" data-k="${esc(x.key)}">${esc(x.name.slice(0,80))} · ${esc(x.platform)} · ${nf(x.price)}</a>`).join('') || '<span class="muted">не найдено</span>';
+        $('#'+id+'-s').querySelectorAll('[data-k]').forEach(a=>a.onclick = ev=>{ ev.preventDefault(); pick[id] = a.dataset.k; $('#'+id).value = a.textContent; $('#'+id+'-s').innerHTML = '';
+          $('#mgo').disabled = !(pick.ma && pick.mb && pick.ma!==pick.mb); }); }, 250); });
+  });
+  $('#mgo').onclick = async ()=>{ try{ await upsert('dup_rules', [{ a:pick.ma, b:pick.mb, kind:'merge' }], 'a,b'); toast('Лоты будут склеены после публикации');
+    ['ma','mb'].forEach(i=>{ $('#'+i).value=''; pick[i]=null; }); $('#mgo').disabled = true; await refreshStats(); await RELOAD(); }catch(err){ toast(err.message, true); } };
+  await RELOAD();
+}
+
+/* Ориентиры */
+async function pMarket(params){
+  const only = params.get('f') || 'odd';
+  RELOAD = async () => {
+    const rows = await api('lots_v?status=eq.active&or=(market.not.is.null,fields->market.not.is.null)&select=*&limit=2000');
+    const disc = l => { const m = (l.fields||{}).market && (l.fields||{}).market.median ? l.fields.market : l.market; const p = (l.fields||{}).price || l.price;
+      return m && m.median ? Math.round((m.median - p) / m.median * 100) : null; };
+    let list = rows.map(l=>[l, disc(l)]).sort((a,b)=>(b[1]??-999)-(a[1]??-999));
+    if(only==='odd') list = list.filter(([l,d])=>(d!=null && (d>=50 || d<0)) || (l.fields||{}).market);
+    const acts = l => { const fm = (l.fields||{}).market;
+      return (fm ? B('mk-auto','Вернуть автоматический') : B('mk-off','Отключить','bad')) + B('mk-own','Своя оценка') + B('edit','Изменить'); };
+    const info = (l, d) => { const fm = (l.fields||{}).market, m = l.market;
+      const t = fm ? (fm.off ? '<span class="badc">ориентир отключён вами</span>' : `<b>своя оценка: ${nf(fm.median)} BYN</b>${fm.note?' — '+esc(fm.note):''}`)
+        : m ? `медиана ${nf(m.median)} BYN по ${m.n} объявлениям ${esc(m.source||'')}${m.link?` · <a href="${esc(m.link)}" target="_blank" rel="noopener">похожие ↗</a>`:''}` : '';
+      return `<div class="sim">${t}${d!=null && !(fm&&fm.off)?` · <b>${d>=0?'дешевле рынка на '+d:'дороже рынка на '+(-d)}%</b>`:''}</div>`; };
+    $('#mlist').innerHTML = list.length ? `<p class="muted">${nf(list.length)} ${plural(list.length,'лот','лота','лотов')}</p>` + list.slice(0,300).map(([l,d])=>lotRow(l, acts, info(l,d))).join('')
+      : '<div class="empty">Нет лотов для проверки.</div>';
+  };
+  V().innerHTML = `<h1>Рыночные ориентиры</h1><p class="lede">Робот сравнивает лот с похожими объявлениями на Kufar. Если сравнение неудачное (другая модель, развалюха против нового), отключите ориентир или впишите свою оценку — на сайте она покажется как «Оценка БелЛот».</p>
+    <div class="tabs"><a href="#market" class="${only==='odd'?'on':''}">Подозрительные (дисконт от 50% или цена выше рынка)</a><a href="#market?f=all" class="${only==='all'?'on':''}">Все с ориентиром</a></div>
+    <div id="mlist"><p class="muted">Загрузка…</p></div>`;
+  await RELOAD();
+}
+
+/* Заявки */
+async function pLeads(params){
+  const st = params.get('st') || 'open';
+  const LS = { new:'Новая', work:'В работе', deal:'Сделка', refused:'Отказ' };
+  RELOAD = async () => {
+    const f = st==='open' ? 'status=in.(new,work)&' : st==='all' ? '' : `status=eq.${st}&`;
+    const rows = await api(`leads?${f}select=*&order=created_at.desc&limit=300`);
+    $('#ldl').innerHTML = rows.length ? `<div class="tw"><table><tr><th>Когда</th><th>Клиент</th><th>Лот</th><th>Статус</th><th>Комментарий</th><th></th></tr>
+      ${rows.map(r=>`<tr data-id="${r.id}"><td>${dt(r.created_at)}</td>
+        <td><b>${esc(r.name)}</b><br><a href="tel:${esc(r.phone.replace(/[^+\d]/g,''))}">${esc(r.phone)}</a>${r.email?`<br><a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`:''}</td>
+        <td>${r.lot?`<a href="../#/catalog?q=${enc(r.lot)}" target="_blank" rel="noopener">${esc(r.lot)}</a>`:'<span class="muted">—</span>'}</td>
+        <td><select class="lst">${Object.entries(LS).map(([k,t])=>`<option value="${k}"${k===r.status?' selected':''}>${t}</option>`).join('')}</select></td>
+        <td style="min-width:220px"><textarea class="lcm" rows="2" placeholder="Заметка">${esc(r.comment||'')}</textarea></td>
+        <td><button class="btn sm bad ldel">Удалить</button></td></tr>`).join('')}</table></div>`
+      : '<div class="empty">Заявок нет.</div>';
+    $('#ldl').querySelectorAll('tr[data-id]').forEach(tr=>{
+      const id = tr.dataset.id, save = async (o, msg) => { try{ await api(`leads?id=eq.${id}`, { method:'PATCH', body:Object.assign(o, { updated_at:nowIso() }), prefer:'return=minimal' }); toast(msg); refreshStats(); }catch(err){ toast(err.message, true); } };
+      tr.querySelector('.lst').onchange = e=>save({ status:e.target.value }, 'Статус сохранён');
+      tr.querySelector('.lcm').onchange = e=>save({ comment:e.target.value }, 'Комментарий сохранён');
+      tr.querySelector('.ldel').onclick = async ()=>{ if(!confirm('Удалить заявку?')) return;
+        try{ await api(`leads?id=eq.${id}`, { method:'DELETE' }); toast('Удалено'); await refreshStats(); await RELOAD(); }catch(err){ toast(err.message, true); } };
+    });
+  };
+  V().innerHTML = `<h1>Заявки «Помощь в аукционе»</h1><p class="lede">Заявки с формы на сайте. Статус и комментарий сохраняются сразу.</p>
+    <div class="tabs">${[['open','Новые и в работе'],['new','Новые'],['work','В работе'],['deal','Сделка'],['refused','Отказ'],['all','Все']].map(([k,t])=>`<a href="#leads?st=${k}" class="${k===st?'on':''}">${t}</a>`).join('')}</div>
+    <div id="ldl"><p class="muted">Загрузка…</p></div>`;
+  await RELOAD();
+}
+
+/* Площадки и разделы */
+const sw = (id, on) => `<label class="sw"><input type="checkbox" id="${id}"${on?' checked':''}><i></i></label>`;
+async function pSources(){
+  await loadSettings();
+  const pl = SET.platforms||{}, se = SET.sections||{}, mp = SET.min_price||{}, hrs = SET.hours||[11,18];
+  V().innerHTML = `<h1>Площадки и разделы</h1><p class="lede">Что собирает робот и что показывает сайт. Выключенная площадка не обходится, её лоты скрываются с сайта; выключенный раздел пропадает из меню и каталога.</p>
+    <div class="panel"><h2>Площадки</h2>${PLATS.map(p=>`<div class="tog"><div class="d">${esc(PLAT_RU[p])}<small>на сайте сейчас: ${nf((STATS.by_platform||{})[p]||0)}</small></div>${sw('pl-'+p, pl[p]!==false)}</div>`).join('')}</div>
+    <div class="panel"><h2>Разделы сайта</h2>${SECS.map(([k,t])=>`<div class="tog"><div class="d">${t}</div>${sw('se-'+k, se[k]!==false)}</div>`).join('')}</div>
+    <div class="panel"><h2>Минимальная стартовая цена</h2><p class="muted" style="margin-top:0">Лоты дешевле не попадают на сайт (новые). Пусто или 0 — без ограничения.</p>
+      <div class="grid2">${SECS.map(([k,t])=>`<label class="fld"><span>${t}, BYN</span><input type="number" min="0" step="100" id="mp-${k}" value="${mp[k]!=null?mp[k]:(MIN_DEF[k]||'')}"></label>`).join('')}</div></div>
+    <div class="panel"><h2>Когда обходить площадки</h2><p class="muted" style="margin-top:0">Время по Минску. Обход занимает 10–25 минут. Робот начинает в пределах 10 минут после выбранного часа.</p>
+      <div class="hours">${Array.from({length:24},(_,h)=>`<label class="${hrs.includes(h)?'on':''}"><input type="checkbox" value="${h}"${hrs.includes(h)?' checked':''}>${p2(h)}:00</label>`).join('')}</div></div>
+    <div class="saverow"><button class="btn pri" id="ssave">Сохранить</button><span class="muted">Площадки, часы и цена — вступают в силу со следующего обхода; разделы — после публикации.</span></div>`;
+  V().querySelectorAll('.hours input').forEach(i=>i.onchange = ()=>i.parentElement.classList.toggle('on', i.checked));
+  $('#ssave').onclick = async ()=>{
+    const hours = [...V().querySelectorAll('.hours input:checked')].map(i=>+i.value);
+    if(!hours.length){ toast('Выберите хотя бы один час', true); return; }
+    try{
+      await saveSetting('platforms', Object.fromEntries(PLATS.map(p=>[p, $('#pl-'+CSS.escape(p)).checked])));
+      await saveSetting('sections', Object.fromEntries(SECS.map(([k])=>[k, $('#se-'+k).checked])));
+      await saveSetting('min_price', Object.fromEntries(SECS.map(([k])=>[k, +$('#mp-'+k).value||0])));
+      await saveSetting('hours', hours);
+      toast('Сохранено'); refreshStats();
+    }catch(err){ toast(err.message, true); }
+  };
+}
+
+/* Калькулятор */
+async function pCalc(){
+  await loadSettings();
+  const c = SET.calc||{};
+  const inp = (p, f, ph, step='0.1') => `<input type="number" min="0" step="${step}" data-p="${p}" data-f="${f}" placeholder="${ph}" value="${(c[p]||{})[f]!=null?c[p][f]:''}">`;
+  V().innerHTML = `<h1>Правила калькулятора</h1><p class="lede">Калькулятор в карточке лота берёт условия с площадки. Если площадка чего-то не указала, подставляются значения отсюда. Пустое поле — значение по умолчанию (задаток 10%, шаг 5%, без сборов). Пояснение заменяет стандартный текст под сборами.</p>
+    <div class="panel tw"><table class="ctab"><tr><th>Площадка</th><th>Задаток, %</th><th>Шаг, %</th><th>Вознаграждение / сбор, %</th><th>Затраты на организацию, BYN</th><th>Пояснение для посетителя</th></tr>
+      ${PLATS.map(p=>`<tr><td><b>${esc(p)}</b></td><td>${inp(p,'dep','10')}</td><td>${inp(p,'step','5')}</td><td>${inp(p,'fee_pct','—')}</td><td>${inp(p,'fee_abs','—','1')}</td>
+        <td style="min-width:260px"><textarea rows="2" data-p="${p}" data-f="note" placeholder="стандартный текст">${esc((c[p]||{}).note||'')}</textarea></td></tr>`).join('')}</table></div>
+    <div class="saverow"><button class="btn pri" id="csave">Сохранить</button><span class="muted">На сайте — после публикации.</span></div>`;
+  $('#csave').onclick = async ()=>{
+    const out = {};
+    V().querySelectorAll('[data-p]').forEach(i=>{ const v = i.value.trim(); if(v==='') return; (out[i.dataset.p] ||= {})[i.dataset.f] = i.dataset.f==='note' ? v : +v; });
+    try{ await saveSetting('calc', out); toast('Сохранено'); refreshStats(); }catch(err){ toast(err.message, true); }
+  };
+}
+
+/* Telegram-бот */
+async function pBot(){
+  await loadSettings();
+  const b = SET.bot||{}, off = new Set(b.off||[]);
+  const since = new Date(Date.now() - 7*86400000).toISOString();
+  const runs = await api(`bot_runs?select=*&at=gte.${since}&order=at.desc&limit=1000`);
+  const days = {};
+  runs.forEach(r=>{ const d = new Date(r.at); const k = `${p2(d.getDate())}.${p2(d.getMonth()+1)}`; const x = days[k] ||= { sent:0, by:{} };
+    x.sent += r.sent; Object.entries((r.stats||{}).by||{}).forEach(([p,n])=>x.by[p] = (x.by[p]||0) + n); });
+  const byPlat = {}; BOT_SECS.forEach(([p,s])=>(byPlat[p] ||= []).push(s));
+  V().innerHTML = `<h1>Telegram-бот</h1><p class="lede">Бот проверяет площадки каждые 15 минут и присылает в Telegram новые лоты. Настройки применяются со следующей проверки, публиковать не нужно.</p>
+    <div class="panel"><div class="tog"><div class="d"><b>Бот работает</b><small>Выключите, чтобы поставить на паузу. Лоты, вышедшие за время паузы, бот не пришлёт.</small></div>${sw('b-on', !b.paused)}</div></div>
+    <div class="panel"><h2>Что присылать</h2>${Object.entries(byPlat).map(([p,ss])=>`<div style="margin-bottom:10px"><b>${esc(PLAT_RU[p])}</b>
+      ${[...new Set(ss)].map(s=>`<div class="tog"><div class="d">${esc(s)}</div>${sw('bs-'+btoa(unescape(encodeURIComponent(p+'|'+s))).replace(/=/g,''), !off.has(p+'|'+s))}</div>`).join('')}</div>`).join('')}
+      <p class="muted">Выключенный раздел бот читает, но не присылает: после включения старые лоты не посыплются.</p></div>
+    <div class="saverow" style="margin-bottom:16px"><button class="btn pri" id="bsave">Сохранить</button></div>
+    <div class="panel"><h2>Отправлено за 7 дней</h2>${Object.keys(days).length ? `<table><tr><th>День</th><th>Всего</th>${PLATS.map(p=>`<th>${esc(p)}</th>`).join('')}</tr>
+      ${Object.entries(days).map(([d,x])=>`<tr><td>${d}</td><td><b>${x.sent}</b></td>${PLATS.map(p=>`<td>${x.by[p]||0}</td>`).join('')}</tr>`).join('')}</table>` : '<p class="muted">Данных пока нет — бот начнёт отчитываться со следующей проверки.</p>'}</div>
+    <div class="panel"><h2>Последние проверки</h2>${runs.length ? `<table><tr><th>Когда</th><th>Отправлено</th><th>Новых</th><th>Замечания</th></tr>
+      ${runs.slice(0,30).map(r=>`<tr><td>${dt(r.at)}</td><td>${r.sent}</td><td>${(r.stats||{}).fresh??'—'}</td><td>${esc(r.errors||'')}</td></tr>`).join('')}</table>` : '<p class="muted">Нет данных.</p>'}</div>`;
+  $('#bsave').onclick = async ()=>{
+    const offl = [];
+    BOT_SECS.forEach(([p,s])=>{ const el = document.getElementById('bs-'+btoa(unescape(encodeURIComponent(p+'|'+s))).replace(/=/g,'')); if(el && !el.checked && !offl.includes(p+'|'+s)) offl.push(p+'|'+s); });
+    try{ await saveSetting('bot', { paused: !$('#b-on').checked, off: offl }); toast('Сохранено'); }catch(err){ toast(err.message, true); }
+  };
+}
+
+/* Тексты сайта */
+const TX_DEF = {
+  hero_eyebrow:'Агрегатор торгов по имуществу должников',
+  hero_title:'Имущество с торгов дешевле рынка — в одном окне и без риска',
+  hero_text:'Недвижимость, автомобили и техника со всех крупных площадок Беларуси. Показываем, сколько такой объект стоит на рынке, считаем полную цену покупки и помогаем пройти торги до сделки.',
+  band_title:'Первый раз на торгах?',
+  band_text:'Проверим объект до задатка, съездим на осмотр, подскажем разумный предел цены и проведём через аукцион.',
+  help_title:'Помощь в покупке на торгах',
+  help_lede:'На торгах можно купить заметно дешевле рынка, но цена ошибки — задаток и испорченная покупка. Берём на себя то, на чём покупатели ошибаются чаще всего.',
+  adv:[['Сравнение с рынком','Показываем, сколько стоит такой же объект в обычной продаже: медиана похожих предложений и разброс цен. Видно, дешевле лот рынка или нет, ещё до заявки.'],
+    ['Все площадки в одном месте','Собираем лоты с площадок Беларуси и сводим в один каталог: банкротство, исполнительное производство, залог, конфискат.'],
+    ['Обновление каждые 15 минут','Робот обходит источники круглосуточно. Новый лот появляется в каталоге в течение часа после публикации.'],
+    ['Один объект, а не пять карточек','Один и тот же объект часто выставлен сразу на нескольких площадках с разными датами. Мы их склеиваем.'],
+    ['Алерт о снижении цены','На повторных торгах цена падает. Сообщаем, когда объект из вашего списка подешевел.'],
+    ['Напоминания о дедлайнах','За три дня и за сутки до конца приёма заявок. Пропущенный срок — самая обидная потеря на торгах.']],
+  services:[['Проверка объекта до задатка','Обременения, аресты, долги, история собственников и прошлых торгов. Чтобы не купить проблему вместе с объектом.'],
+    ['Выезд на осмотр','Фото и видео, реальное состояние, сверка с описанием на площадке. Особенно выручает для объектов в районах.'],
+    ['Оценка и стратегия ставок','Рыночная стоимость, предел разумной цены, сколько шагов имеет смысл делать и когда остановиться.'],
+    ['Участие в торгах под ключ','Регистрация на площадке, ЭЦП, задаток, заявка и сами торги — по доверенности, без вашего участия.'],
+    ['Сопровождение после победы','Договор, оплата, регистрация права, перерегистрация транспорта, приёмка объекта.'],
+    ['Подбор лотов под задачу','Следим за всеми площадками и присылаем варианты под ваш бюджет, регион и цель.']]
+};
+async function pTexts(){
+  await loadSettings();
+  const t = SET.texts||{}, v = k => t[k]!=null && t[k]!=='' ? t[k] : TX_DEF[k];
+  const c = t.contacts||{};
+  const one = (k, label, rows) => `<label class="fld"><span>${label}</span>${rows?`<textarea rows="${rows}" data-k="${k}">${esc(v(k))}</textarea>`:`<input data-k="${k}" value="${esc(v(k))}">`}</label>`;
+  const list = (k, n, price) => { const cur = (t[k]&&t[k].length ? t[k] : TX_DEF[k].map(([a,b])=>({t:a,d:b})));
+    return Array.from({length:n},(_,i)=>{ const x = cur[i]||{}; return `<div class="panel" style="padding:12px;margin-bottom:8px"><div class="grid2">
+      <label class="fld"><span>Заголовок ${i+1}</span><input data-l="${k}" data-i="${i}" data-f="t" value="${esc(x.t||'')}"></label>
+      ${price?`<label class="fld"><span>Цена или срок (необязательно)</span><input data-l="${k}" data-i="${i}" data-f="p" value="${esc(x.p||'')}" placeholder="например: от 150 BYN"></label>`:''}</div>
+      <label class="fld"><span>Текст</span><textarea rows="2" data-l="${k}" data-i="${i}" data-f="d">${esc(x.d||'')}</textarea></label></div>`; }).join(''); };
+  V().innerHTML = `<h1>Тексты сайта</h1><p class="lede">Заголовки и описания на главной, на странице «Помощь в аукционе» и контакты в подвале. На сайте — после публикации.</p>
+    <div class="panel"><h2>Главная — первый экран</h2>${one('hero_eyebrow','Надзаголовок')}${one('hero_title','Заголовок',2)}${one('hero_text','Текст',3)}</div>
+    <div class="panel"><h2>Главная — плашка «Первый раз на торгах?»</h2>${one('band_title','Заголовок')}${one('band_text','Текст',2)}</div>
+    <div class="panel"><h2>Главная — «Почему БелЛот»</h2><p class="muted" style="margin-top:0">Пустой заголовок — пункт не показывается.</p>${list('adv',6)}</div>
+    <div class="panel"><h2>Помощь в аукционе</h2>${one('help_title','Заголовок')}${one('help_lede','Вступление',3)}<h2 style="margin-top:14px">Услуги</h2>${list('services',6,true)}</div>
+    <div class="panel"><h2>Контакты в подвале сайта</h2><div class="grid2">
+      <label class="fld"><span>Телефон</span><input data-c="phone" value="${esc(c.phone||'')}" placeholder="+375 29 000-00-00"></label>
+      <label class="fld"><span>Email</span><input data-c="email" value="${esc(c.email||'')}"></label>
+      <label class="fld"><span>Telegram</span><input data-c="telegram" value="${esc(c.telegram||'')}" placeholder="@bellot"></label>
+      <label class="fld"><span>Адрес</span><input data-c="address" value="${esc(c.address||'')}"></label></div></div>
+    <div class="saverow"><button class="btn pri" id="tsave">Сохранить</button><button class="btn" id="treset">Вернуть тексты по умолчанию</button></div>`;
+  $('#tsave').onclick = async ()=>{
+    const out = { contacts:{} };
+    V().querySelectorAll('[data-k]').forEach(i=>out[i.dataset.k] = i.value.trim());
+    ['adv','services'].forEach(k=>{ out[k] = []; V().querySelectorAll(`[data-l="${k}"]`).forEach(i=>{ (out[k][+i.dataset.i] ||= {})[i.dataset.f] = i.value.trim(); });
+      out[k] = out[k].filter(x=>x && x.t); });
+    V().querySelectorAll('[data-c]').forEach(i=>{ if(i.value.trim()) out.contacts[i.dataset.c] = i.value.trim(); });
+    try{ await saveSetting('texts', out); toast('Сохранено'); refreshStats(); }catch(err){ toast(err.message, true); }
+  };
+  $('#treset').onclick = async ()=>{ if(!confirm('Вернуть все тексты по умолчанию? Контакты тоже очистятся.')) return;
+    try{ await saveSetting('texts', {}); toast('Тексты по умолчанию'); refreshStats(); pTexts(); }catch(err){ toast(err.message, true); } };
+}
+
+/* Доступ */
+async function pAccess(){
+  V().innerHTML = `<h1>Доступ</h1>
+    <div class="panel"><h2>Сменить пароль</h2><div class="grid2">
+      <label class="fld"><span>Текущий пароль</span><input type="password" id="pw0" autocomplete="current-password"></label>
+      <label class="fld"><span>Новый пароль</span><input type="password" id="pw1" autocomplete="new-password"></label>
+      <label class="fld"><span>Новый пароль ещё раз</span><input type="password" id="pw2" autocomplete="new-password"></label></div>
+      <button class="btn pri" id="pwgo">Сменить пароль</button></div>
+    <div class="panel"><h2>Мгновенная публикация</h2>
+      <p style="margin-top:0">Сейчас робот проверяет запросы на публикацию каждые 10 минут. Чтобы он запускался сразу, сохраните здесь ключ GitHub.
+      ${STATS.github?'<span class="okc">Ключ сохранён.</span>':'<span class="muted">Ключ не сохранён.</span>'}</p>
+      <ol class="muted"><li>Откройте <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com → Fine-grained token</a>.</li>
+        <li>Repository access → Only select repositories → <b>bellot-site</b>.</li>
+        <li>Permissions → Actions → <b>Read and write</b>. Generate token, скопируйте ключ.</li></ol>
+      <div class="bar"><input type="password" id="ghk" placeholder="github_pat_…" style="flex:1"><button class="btn pri" id="ghgo">Сохранить ключ</button>${STATS.github?'<button class="btn bad" id="ghdel">Удалить ключ</button>':''}</div>
+      <p class="muted">Ключ хранится в зашифрованном хранилище базы и нигде не показывается.</p></div>
+    <div class="panel"><h2>Сеансы</h2><p style="margin-top:0">Вход действует 30 дней на каждом устройстве.</p>
+      <button class="btn" id="lo1">Выйти</button> <button class="btn bad" id="loa">Выйти на всех устройствах</button></div>`;
+  $('#pwgo').onclick = async ()=>{
+    if($('#pw1').value !== $('#pw2').value){ toast('Новые пароли не совпадают', true); return; }
+    try{ await rpc('admin_passwd', { p_old:$('#pw0').value, p_new:$('#pw1').value }); toast('Пароль изменён'); ['pw0','pw1','pw2'].forEach(i=>$('#'+i).value=''); }
+    catch(err){ toast(err.message, true); }
+  };
+  $('#ghgo').onclick = async ()=>{ const v = $('#ghk').value.trim(); if(!v){ toast('Вставьте ключ', true); return; }
+    try{ await rpc('set_github_token', { p_token:v }); $('#ghk').value = ''; toast('Ключ сохранён'); await refreshStats(); pAccess(); }catch(err){ toast(err.message, true); } };
+  if($('#ghdel')) $('#ghdel').onclick = async ()=>{ try{ await rpc('set_github_token', { p_token:'' }); toast('Ключ удалён'); await refreshStats(); pAccess(); }catch(err){ toast(err.message, true); } };
+  $('#lo1').onclick = ()=>logout();
+  $('#loa').onclick = async ()=>{ try{ await rpc('admin_logout', { p_all:true }); }catch(e){} logout(true); };
+}
+
+/* ── карточка лота ── */
+async function openEditor(key){
+  const dw = $('#drawer'); dw.hidden = false;
+  dw.innerHTML = '<div class="dw"><p class="muted">Загрузка…</p></div>';
+  const [[l], ph] = await Promise.all([ api(`lots_v?key=eq.${enc(key)}&select=*`), api(`lot_photos?key=eq.${enc(key)}&select=data`) ]);
+  if(!l){ dw.innerHTML = '<div class="dw"><p>Лот не найден.</p></div>'; return; }
+  let det = [];
+  try{ const r = await fetch(`${RAW}det/${enc(key)}.json`); if(r.ok) det = await r.json(); }catch(e){}
+  const origDescr = (det.flatMap(s=>s.rows||[]).find(([k])=>/^Описание/i.test(k))||[])[1] || '';
+  const f = Object.assign({}, l.fields||{});
+  const fm = f.market || null;
+  let newPhoto = null, dropPhoto = false;
+  const curPhoto = ph[0] ? ph[0].data : l.photo ? `${RAW}ph/${enc(key)}.jpg` : '';
+  const val = k => f[k]!=null ? f[k] : '';
+  const hint = (k, shown) => `<div class="hint">С площадки: ${shown||'—'}${f[k]!=null?` · <a data-reset="${k}">вернуть значение площадки</a>`:''}</div>`;
+  dw.innerHTML = `<div class="dw" role="dialog" aria-label="Карточка лота">
+    <div class="dw-h"><h2>${esc(f.name||l.name)}</h2><button class="x" id="dwx" aria-label="Закрыть">×</button></div>
+    <p class="muted" style="margin-top:-6px">${esc(l.platform)} · <a href="${esc(l.url)}" target="_blank" rel="noopener">на площадке ↗</a>${l.published&&l.status==='active'?` · <a href="../#/lot/${enc(l.id)}" target="_blank" rel="noopener">на сайте ↗</a>`:''} · ключ ${esc(l.key)}</p>
+    ${stateChips(l)}
+    <div class="panel" style="margin-top:12px"><h2>Публикация</h2>
+      <div class="radios">${[['','по правилам (авто)'],['approved','одобрен'],['review','на проверке — не показывать'],['hidden','скрыт']].map(([k,t])=>`<label><input type="radio" name="mod" value="${k}"${(l.mod||'')===k?' checked':''}> ${t}</label>`).join('')}</div>
+      <label style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="e-pin"${l.pinned?' checked':''}> ★ Закрепить в блоке «Рекомендуем» на главной</label></div>
+    <div class="panel"><h2>Фото</h2><div class="ph-edit"><img id="e-img" src="${esc(curPhoto)}" alt="" ${curPhoto?'':'hidden'}>
+      <div><label class="btn">Загрузить своё фото<input type="file" id="e-file" accept="image/*" hidden></label>
+      ${ph[0]?'<button class="btn bad" id="e-phdel" style="margin-left:6px">Убрать своё фото</button>':''}
+      <div class="hint muted" style="margin-top:6px">Своё фото заменит фото площадки.</div></div></div></div>
+    <div class="panel"><h2>Данные лота</h2><p class="muted" style="margin-top:0">Измените только то, что нужно. Изменённое поле робот больше не перезаписывает, даже если площадка его поменяет.</p>
+      <label class="fld"><span>Название</span><textarea rows="2" data-f="name" placeholder="${esc(l.name)}">${esc(val('name'))}</textarea>${hint('name', esc(l.name))}</label>
+      <div class="grid2">
+        <label class="fld"><span>Раздел</span><select data-f="section"><option value="">как у площадки</option>${SECS.map(([k,t])=>`<option value="${k}"${f.section===k?' selected':''}>${t}</option>`).join('')}</select>${hint('section', esc(SEC_RU[l.section]||l.section))}</label>
+        <label class="fld"><span>Стартовая цена, BYN</span><input type="number" min="0" step="1" data-f="price" placeholder="${esc(l.price)}" value="${esc(val('price'))}">${hint('price', nf(l.price)+' BYN')}</label>
+        <label class="fld"><span>Приём заявок до</span><input type="datetime-local" data-f="req_to" value="${toLocal(f.req_to)}">${hint('req_to', dt(l.req_to))}</label>
+        <label class="fld"><span>Дата торгов</span><input type="datetime-local" data-f="torg" value="${toLocal(f.torg)}">${hint('torg', dt(l.torg))}</label>
+      </div>
+      <label class="fld"><span>Местоположение</span><input data-f="location" placeholder="${esc(l.location||'')}" value="${esc(val('location'))}">${hint('location', esc(l.location))}</label>
+      <label class="fld"><span>Описание</span><textarea rows="5" data-f="descr" placeholder="Пусто — описание площадки">${esc(val('descr'))}</textarea>
+        <div class="orig">С площадки: ${origDescr?esc(origDescr):'описания нет'}</div>${f.descr?'<div class="hint"><a data-reset="descr">вернуть описание площадки</a></div>':''}</label></div>
+    <div class="panel"><h2>Рыночный ориентир</h2>
+      <p class="muted" style="margin-top:0">${l.market?`Робот: медиана ${nf(l.market.median)} BYN по ${l.market.n} объявлениям ${esc(l.market.source||'')}.`:'Робот не нашёл ориентир.'}</p>
+      <div class="radios">${[['auto','автоматический'],['off','не показывать'],['own','своя оценка']].map(([k,t])=>`<label><input type="radio" name="mk" value="${k}"${(fm?(fm.off?'off':'own'):'auto')===k?' checked':''}> ${t}</label>`).join('')}</div>
+      <div class="grid2" id="mk-own" ${fm&&!fm.off?'':'hidden'}><label class="fld"><span>Оценка, BYN</span><input type="number" min="0" id="mk-v" value="${fm&&fm.median?fm.median:''}"></label>
+        <label class="fld"><span>Комментарий для посетителей</span><input id="mk-n" value="${esc(fm&&fm.note||'')}"></label></div></div>
+    <div class="dw-foot"><button class="btn pri" id="e-save">Сохранить</button><button class="btn" id="e-cancel">Отмена</button><span class="muted">На сайте — после публикации.</span></div>
+  </div>`;
+  const close = () => { dw.hidden = true; dw.innerHTML = ''; };
+  $('#dwx').onclick = close; $('#e-cancel').onclick = close;
+  dw.onclick = e=>{ if(e.target===dw) close(); };
+  dw.querySelectorAll('[data-reset]').forEach(a=>a.onclick = ()=>{ const k = a.dataset.reset; delete f[k];
+    const el = dw.querySelector(`[data-f="${k}"]`); if(el) el.value = ''; a.closest('.hint').textContent = 'Будет значение площадки'; });
+  dw.querySelectorAll('input[name=mk]').forEach(r=>r.onchange = ()=>{ $('#mk-own').hidden = r.value!=='own' || !r.checked; });
+  $('#e-file').onchange = async e=>{ const file = e.target.files[0]; if(!file) return;
+    try{ newPhoto = await shrinkPhoto(file); dropPhoto = false; $('#e-img').src = newPhoto; $('#e-img').hidden = false; }catch(err){ toast(err.message, true); } };
+  if($('#e-phdel')) $('#e-phdel').onclick = ()=>{ dropPhoto = true; newPhoto = null; $('#e-img').src = l.photo ? `${RAW}ph/${enc(key)}.jpg` : ''; $('#e-img').hidden = !l.photo; $('#e-phdel').remove(); };
+  $('#e-save').onclick = async ()=>{
+    const btn = $('#e-save'); btn.disabled = true;
+    const fields = {};
+    dw.querySelectorAll('[data-f]').forEach(el=>{
+      const k = el.dataset.f; let v = el.value.trim();
+      if(v==='') return;
+      if(k==='price'){ v = +v; if(!(v>0) || v===+l.price) return; }
+      else if(k==='req_to' || k==='torg'){ v = fromLocal(v); if(!v || v===l[k]) return; }
+      else if(k==='section'){ if(v===l.section) return; }
+      else if(k==='descr'){ if(v===origDescr.trim()) return; }
+      else if(v===String(l[k]||'').trim()) return;
+      fields[k] = v;
+    });
+    const mk = dw.querySelector('input[name=mk]:checked').value;
+    if(mk==='off') fields.market = { off:true };
+    else if(mk==='own'){ const v = +$('#mk-v').value; if(!(v>0)){ toast('Впишите оценку в BYN', true); btn.disabled = false; return; } fields.market = { median:v, note:$('#mk-n').value.trim() }; }
+    const mod = dw.querySelector('input[name=mod]:checked').value || null;
+    try{
+      await upsert('overrides', [{ key, fields, mod, pinned:$('#e-pin').checked, updated_at:nowIso() }]);
+      if(newPhoto) await upsert('lot_photos', [{ key, data:newPhoto, updated_at:nowIso() }]);
+      else if(dropPhoto) await api(`lot_photos?key=eq.${enc(key)}`, { method:'DELETE' });
+      toast('Сохранено. На сайте — после публикации'); close(); await refreshStats(); await RELOAD();
+    }catch(err){ toast(err.message, true); btn.disabled = false; }
+  };
+}
+function shrinkPhoto(file){
+  return new Promise((res, rej)=>{
+    const img = new Image();
+    img.onload = () => { const k = Math.min(1, 1200/Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src); res(c.toDataURL('image/jpeg', 0.85)); };
+    img.onerror = () => rej(new Error('Не удалось прочитать фото'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+addEventListener('keydown', e=>{ if(e.key==='Escape' && !$('#drawer').hidden){ $('#drawer').hidden = true; $('#drawer').innerHTML = ''; } });
+
+/* ── старт ── */
+async function start(){
+  if(!TOKEN){ showLogin(); return; }
+  try{ const me = await rpc('admin_me'); if(!me){ logout(true); return; } }
+  catch(e){ $('#login').hidden = false; $('#l-err').textContent = 'Нет связи с базой: ' + e.message; return; }
+  $('#login').hidden = true; $('#shell').hidden = false;
+  await Promise.all([ loadSettings(), refreshStats() ]);
+  route();
+}
+start();
+</script>
+</body>
+</html>

@@ -35,7 +35,7 @@ parent = ref['object']['sha']
 base = api('GET', "repos/#{REPO}/git/commits/#{parent}")['tree']['sha']
 remote = api('GET', "repos/#{REPO}/git/trees/#{base}?recursive=1")['tree'].map { |t| t['path'] }
 
-files = Dir.chdir(ROOT) { Dir['app/*', '.github/workflows/*', 'tools/*', 'README.md'].select { |f| File.file?(f) } }
+files = Dir.chdir(ROOT) { Dir['app/*', '.github/workflows/*', 'tools/*', 'supabase/*', 'README.md'].select { |f| File.file?(f) } }
 if SEED
   abort('в репозитории уже есть память робота — seed не нужен и опасен') if remote.include?('data/lots.json')
   Dir.chdir(File.join(ROOT, 'data')) do
