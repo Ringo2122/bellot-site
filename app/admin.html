@@ -264,7 +264,7 @@ async function refreshStats(){
 
 const PAGES = [
   ['dash','Сводка'], ['stats','Аналитика'], ['queue','Проверка'], ['lots','Лоты'], ['dups','Дубли'], ['market','Ориентиры'], ['leads','Заявки'], ['users','Пользователи'],
-  ['sources','Площадки и разделы'], ['calc','Калькулятор'], ['bot','Telegram-бот'], ['texts','Тексты сайта'], ['access','Доступ']
+  ['sources','Площадки и разделы'], ['calc','Калькулятор'], ['bot','Telegram-бот'], ['services','Услуги'], ['texts','Тексты сайта'], ['access','Доступ']
 ];
 function drawNav(){
   const cur = (location.hash.slice(1).split('?')[0]) || 'dash';
@@ -304,7 +304,9 @@ document.addEventListener('click', async e=>{
 /* ── строка лота ── */
 function stateChips(l){
   const c = [];
-  if(l.status==='archive') c.push(['архив','']);
+  if(l.status==='archive'){ c.push(['архив',''])
+    const r = l.result, R = { sold:['продан','g'], single:['продан единственному','g'], failed:['торги не состоялись','r'], cancelled:['отменены',''] };
+    if(r && R[r.st]) c.push([R[r.st][0] + (r.price ? ' за ' + nf(r.price) + ' BYN' : ''), R[r.st][1]]); }
   else if(l.mstate==='hidden') c.push(['скрыт вами','b']);
   else if(l.mstate==='queue') c.push([l.published?'на проверке — снимется с сайта после публикации':'ждёт проверки','r']);
   else if(l.mstate==='ok') c.push([l.published?'одобрен · на сайте':'одобрен — появится после публикации','g']);
@@ -382,7 +384,7 @@ async function route(){
   const params = new URLSearchParams(qs||'');
   drawNav(); RELOAD = () => {};
   V().innerHTML = '<p class="muted">Загрузка…</p>';
-  const fn = { dash:pDash, stats:pStats, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, users:pUsers, sources:pSources, calc:pCalc, bot:pBot, texts:pTexts, access:pAccess }[page] || pDash;
+  const fn = { dash:pDash, stats:pStats, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, users:pUsers, sources:pSources, calc:pCalc, bot:pBot, services:pServices, texts:pTexts, access:pAccess }[page] || pDash;
   try{ await fn(params); }catch(err){ V().innerHTML = `<div class="empty">Не получилось загрузить: ${esc(err.message)}</div>`; }
 }
 addEventListener('hashchange', route);
@@ -597,7 +599,8 @@ async function pLeads(params){
     const rows = await api(`leads?${f}select=*&order=created_at.desc&limit=300`);
     $('#ldl').innerHTML = rows.length ? `<div class="tw"><table><tr><th>Когда</th><th>Клиент</th><th>Лот</th><th>Статус</th><th>Комментарий</th><th></th></tr>
       ${rows.map(r=>`<tr data-id="${r.id}"><td>${dt(r.created_at)}</td>
-        <td><b>${esc(r.name)}</b><br><a href="tel:${esc(r.phone.replace(/[^+\d]/g,''))}">${esc(r.phone)}</a>${r.email?`<br><a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`:''}</td>
+        <td style="white-space:normal;max-width:320px"><b>${esc(r.name)}</b><br><a href="tel:${esc(r.phone.replace(/[^+\d]/g,''))}">${esc(r.phone)}</a>${r.email?`<br><a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`:''}
+          ${r.msg?`<div class="muted" style="margin-top:6px;font-style:italic">«${esc(r.msg)}»</div>`:''}</td>
         <td>${r.lot_id?`<a href="../#/lot/${enc(r.lot_id)}" target="_blank" rel="noopener">${esc((r.lot_name||r.lot||r.lot_id).slice(0,70))}</a>`
             : r.lot?`<a href="../#/catalog?q=${enc(r.lot)}" target="_blank" rel="noopener">${esc(r.lot)}</a>`:'<span class="muted">—</span>'}
           ${r.service?`<br><span class="chip bl">${esc(r.service)}</span>`:''}
@@ -727,7 +730,7 @@ async function pTexts(){
     <div class="panel"><h2>Главная — первый экран</h2>${one('hero_eyebrow','Надзаголовок')}${one('hero_title','Заголовок',2)}${one('hero_text','Текст',3)}</div>
     <div class="panel"><h2>Главная — плашка «Первый раз на торгах?»</h2>${one('band_title','Заголовок')}${one('band_text','Текст',2)}</div>
     <div class="panel"><h2>Главная — «Почему БелЛот»</h2><p class="muted" style="margin-top:0">Пустой заголовок — пункт не показывается.</p>${list('adv',6)}</div>
-    <div class="panel"><h2>Помощь в аукционе</h2>${one('help_title','Заголовок')}${one('help_lede','Вступление',3)}<h2 style="margin-top:14px">Услуги</h2>${list('services',6,true)}</div>
+    <div class="panel"><h2>Помощь в аукционе</h2>${one('help_title','Заголовок')}${one('help_lede','Вступление',3)}<p class="muted">Список услуг — в разделе <a href="#services">«Услуги»</a>.</p></div>
     <div class="panel"><h2>Контакты в подвале сайта</h2><div class="grid2">
       <label class="fld"><span>Телефон</span><input data-c="phone" value="${esc(c.phone||'')}" placeholder="+375 29 000-00-00"></label>
       <label class="fld"><span>Email</span><input data-c="email" value="${esc(c.email||'')}"></label>
@@ -737,13 +740,14 @@ async function pTexts(){
   $('#tsave').onclick = async ()=>{
     const out = { contacts:{} };
     V().querySelectorAll('[data-k]').forEach(i=>out[i.dataset.k] = i.value.trim());
-    ['adv','services'].forEach(k=>{ out[k] = []; V().querySelectorAll(`[data-l="${k}"]`).forEach(i=>{ (out[k][+i.dataset.i] ||= {})[i.dataset.f] = i.value.trim(); });
+    ['adv'].forEach(k=>{ out[k] = []; V().querySelectorAll(`[data-l="${k}"]`).forEach(i=>{ (out[k][+i.dataset.i] ||= {})[i.dataset.f] = i.value.trim(); });
       out[k] = out[k].filter(x=>x && x.t); });
+    if((SET.texts||{}).services) out.services = SET.texts.services;   // услуги правятся в своём разделе
     V().querySelectorAll('[data-c]').forEach(i=>{ if(i.value.trim()) out.contacts[i.dataset.c] = i.value.trim(); });
     try{ await saveSetting('texts', out); toast('Сохранено'); refreshStats(); }catch(err){ toast(err.message, true); }
   };
   $('#treset').onclick = async ()=>{ if(!confirm('Вернуть все тексты по умолчанию? Контакты тоже очистятся.')) return;
-    try{ await saveSetting('texts', {}); toast('Тексты по умолчанию'); refreshStats(); pTexts(); }catch(err){ toast(err.message, true); } };
+    try{ await saveSetting('texts', (SET.texts||{}).services ? { services:SET.texts.services } : {}); toast('Тексты по умолчанию'); refreshStats(); pTexts(); }catch(err){ toast(err.message, true); } };
 }
 
 /* Аналитика — общий модуль stats.js (тот же код в личном кабинете) */
@@ -846,6 +850,40 @@ async function pUser(id, params){
       toast('Отчёт отправлен в кабинет'); route();
     }catch(err){ toast(err.message, true); btn.disabled = false; }
   };
+}
+
+/* Услуги: форма заявки на сайте и в кабинете, карточки на странице «Помощь в аукционе» */
+const SVC_ICONS = [['check','щит с галочкой — проверка'],['eye','глаз — осмотр'],['chart','график — оценка'],['hammer','молоток — торги'],['doc','документ — сопровождение'],['search','лупа — подбор']];
+async function pServices(){
+  await loadSettings();
+  const t = SET.texts || {};
+  let list = (t.services && t.services.length ? t.services : TX_DEF.services.map(([a,b])=>({ t:a, d:b })))
+    .map((x,i)=>({ t:x.t||'', d:x.d||'', p:x.p||'', i:x.i || (SVC_ICONS[i]||SVC_ICONS[0])[0] }));
+  const collect = () => V().querySelectorAll('[data-i]').forEach(r=>{ const x = list[+r.dataset.i];
+    r.querySelectorAll('[data-f]').forEach(el=>{ x[el.dataset.f] = el.value; }); });
+  const draw = () => {
+    V().innerHTML = `<h1>Услуги</h1><p class="lede">Список услуг показывается в поле «Услуга» формы заявки — на сайте и в личном кабинете, и карточками на странице «Помощь в аукционе». Порядок здесь — порядок на сайте. На сайте — после публикации.</p>
+      ${list.map((x,i)=>`<div class="panel" data-i="${i}" style="padding:14px"><div class="grid2">
+          <label class="fld"><span>Название</span><input data-f="t" value="${esc(x.t)}" placeholder="Например: Проверка объекта до задатка"></label>
+          <label class="fld"><span>Цена или срок (необязательно)</span><input data-f="p" value="${esc(x.p)}" placeholder="например: от 150 BYN"></label></div>
+        <label class="fld"><span>Описание — на странице «Помощь в аукционе»</span><textarea data-f="d" rows="2">${esc(x.d)}</textarea></label>
+        <div class="saverow"><label class="fld" style="margin:0;flex:1;max-width:320px"><span>Значок</span><select data-f="i">${SVC_ICONS.map(([k,n])=>`<option value="${k}"${x.i===k?' selected':''}>${n}</option>`).join('')}</select></label>
+          <span style="flex:1"></span>
+          <button class="btn sm" type="button" data-mv="-1"${i===0?' disabled':''} title="Выше">↑</button>
+          <button class="btn sm" type="button" data-mv="1"${i===list.length-1?' disabled':''} title="Ниже">↓</button>
+          <button class="btn sm bad" type="button" data-rm>Удалить</button></div></div>`).join('')}
+      <div class="saverow"><button class="btn" type="button" id="sv-add">+ Добавить услугу</button><button class="btn pri" type="button" id="sv-save">Сохранить</button>
+        <span class="muted">Пустые названия не сохраняются.</span></div>`;
+    V().querySelectorAll('[data-i]').forEach(r=>{ const i = +r.dataset.i;
+      r.querySelectorAll('[data-mv]').forEach(b=>b.onclick = ()=>{ collect(); const j = i + +b.dataset.mv; [list[i], list[j]] = [list[j], list[i]]; draw(); });
+      r.querySelector('[data-rm]').onclick = ()=>{ collect(); if(list[i].t && !confirm(`Удалить услугу «${list[i].t}»?`)) return; list.splice(i,1); draw(); }; });
+    $('#sv-add').onclick = ()=>{ collect(); list.push({ t:'', d:'', p:'', i:'check' }); draw(); V().querySelector(`[data-i="${list.length-1}"] input`).focus(); };
+    $('#sv-save').onclick = async ()=>{ collect();
+      const services = list.map(x=>({ t:x.t.trim(), d:x.d.trim(), p:x.p.trim(), i:x.i })).filter(x=>x.t);
+      if(!services.length){ toast('Нужна хотя бы одна услуга', true); return; }
+      try{ await saveSetting('texts', Object.assign({}, SET.texts || {}, { services })); list = services; toast('Сохранено — опубликуйте, чтобы обновить сайт'); refreshStats(); draw(); }catch(err){ toast(err.message, true); } };
+  };
+  draw();
 }
 
 /* Доступ */

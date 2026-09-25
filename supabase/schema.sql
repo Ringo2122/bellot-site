@@ -45,6 +45,7 @@ create index if not exists lots_status on lots (status, hidden_why);
 alter table lots add column if not exists price0 numeric;
 alter table lots add column if not exists area_num numeric;
 alter table lots add column if not exists debtor text;
+alter table lots add column if not exists result jsonb;   -- итоги торгов: st, start, price, bids, users, at
 
 -- ── решения человека ──
 create table if not exists overrides (
@@ -337,6 +338,7 @@ alter table leads add column if not exists user_id bigint references users on de
 alter table leads add column if not exists service text;
 alter table leads add column if not exists lot_name text;
 alter table leads add column if not exists lot_id text;   -- id лота на сайте
+alter table leads add column if not exists msg text;      -- что написал клиент
 
 do $$
 declare t text;
@@ -433,8 +435,10 @@ end $$;
 -- заявка с сайта: если посетитель вошёл в кабинет — привязываем к нему
 drop function if exists submit_lead(text, text, text, text);
 drop function if exists submit_lead(text, text, text, text, text, text);
+drop function if exists submit_lead(text, text, text, text, text, text, text);
 create or replace function submit_lead(p_name text, p_phone text, p_email text default null, p_lot text default null,
-                                       p_service text default null, p_lot_name text default null, p_lot_id text default null) returns bigint
+                                       p_service text default null, p_lot_name text default null, p_lot_id text default null,
+                                       p_msg text default null) returns bigint
 language plpgsql security definer set search_path = public, extensions as $$
 declare v_id bigint;
 begin
@@ -444,10 +448,11 @@ begin
   if (select count(*) from leads where created_at > now() - interval '10 minutes') >= 30 then
     raise exception 'Слишком много заявок, попробуйте позже';
   end if;
-  insert into leads (name, phone, email, lot, service, lot_name, lot_id, user_id)
+  insert into leads (name, phone, email, lot, service, lot_name, lot_id, msg, user_id)
   values (left(trim(p_name), 120), left(trim(p_phone), 40), nullif(left(trim(coalesce(p_email, '')), 120), ''),
           nullif(left(trim(coalesce(p_lot, '')), 120), ''), nullif(left(trim(coalesce(p_service, '')), 120), ''),
-          nullif(left(trim(coalesce(p_lot_name, '')), 300), ''), nullif(left(trim(coalesce(p_lot_id, '')), 120), ''), cur_user())
+          nullif(left(trim(coalesce(p_lot_name, '')), 300), ''), nullif(left(trim(coalesce(p_lot_id, '')), 120), ''),
+          nullif(left(trim(coalesce(p_msg, '')), 2000), ''), cur_user())
   returning leads.id into v_id;
   return v_id;
 end $$;
@@ -476,6 +481,7 @@ $$;
 -- копия каталога обновилась → тем, кто следит за лотом, приходит уведомление
 create or replace function lots_watch() returns trigger
 language plpgsql security definer set search_path = public as $$
+declare st text := coalesce(new.result->>'st', ''); pr numeric; s0 numeric;
 begin
   if new.id is null or not exists (select 1 from user_lots where lot = new.id and watch) then return new; end if;
   if new.price is distinct from old.price and coalesce(old.price, 0) > 0 and coalesce(new.price, 0) > 0 then
@@ -490,6 +496,15 @@ begin
   if new.torg is distinct from old.torg and old.torg is not null and new.torg is not null then
     perform push_watch(new.id, new.name, 'torg', 'dates', 'Дата торгов изменена: ' || fmt_t(new.torg));
   end if;
+  if st in ('sold', 'single', 'failed', 'cancelled') and st is distinct from coalesce(old.result->>'st', '') then
+    pr := nullif(new.result->>'price', '')::numeric; s0 := nullif(new.result->>'start', '')::numeric;
+    perform push_watch(new.id, new.name, 'result', 'status', case
+      when st in ('sold', 'single') and pr > 0 then 'Итоги торгов: продан' || case when st = 'single' then ' единственному участнику' else '' end
+        || ' за ' || fmt_n(pr) || ' BYN' || case when s0 > 0 then ' (' || case when pr >= s0 then '+' else '' end || round((pr / s0 - 1) * 100) || '% к начальной)' else '' end
+      when st in ('sold', 'single') then 'Итоги торгов: лот продан'
+      when st = 'failed' then 'Итоги торгов: торги не состоялись'
+      else 'Торги отменены' end);
+  end if;
   if new.status is distinct from old.status then
     if new.status = 'archive' then
       perform push_watch(new.id, new.name, 'closed', 'status',
@@ -503,7 +518,7 @@ end $$;
 drop trigger if exists lots_watch on lots;
 create trigger lots_watch after update on lots for each row
   when (old.price is distinct from new.price or old.req_to is distinct from new.req_to
-        or old.torg is distinct from new.torg or old.status is distinct from new.status)
+        or old.torg is distinct from new.torg or old.status is distinct from new.status or old.result is distinct from new.result)
   execute function lots_watch();
 
 -- статус заявки на помощь изменился → уведомление в кабинет

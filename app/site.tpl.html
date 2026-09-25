@@ -641,7 +641,24 @@
     .fth{width:84px;height:64px}
     .fact{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}
   }
-    .h-short{display:none}
+  /* итоги торгов */
+.rres{padding:18px;border-left:4px solid var(--hair-2)}
+.rres.ok{border-left-color:var(--ok)}.rres.no{border-left-color:var(--accent)}
+.rres .lbl{font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em}
+.rres .rst{font-size:20px;font-weight:700;margin:4px 0 10px}
+.rres.ok .rst{color:var(--ok)}.rres.no .rst{color:#9a4f0e}
+.rres .note{font-size:13px;color:var(--ink-2);margin:8px 0 0}
+.pm{display:inline-block;margin-left:8px;font-size:12.5px;font-weight:700;padding:1px 7px;border-radius:9px}
+.pm.up{background:var(--ok-l);color:var(--ok)}.pm.dn{background:var(--accent-l);color:#9a4f0e}
+.lot .ft .rs{font-weight:700}.lot .ft .rs.ok{color:var(--ok)}.lot .ft .rs.no{color:#9a4f0e}
+.fres{font-size:13.5px;color:var(--ink-2);background:var(--bg);border-radius:6px;padding:7px 9px;margin:0 0 8px;line-height:1.7}
+.fres .ntag{margin-right:6px}
+.omsg{font-style:italic;color:var(--ink-3)!important;white-space:pre-wrap}
+.oform h2{margin:18px 0 10px}
+.oform .fg select,.oform .fg textarea{width:100%;font:inherit;padding:7px 9px;border:1px solid var(--hair-2);border-radius:5px;background:var(--card);color:var(--ink)}
+.me-main .done{text-align:center;padding:30px}
+.me-main .done .ok{width:46px;height:46px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:24px;margin:0 auto 10px}
+  .h-short{display:none}
     @media (max-width:520px){ .h-long{display:none} .h-short{display:inline} .hacts{gap:7px} }
 </style>
 
@@ -883,9 +900,37 @@ function lotCard(l){
       <div class="pr">${nf(l.price)} <span>BYN</span>${pc!==null&&pc<0?`<em class="down">↓ ${-pc}%</em>`:''}</div>
       <div class="loc">${esc(l.location||'—')}</div>
       <div class="ft">${arch
-        ? `<span>${l.why==='removed'?'Снят':'Завершён'} <b>${dt(l.closed)}</b></span>`
+        ? (resShort(l) ? `<span class="rs ${RES[l.result.st][1]}">${resShort(l)}</span>` : `<span>${l.why==='removed'?'Снят':'Завершён'} <b>${dt(l.closed)}</b></span>`)
         : `<span>Заявки до <b>${dt(l.req_to)}</b></span>`}<span>${esc(l.alt?l.alt.map(a=>a.platform).join(' + '):l.platform)}</span></div>
     </div></a>`;
+}
+
+/* ───────── итоги торгов ─────────
+   Робот заглядывает на площадку после даты торгов и забирает итог: продан / не состоялись,
+   цену продажи, число ставок и участников (app/results.rb). */
+const RES = { sold:['Продан','ok'], single:['Продан единственному участнику','ok'], failed:['Торги не состоялись','no'], cancelled:['Торги отменены','no'] };
+const resOf = l => l.result && RES[l.result.st] ? l.result : null;
+const prem = r => r && r.price > 0 && r.start > 0 ? Math.round((r.price / r.start - 1) * 100) : null;
+const premTxt = p => p === null ? '' : `${p >= 0 ? '+' : '−'}${Math.abs(p)}% к начальной`;
+function resShort(l){
+  const r = resOf(l); if(!r) return null; const p = prem(r);
+  return r.price > 0 ? `Продан за ${nf(r.price)} BYN${p !== null ? ` (${p >= 0 ? '+' : '−'}${Math.abs(p)}%)` : ''}` : RES[r.st][0];
+}
+function resultBlock(l){
+  const r = resOf(l), at = (r && r.at) || l.torg || l.req_to + 86400;
+  if(!r) return `<aside class="panel rres"><div class="lbl">Итоги торгов</div><div class="rst">Итоги ещё не опубликованы</div>
+    <p class="note">Торги ${at*1000 > Date.now() ? 'пройдут ' + dtm(at) : 'прошли ' + dt(at)}. Мы проверяем площадку несколько раз в день — итог появится здесь${UB ? ' и придёт уведомлением тем, кто следит за лотом' : ''}.</p></aside>`;
+  const [t, c] = RES[r.st], p = prem(r);
+  return `<aside class="panel rres ${c}"><div class="lbl">Итоги торгов</div><div class="rst">${t}</div>
+    <dl class="facts">
+      <dt>Начальная цена</dt><dd>${nf(r.start || l.price)} BYN</dd>
+      ${r.price > 0 ? `<dt>Цена продажи</dt><dd><b>${nf(r.price)} BYN</b>${p !== null ? `<span class="pm ${p >= 0 ? 'up' : 'dn'}">${premTxt(p)}</span>` : ''}</dd>` : ''}
+      <dt>Торги закончились</dt><dd>${dtm(at)}</dd>
+      ${r.bids ? `<dt>Ставок</dt><dd>${r.bids}${r.users ? ` · ${r.users} ${plural(r.users,'участник','участника','участников')}` : ''}</dd>` : r.users ? `<dt>Участников</dt><dd>${r.users}</dd>` : ''}
+    </dl>
+    ${r.note ? `<p class="note">${esc(r.note[0].toUpperCase() + r.note.slice(1))}.</p>` : ''}
+    ${r.st === 'failed' ? '<p class="note">Несостоявшиеся торги часто повторяют со снижением цены — если лот выставят снова, он вернётся в каталог.</p>' : ''}
+    <p class="note">По данным площадки: <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.platform)} ↗</a></p></aside>`;
 }
 
 /* ───────── фильтры ───────── */
@@ -917,8 +962,8 @@ function applyFilters(list, f){
   return out;
 }
 const nFilters = f => ['q','cat','region','pmin','pmax','dfrom','dto','plat','photo','mkt','soon','fresh'].filter(k=>f[k]).length;
-/* дата торгов: у e-auction торги идут онлайн и заканчиваются вместе с приёмом заявок */
-const torgAt = l => l.torg || l.req_to;
+/* дата торгов; если площадка её не дала — ориентировочно следующий день после приёма заявок */
+const torgAt = l => l.torg || l.req_to + 86400;
 /* фильтры, которые переносятся при смене категории на странице раздела */
 let CARRY = null;
 const CARRY_KEYS = ['st','q','region','pmin','pmax','dfrom','dto','plat','photo','mkt','sort'];
@@ -1180,7 +1225,7 @@ function calcBlock(l, det){
     <ol class="cx-time">
       <li><b>Задаток</b><span>до ${dtm(t.deposit_to || l.req_to)}</span></li>
       <li><b>Заявка</b><span>до ${dtm(l.req_to)}</span></li>
-      <li><b>Торги</b><span>${l.torg?dtm(l.torg):l.platform==='e-auction.by'?'онлайн, до '+dtm(l.req_to):dt(l.req_to+86400)}</span></li>
+      <li><b>Торги</b><span>${l.torg?dtm(l.torg):dt(l.req_to+86400)+' (ориентировочно)'}</span></li>
       <li><b>Оплата остатка</b><span>${pay?esc(pay):'в срок из извещения'}</span></li>
     </ol>`;
   const run = () => {
@@ -1276,7 +1321,7 @@ function pageLot(id){
     </div>
     ${arch?`<div class="banner">${l.why==='removed'
       ? `<b>Лот снят с площадки ${dt(l.closed)}</b> — раньше окончания приёма заявок.`
-      : `<b>Приём заявок завершён ${dt(l.closed)}.</b>`} Лот в архиве БелЛота: сведения сохранены для истории цен. Итог торгов — на площадке.</div>`:''}
+      : `<b>Приём заявок завершён ${dt(l.closed)}.</b>`} Лот в архиве БелЛота: сведения и итоги торгов сохранены.</div>`:''}
     <div class="lotpage">
       <div class="gal">${l.photo?pic(l,'big'):'<div class="panel noph">Фотографий нет</div>'}</div>
       <div class="rcol">
@@ -1287,7 +1332,7 @@ function pageLot(id){
           <dl class="facts">
             <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
               :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
-            <dt>Торги</dt><dd>${l.torg?dtm(l.torg):l.platform==='e-auction.by'?'онлайн, до '+dtm(l.req_to):dt(l.req_to+86400)}</dd>
+            <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(l.platform==='e-auction.by'?' · онлайн':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
             <dt>Регион</dt><dd>${esc(l.region||'—')}</dd>
             ${l.area_num?`<dt>Площадь</dt><dd>${nf(l.area_num)} м²</dd>`:''}
             <dt>Должник</dt><dd>${esc(l.debtor||'—')}</dd>
@@ -1298,6 +1343,7 @@ function pageLot(id){
           </div>
           <div id="ubox"></div>
         </aside>
+        ${arch && l.why!=='removed' ? resultBlock(l) : ''}
         ${l.alt?multiBlock(l):''}
         ${l.market?marketBlock(l):''}
       </div>
@@ -1466,7 +1512,7 @@ function advList(){
 }
 function svcList(){
   const a = ((CFG.texts||{}).services||[]).filter(x=>x && x.t);
-  return a.length ? a.map((x,i)=>[(SERVICES[i]||SERVICES[0])[0], x.t, x.d||'', x.p||'']) : SERVICES;
+  return a.length ? a.map((x,i)=>[x.i && SICON[x.i] ? x.i : (SERVICES[i]||SERVICES[0])[0], x.t, x.d||'', x.p||'']) : SERVICES;
 }
 
 function pageAbout(){
@@ -1812,11 +1858,20 @@ async function meLots(ids){
   const out = {}; await withArch();
   ids.forEach(id=>{ const l = byId(id); if(l) out[id] = l; });
   const miss = ids.filter(id=>!out[id]);
-  if(miss.length) (await uapi(`lots?id=in.(${miss.map(x=>'"'+x.replace(/"/g,'')+'"').join(',')})&select=id,name,url,platform,section,price,req_to,torg,status,closed,why,location,art`))
+  if(miss.length) (await uapi(`lots?id=in.(${miss.map(x=>'"'+x.replace(/"/g,'')+'"').join(',')})&select=id,name,url,platform,section,price,req_to,torg,status,closed,why,location,art,result`))
     .forEach(l=>{ out[l.id] = Object.assign(l, { gone:true }); });
   return out;
 }
 const leftD = l => Math.ceil((l.req_to - Date.now()/1000) / 86400);
+/* избранное: торги закончились — начальная цена, за сколько ушёл и когда */
+function favResult(l){
+  const r = resOf(l), at = (r && r.at) || l.torg || l.req_to + 86400;
+  if(!r) return `<div class="fres"><span class="ntag">Итоги</span> Торги ${at*1000 > Date.now() ? 'пройдут ' + dtm(at) : 'прошли ' + dt(at) + ' — итоги ещё не опубликованы, проверяем площадку'}</div>`;
+  const p = prem(r);
+  return `<div class="fres ${RES[r.st][1]}"><span class="ntag ${r.st==='failed'||r.st==='cancelled'?'a':'g'}">${RES[r.st][0]}</span>
+    Начальная цена <b>${nf(r.start || l.price)} BYN</b>${r.price > 0 ? ` → продан за <b>${nf(r.price)} BYN</b>${p !== null ? ` <span class="pm ${p >= 0 ? 'up' : 'dn'}">${premTxt(p)}</span>` : ''}` : ''}
+    · торги закончились ${dtm(at)}${r.bids ? ` · ставок ${r.bids}` : ''}</div>`;
+}
 function lotLine(l){
   if(!l) return '<span class="muted">лот удалён из архива</span>';
   const arch = l.status==='archive', d = leftD(l);
@@ -1882,11 +1937,12 @@ async function meFav(M, arg, params){
         <a class="fth" href="#/lot/${encodeURIComponent(k)}">${l && l.photo && l.pk!=null ? pic(l) : '<span class="noph">нет фото</span>'}</a>
         <div class="fbd"><a class="fnm" href="#/lot/${encodeURIComponent(k)}">${esc(l ? l.name : 'Лот ' + k)}</a>
           <div class="fmeta">${lotLine(l)}</div>
+          ${l && l.status==='archive' && l.why!=='removed' ? favResult(l) : ''}
           <div class="fctl"><select data-stage aria-label="Мой этап"><option value="">Этап: —</option>${STAGES.map(([s,t])=>`<option value="${s}"${u.stage===s?' selected':''}>${t}</option>`).join('')}</select>
             <label class="chk"><input type="checkbox" data-watch${u.watch?' checked':''}> уведомлять об изменениях</label>
             <label class="chk"><input type="checkbox" data-favc${u.fav?' checked':''}> в избранном</label></div>
           <textarea data-note rows="1" placeholder="Заметка — видна только вам">${esc(u.note||'')}</textarea></div>
-        <div class="fact">${l && l.status==='active' ? `<a class="btn sm pri" href="#/help?lot=${encodeURIComponent(l.art||'')}&id=${encodeURIComponent(k)}">Заказать помощь</a>` : ''}
+        <div class="fact">${l && l.status==='active' ? `<a class="btn sm pri" href="#/me/orders/new?id=${encodeURIComponent(k)}">Заказать помощь</a>` : ''}
           <a class="btn sm" href="${esc(l ? l.url : '#')}" target="_blank" rel="noopener">На площадке ↗</a></div></div>`; }).join('')
       + `<p><button class="btn" type="button" id="fav-csv">Выгрузить в Excel (CSV)</button></p>`
     : `<div class="panel empty">${f ? 'В этом списке пока пусто.' : 'В избранном пока ничего нет. Нажмите звёздочку на карточке лота в каталоге.'}</div>`}`;
@@ -1960,17 +2016,67 @@ async function meCal(M){
   };
 }
 
-async function meOrders(M){
-  const rows = await uapi('leads?select=id,created_at,lot,lot_id,lot_name,service,status&order=created_at.desc');
+async function meOrders(M, arg, params){
+  if(arg === 'new') return meOrderForm(M, params);
+  const rows = await uapi('leads?select=id,created_at,lot,lot_id,lot_name,service,status,msg&order=created_at.desc');
   const ST = { new:['Новая','b'], work:['В работе','a'], deal:['Сделка','g'], refused:['Закрыта',''] };
   M.innerHTML = `<h1>Заявки на помощь</h1>
     <p class="lede">Проверка объекта, осмотр, участие в торгах под ключ, сопровождение после победы. Специалист свяжется с вами, статус заявки меняется здесь.</p>
-    <p><a class="btn pri" href="#/help">Новая заявка</a></p>
+    <p><a class="btn pri" href="#/me/orders/new">Новая заявка</a></p>
     ${rows.length ? `<div class="panel me-p">${rows.map(r=>{ const [t,c] = ST[r.status] || ['',''];
       return `<div class="orow"><span class="ntag ${c}">${t}</span><span class="nbd"><b>${esc(r.service || 'Помощь в аукционе')}</b>
-        <span>${r.lot_id ? `<a href="#/lot/${encodeURIComponent(r.lot_id)}">${esc((r.lot_name||r.lot||r.lot_id).slice(0,90))}</a>` : r.lot ? 'лот № ' + esc(r.lot) : 'без привязки к лоту'}</span></span>
+        <span>${r.lot_id ? `<a href="#/lot/${encodeURIComponent(r.lot_id)}">${esc((r.lot_name||r.lot||r.lot_id).slice(0,90))}</a>` : r.lot ? 'лот № ' + esc(r.lot) : 'без привязки к лоту'}</span>
+        ${r.msg ? `<span class="omsg">${esc(r.msg.slice(0,300))}</span>` : ''}</span>
         <span class="nt">${dtm(new Date(r.created_at)/1000)}</span></div>`; }).join('')}</div>`
     : '<div class="panel empty">Заявок пока нет. Заказать помощь можно на странице любого лота или в избранном.</div>'}`;
+}
+async function meOrderForm(M, params){
+  const ids = Object.keys(ULOTS).filter(k=>ULOTS[k].fav || ULOTS[k].watch);
+  const pre = params.get('id') || '', svc = params.get('svc') || '';
+  const lots = await meLots(pre && !ids.includes(pre) ? [...ids, pre] : ids);
+  const opts = Object.keys(lots).filter(k=>lots[k] && lots[k].name).sort((a,b)=>(lots[a].status==='active'?0:1) - (lots[b].status==='active'?0:1));
+  const mine = k => ME[k] && !(k==='name' && ME.login==='guest' && ME[k]==='Гость') ? ME[k] : '';
+  M.innerHTML = `<p><a href="#/me/orders">← Заявки на помощь</a></p><h1>Новая заявка</h1>
+    <p class="lede">Опишите задачу — специалист свяжется с вами, уточнит детали и согласует объём и стоимость. Заявка и её статус — в разделе «Заявки на помощь».</p>
+    <form class="panel me-p oform" id="of" novalidate>
+      <div class="fg"><label for="o-svc">Услуга</label><select id="o-svc"><option value="">Консультация — пока не знаю, что нужно</option>
+        ${svcList().map(([,t])=>`<option${t===svc?' selected':''}>${esc(t)}</option>`).join('')}</select></div>
+      <div class="fg"><label for="o-lot">Лот</label><select id="o-lot"><option value="">Без привязки к лоту</option>
+        ${opts.map(k=>`<option value="${esc(k)}"${k===pre?' selected':''}>${esc(lots[k].name.slice(0,90))}${lots[k].status==='archive'?' — архив':''}</option>`).join('')}
+        <option value="_other">Другой лот — укажу номер или ссылку</option></select>
+        ${opts.length ? '' : '<small class="muted">В списке — лоты из вашего избранного.</small>'}</div>
+      <div class="fg" id="o-oth" hidden><label for="o-num">Номер или ссылка на лот</label><input id="o-num" placeholder="например, 34950 или ссылка на площадку"></div>
+      <div class="fg"><label for="o-msg">Что нужно сделать <small>необязательно</small></label>
+        <textarea id="o-msg" rows="4" placeholder="Например: проверить обременения и съездить на осмотр до пятницы. Удобно созвониться после 18:00."></textarea></div>
+      <h2>Контакты</h2>
+      <div class="me-form">
+        <div class="fg"><label for="o-name">Имя</label><input id="o-name" autocomplete="name" value="${esc(mine('name'))}"></div>
+        <div class="fg"><label for="o-phone">Телефон</label><input id="o-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00" value="${esc(mine('phone'))}"></div>
+        <div class="fg"><label for="o-mail">Email <small>необязательно</small></label><input id="o-mail" type="email" autocomplete="email" value="${esc(mine('email'))}"></div></div>
+      <label class="chk"><input type="checkbox" id="o-keep"${mine('name') && mine('phone') ? '' : ' checked'}> Сохранить контакты в профиле — чтобы не вводить снова</label>
+      <div class="ferr" id="o-err"></div>
+      <button class="btn pri" type="submit">Отправить заявку</button>
+    </form>`;
+  const sel = $('#o-lot'), oth = $('#o-oth');
+  sel.onchange = () => { oth.hidden = sel.value !== '_other'; };
+  $('#of').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const name = $('#o-name').value.trim(), phone = $('#o-phone').value.trim(), mail = $('#o-mail').value.trim();
+    const err = !name ? 'Укажите имя' : phone.replace(/\D/g,'').length < 9 ? 'Проверьте номер телефона' : (mail && !/^\S+@\S+\.\S+$/.test(mail)) ? 'Проверьте email' : '';
+    $('#o-err').textContent = err; if(err) return;
+    const v = sel.value, l = v && v !== '_other' ? lots[v] : null, btn = $('#of button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Отправляем…';
+    try{
+      await urpc('submit_lead', { p_name:name, p_phone:phone, p_email:mail || null, p_service:$('#o-svc').value || null,
+        p_lot: l ? String(l.art || '') : v === '_other' ? $('#o-num').value.trim() || null : null,
+        p_lot_name: l ? l.name : null, p_lot_id: l ? v : null, p_msg: $('#o-msg').value.trim() || null });
+      if($('#o-keep').checked) await urpc('user_update', { p:{ name, phone, email:mail } }).catch(()=>{});
+      await uload();
+      M.innerHTML = `<div class="panel me-p done"><div class="ok">✓</div><h2>Заявка отправлена</h2>
+        <p>Специалист свяжется с вами по номеру ${esc(phone)}. Статус заявки будет меняться в разделе «Заявки на помощь», об изменениях придёт уведомление.</p>
+        <a class="btn pri" href="#/me/orders">К заявкам</a></div>`;
+    }catch(er){ $('#o-err').textContent = 'Не удалось отправить: ' + er.message; btn.disabled = false; btn.textContent = 'Отправить заявку'; }
+  });
 }
 
 async function meReports(M, arg){

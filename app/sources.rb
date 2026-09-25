@@ -94,7 +94,7 @@ module Src
           'sub' => href.split('/').reject(&:empty?)[1],
           'price' => ch[/data-cur="BYN" data-value="([0-9.]+)"/, 1].to_f,
           'req_to' => ch[/data-endrequest="(\d+)"/, 1].to_i,
-          'url' => EA + href,
+          'url' => EA + href, 'eid' => ch[/product-id="(\d+)"/, 1],   # номер торгов — по нему итоги и дата онлайн-торгов
           'thumb' => (u = ch[/<img src="(\/upload\/[^"]+)"/, 1]) && EA + u }
       end.compact
       fresh = got.reject { |c| seen[c['key']] }
@@ -438,6 +438,7 @@ module Src
 
   def kf_detail(html, card = {})
     secs = []
+    tk = html[%r{href="(https?://torgikonfiskat\.by/[a-z-]*auction/\d+/?)"}, 1]   # сами торги — на torgikonfiskat.by
     extra = txt(html[/Дополнительная информация:\s*<\/p>(.*?)<\/div>/m, 1] || html[/Дополнительная информация:(.*?)<\/p>\s*<p/m, 1])
     rows = html.scan(/<li><p><span>([^<]+):<\/span>(.*?)<\/p><\/li>/m).map { |k, v| [txt(k), txt(v)] }
                .reject { |k, v| v.empty? || k =~ /Ссылка на извещение/ }
@@ -461,6 +462,7 @@ module Src
     { 'details' => secs, 'req_to' => req, 'torg' => torg,
       'location' => n['city'] ? "г. #{n['city']}" : nil, 'debtor' => owner ? owner.strip : 'Конфискованное имущество',
       'photo_url' => pics.first && KF + pics.first,
+      'tk' => tk && tk.sub('http://', 'https://'),
       'terms' => { 'deposit' => card['price'].to_f * (n['deposit_pct'] || 10) / 100, 'fee_later' => true,
                    'pay_term' => n['pay'], 'v' => 2 }.reject { |_, v| v.nil? || v == 0.0 } }
   end

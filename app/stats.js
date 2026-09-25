@@ -12,7 +12,7 @@
     ['kpi', 'Главные цифры'], ['fresh', 'Новые лоты по дням'], ['size', 'Размер рынка по дням'],
     ['plat', 'Площадки'], ['sec', 'Разделы'], ['reg', 'Регионы'], ['prices', 'Стартовые цены'],
     ['disc', 'Скидка к рынку'], ['soon', 'Закрытие приёма заявок, 14 дней'], ['sqm', 'Недвижимость: цена м²'],
-    ['sellers', 'Крупнейшие продавцы'], ['topdisc', 'Самая большая скидка'], ['drops', 'Снижение цены'],
+    ['sellers', 'Крупнейшие продавцы'], ['topdisc', 'Самая большая скидка'], ['drops', 'Снижение цены'], ['results', 'Итоги торгов'],
     ['quality', 'Качество данных площадок'], ['demand', 'Заявки и Telegram-бот'], ['csv', 'Выгрузка в Excel']
   ];
   const ADMIN_ONLY = ['quality', 'demand'];   // в кабинет не отдаются, даже если отмечены
@@ -185,6 +185,20 @@
         + tbl(['Лот','Площадка','Было, BYN','Стало, BYN','Снижение'], drops.slice(0,10).map(([l,d])=>[link(l), esc(l.platform), nf(l.price0), nf(l.price), `<b>−${d}%</b>`]))
         : '<p class="mut">Пока ни один лот не подешевел — история цен копится с 24.09.2026.</p>'}</div>`);
     }
+if(on.has('results')){
+  // итоги торгов по лотам, торги которых закончились в выбранный период
+  const ST = { sold:['Продан','#1d7a4d'], single:['Продан единственному участнику','#4cae7d'], failed:['Не состоялись','#d9761f'], cancelled:['Отменены','#9aa3ad'] };
+  const fin = lots.filter(l=>l.status==='archive' && l.result && ST[l.result.st] && inS(l) && (l.result.at || l.closed) >= from);
+  const sold = fin.filter(l=>(l.result.st==='sold' || l.result.st==='single') && l.result.price > 0);
+  const pr = sold.filter(l=>l.result.start > 0).map(l=>[l, Math.round((l.result.price / l.result.start - 1) * 100)]).sort((a,b)=>b[1]-a[1]);
+  const byPlat = PLATS.map(p=>{ const f = fin.filter(l=>l.platform===p), s = f.filter(l=>l.result.st==='sold'||l.result.st==='single');
+    return f.length ? [esc(p), nf(f.length), nf(s.length), pc(s.length, f.length), (()=>{ const m = med(s.filter(l=>l.result.start>0).map(l=>(l.result.price/l.result.start-1)*100)); return m===null?'—':(m>=0?'+':'')+Math.round(m)+'%'; })()] : null; }).filter(Boolean);
+  P.push(`<div class="pnl"><h2>Итоги торгов</h2>${fin.length ? `<p style="margin-top:0">Торги закончились по <b>${nf(fin.length)}</b> ${plural(fin.length,'лоту','лотам','лотам')}: продано ${nf(sold.length)} (${pc(sold.length, fin.length)})${pr.length ? `, медианная цена продажи — <b>${(m=>(m>=0?'+':'')+Math.round(m))(med(pr.map(x=>x[1])))}%</b> к начальной` : ''}.</p>
+    ${hbars(Object.entries(ST).map(([k,[t,c]])=>[t, fin.filter(l=>l.result.st===k).length, pc(fin.filter(l=>l.result.st===k).length, fin.length), c]))}
+    ${byPlat.length ? tbl(['Площадка','Торги закончились','Продано','Доля продаж','Цена продажи к начальной'], byPlat) : ''}
+    ${pr.length ? `<h2 style="margin-top:14px">Самый большой рост цены на торгах</h2>` + tbl(['Лот','Площадка','Начальная, BYN','Продан за, BYN','Рост'], pr.slice(0,10).map(([l,d])=>[link(l), esc(l.platform), nf(l.result.start), nf(l.result.price), `<b>${d>=0?'+':''}${d}%</b>`])) : ''}`
+    : '<p class="mut">Итоги собираются с 25.09.2026: робот заглядывает на площадку после даты торгов.</p>'}</div>`);
+}
     if(on.has('quality')){
       const rows = PLATS.map(p=>{ const m = market.filter(l=>l.platform===p); if(!m.length) return null;
         return [esc(p), nf(m.length), pc(m.filter(l=>!l.photo).length, m.length), pc(m.filter(l=>!(+l.price>0)).length, m.length),
@@ -230,6 +244,6 @@
   }
 
   // Колонки копии каталога, нужные аналитике
-  const FIELDS = 'id,name,url,platform,section,price,price0,req_to,first_seen,closed,why,status,published,hidden_why,region,location,market,reasons,photo,area_num,debtor';
+  const FIELDS = 'id,name,url,platform,section,price,price0,req_to,first_seen,closed,why,status,published,hidden_why,region,location,market,reasons,photo,area_num,debtor,result';
   window.BLStats = { render, BLOCKS, ADMIN_ONLY, FIELDS, DEFAULT_CAB: BLOCKS.map(b=>b[0]).filter(b=>!ADMIN_ONLY.includes(b)) };
 })();

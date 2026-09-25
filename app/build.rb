@@ -29,7 +29,7 @@ OUT  = ENV['OUT'] || File.join(Store::ROOT, '_site')
 TMP  = File.join(Store::ROOT, 'tmp')
 PACK = 40
 KEEP = %w[id art name price req_to torg url location region debtor area_num platform section
-          photo pk market prices status closed why first_seen alt pin].freeze
+          photo pk market prices status closed why first_seen alt pin result].freeze
 SECS = %w[nedvizhimost avto gruz spec oborud].freeze
 
 # Персональные данные: MASK=1 скрывает ФИО должников-физлиц и контактных лиц по осмотру.
@@ -298,6 +298,7 @@ mirror = lots.map do |l|
   o.merge('photo' => !l['photo'].nil?, 'status' => l['status'], 'closed' => l['closed'], 'why' => l['why'],
           'first_seen' => l['first_seen'], 'area_num' => l['area_num'], 'debtor' => l['debtor'],
           'price0' => (l['prices'] || []).size > 1 ? l['prices'].first[1] : nil,
+          'result' => l['result'] && l['result'].reject { |k, _| %w[checked tries].include?(k) },
           'market' => l['market'] && l['market'].slice('median', 'n', 'source', 'low', 'high', 'manual', 'link'),
           'reasons' => reasons[l['key']] || [], 'dup_with' => dup_with[l['key']], 'dup_of' => dup_of[l['key']],
           'alt' => l['alt'], 'published' => published[l['key']] || (l['status'] == 'archive' && !hidden_why[l['key']]),

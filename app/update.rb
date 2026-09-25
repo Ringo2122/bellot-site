@@ -16,6 +16,7 @@ require_relative 'sources'
 require_relative 'regions'
 require_relative 'store'
 require_relative 'sb'
+require_relative 'results'
 require 'fileutils'
 
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
@@ -35,6 +36,10 @@ MINP = MIN_PRICE.merge((CFG['min_price'] || {}).map { |k, v| [k, v.to_f] }.to_h)
 # Условия покупки (задаток, шаг, сборы) появились позже самих лотов. У известных лотов без них
 # робот дозаполняет их постепенно — не больше TERMS_CAP страниц за прогон, чтобы не нагружать площадки.
 TERMS_CAP = (ENV['TERMS_CAP'] || 800).to_i
+# e-auction: дата онлайн-торгов есть только в служебном запросе площадки — у известных лотов добираем постепенно
+EA_TORG_CAP = (ENV['EA_TORG_CAP'] || 700).to_i
+# Итоги торгов: после даты торгов заглядываем на площадку, пока итоги не опубликуют — до 12 раз за 3 недели
+RES_CAP = (ENV['RES_CAP'] || 300).to_i
 
 SEC_RU = { 'nedvizhimost' => 'Недвижимость', 'avto' => 'Легковые авто', 'gruz' => 'Грузовые и автобусы',
            'spec' => 'Спецтехника', 'oborud' => 'Оборудование' }.freeze
@@ -127,6 +132,7 @@ lists = {}         # src → сколько карточек прочитано 
 stat = Hash.new(0)
 pstat = Hash.new { |h, k| h[k] = Hash.new(0) }   # по площадкам — для отчёта в админке
 terms_left = TERMS_CAP
+ea_torg_left = EA_TORG_CAP
 
 PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }.map do |plat, secs|
   Thread.new do
@@ -192,6 +198,12 @@ PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }.map do |plat, secs|
                 upd['kf_try'] = old['kf_try'].to_i + 1
               end
             end
+            upd['eid'] = c['eid'] if c['eid'] && !old['eid']
+            if c['platform'] == 'e-auction.by' && !old['torg'] && (c['eid'] || old['eid']) && mx.synchronize { (ea_torg_left -= 1) >= 0 }
+              t = Res.ea_torg(Res.ea_info(c['eid'] || old['eid']))
+              upd['torg'] = t if t
+              sleep 0.3
+            end
             upd['price'] = c['price'] if c['price'].to_f.positive? && c['price'] != old['price']
             if c['platform'] == 'beltorgi.by'
               # срок по обратному отсчёту разошёлся с известным больше чем на сутки — перевыставили
@@ -216,6 +228,7 @@ PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }.map do |plat, secs|
               old['last_seen'] = now
               if old['status'] == 'archive' && old['req_to'].to_i > now
                 old['status'] = 'active'
+                (old['results'] ||= []) << old.delete('result') if old['result']   # итоги прошлых торгов — в историю
                 old['reopened'] = now
                 old.delete('closed')
                 old.delete('why')
@@ -226,6 +239,12 @@ PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }.map do |plat, secs|
             d = fetch_detail(c) or next
             rec = new_lot(c, sec, d, src, now)
             next unless rec['req_to'].to_i > now
+            if plat == 'e-auction.by' && c['eid']
+              rec['eid'] = c['eid']
+              t = Res.ea_torg(Res.ea_info(c['eid']))
+              rec['torg'] = t if t
+            end
+            rec['tk'] = d['tk'] if d['tk']
             Store.save_details(c['key'], trim(d['details'] || []))
             rec['photo'] = Store.save_photo([d['photo_url'], c['thumb']], c['key'], Src::UA)
             mx.synchronize do
@@ -258,6 +277,54 @@ db.each_value do |l|
     pstat[l['platform']]['archived'] += 1
   end
 end
+
+# ── итоги торгов ──
+def fetch_result(l)
+  case l['platform']
+  when 'e-auction.by'
+    eid = l['eid'] || ((html = Src.get(l['url'])) && Res.ea_eid(html))
+    eid ? [Res.ea_result(Res.ea_info(eid)), { 'eid' => eid }] : [nil, {}]
+  when 'ipmtorgi.by', 'cpo.by'
+    (html = Src.get(l['url'])) ? [Res.ipm_result(html), {}] : [nil, {}]
+  when 'beltorgi.by'
+    (html = Src.get(l['url'])) ? [Res.bt_result(html), {}] : [nil, {}]
+  when 'konfiskat.by'
+    tk = l['tk'] || ((html = Src.get(l['url'])) && Res.kf_tk_url(html))
+    return [nil, {}] unless tk
+    sleep 1.5
+    (html = Src.get(tk)) ? [Res.tk_result(html), { 'tk' => tk }] : [nil, { 'tk' => tk }]
+  else [nil, {}]
+  end
+rescue StandardError => e
+  STDERR.puts "итоги #{l['key']}: ошибка #{e.message}"
+  [nil, {}]
+end
+
+due = db.values.select do |l|
+  next false unless l['status'] == 'archive' && l['why'] == 'deadline'
+  r = l['result'] || {}
+  next false if Res::FINAL.include?(r['st']) || r['tries'].to_i >= 12
+  t = l['torg'] || l['req_to'].to_i + 86_400
+  t < now - 1800 && t > now - 21 * 86_400
+end.sort_by { |l| -(l['torg'] || l['req_to']).to_i }.first(RES_CAP)
+STDERR.puts "итоги торгов: проверяю #{due.size}" unless due.empty?
+due.group_by { |l| l['platform'] }.map do |plat, ls|
+  Thread.new do
+    ls.each do |l|
+      r, extra = fetch_result(l)
+      mx.synchronize do
+        l.merge!(extra)
+        tries = (l['result'] || {})['tries'].to_i + 1
+        l['result'] = (r || l['result'] || { 'st' => 'pending' }).merge('checked' => now, 'tries' => tries)
+        if Res::FINAL.include?(l['result']['st'])
+          stat["итоги: #{{ 'sold' => 'продан', 'single' => 'продан единственному', 'failed' => 'не состоялись', 'cancelled' => 'отменены' }[l['result']['st']]}"] += 1
+          pstat[plat]['results'] += 1
+        end
+      end
+      sleep plat == 'konfiskat.by' ? 1.5 : 0.5
+    end
+  end
+end.each(&:join)
 
 cut = now - RETAIN_DAYS * 86_400
 db.delete_if do |k, l|
