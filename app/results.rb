@@ -8,6 +8,11 @@
 #           | cancelled (отменены) | pending (итогов ещё нет)
 #   start   начальная цена, BYN        price  цена продажи, BYN
 #   bids    ставок                     users  участников
+#   v       версия разбора: итоги старой версии робот перепроверяет
+#
+# Участники: если площадка пишет их число текстом (ИПМ: «количество участников 17») — берём его;
+# иначе считаем уникальные номера участников по ПОЛНОМУ ходу торгов. На странице лота площадки часто
+# показывают только последние ставки — полный список берём так же, как его раскрывает кнопка площадки.
 #   at      когда закончились торги    note   пояснение площадки
 #
 # Где берём:
@@ -22,6 +27,7 @@ module Res
   module_function
 
   FINAL = %w[sold single failed cancelled].freeze
+  V = 2
 
   def text(html)
     html.to_s.gsub(/<script.*?<\/script>/m, ' ').gsub(/<style.*?<\/style>/m, ' ').gsub(/<!--.*?-->/m, ' ')
@@ -51,7 +57,7 @@ module Res
     e = info && info.dig('lot_info', 'element') or return nil
     list = info.dig('lot_info', 'list') || []
     bids = list.map { |b| b['UF_BID'].to_f }
-    users = e['COUNT_REQUESTS'].to_i.positive? ? e['COUNT_REQUESTS'].to_i : list.map { |b| b['UF_USER_CODE'] }.uniq.size
+    users = list.map { |b| b['UF_USER_CODE'] }.compact.uniq.size   # числа участников текстом у e-auction нет
     st = case e['LOT_STATUS'].to_i
          when 20 then users == 1 ? 'single' : 'sold'
          when 21 then 'failed'
@@ -59,7 +65,7 @@ module Res
          else 'pending'
          end
     price = e['MAX_BID_PRICE'].to_f.positive? ? e['MAX_BID_PRICE'].to_f : bids.max
-    r = { 'st' => st, 'start' => e['START_PRICE'].to_f, 'bids' => e['COUNT_BIDS'].to_i.positive? ? e['COUNT_BIDS'].to_i : bids.size,
+    r = { 'v' => V, 'st' => st, 'start' => e['START_PRICE'].to_f, 'bids' => [e['COUNT_BIDS'].to_i, bids.size].max,
           'users' => users, 'at' => [e['TIME_END_BIDDING'].to_i, list.map { |b| b['UF_DATE_UNIX'].to_i }.max.to_i].max }
     r['price'] = price if %w[sold single].include?(st) && price.to_f.positive?
     r['note'] = 'победитель не оплатил лот' if e['WINNER_IS_NOT_PAY'].to_s == 'Y'
@@ -67,19 +73,26 @@ module Res
   end
 
   # ── ИПМ-Торги и ЦПО ──
-  def ipm_result(html)
+  # ссылка «Посмотреть все ставки» (на странице лота — только последние)
+  def ipm_all_bids_url(html, host = Src::IPM)
+    id = html.to_s[/show-all-bids\.php\?lotId=(\d+)/, 1]
+    id && "#{host}/local/ajax/popup/show-all-bids.php?lotId=#{id}"
+  end
+
+  def ipm_result(html, all = nil)
     t = text(html)
     blk = t[/Результаты торгов (.{0,900}?)(?:Тип торгов|Ход торгов|Информация о лоте)/, 1] or return { 'st' => 'pending' }
-    rows = t[/Ход торгов(.*?)(?:Посмотреть все ставки|Информация о лоте)/, 1].to_s
-             .scan(/(\d+)\s+Пользователь с ID (\d+)\s+([\d\s.,]+?)\s*BYN/)
+    src = all ? text(all) : t[/Ход торгов(.*?)(?:Посмотреть все ставки|Информация о лоте)/, 1].to_s
+    rows = src.scan(/(\d+)\s+Пользователь с ID (\d+)\s+([\d\s.,]+?)\s*BYN/)
+    shown = t[/количество участников\s*(\d+)/, 1].to_i
     price = blk[/Цена продажи:\s*([\d\s.,]+?)\s*BYN/, 1]
-    users = rows.map { |r| r[1] }.uniq.size
+    users = shown.positive? ? shown : rows.map { |r| r[1] }.uniq.size
     st = if price then users == 1 ? 'single' : 'sold'
          elsif blk =~ /Победитель:\s*Не выявлен/ then 'failed'
          else 'pending'
          end
-    r = { 'st' => st, 'start' => Src.num(blk[/Начальная цена:\s*([\d\s.,]+?)\s*BYN/, 1]), 'at' => Src.ts(blk[/(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})/, 1]),
-          'bids' => rows.map { |r| r[0].to_i }.max.to_i, 'users' => users }
+    r = { 'v' => V, 'st' => st, 'start' => Src.num(blk[/Начальная цена:\s*([\d\s.,]+?)\s*BYN/, 1]), 'at' => Src.ts(blk[/(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})/, 1]),
+          'bids' => [rows.size, rows.map { |r| r[0].to_i }.max.to_i].max, 'users' => users }
     r['price'] = Src.num(price) if price
     r
   end
@@ -95,13 +108,13 @@ module Res
          elsif seg =~ /Прием заявок на участие/ then return nil   # перевыставлен — это уже новые торги
          else 'pending'
          end
-    r = { 'st' => st, 'start' => Src.num(seg[/Начальная цена\s*([\d\s,]+?)\s*бел/, 1]) }
+    r = { 'v' => V, 'st' => st, 'start' => Src.num(seg[/Начальная цена\s*([\d\s,]+?)\s*бел/, 1]) }
     if (p = seg[/Цена продажи\s*([\d\s,]+?)\s*бел/, 1])
       r['price'] = Src.num(p)
     end
-    bids = seg[/Ставки участников(.*)/, 1].to_s.scan(/\(участник №/).size
-    r['bids'] = bids if bids.positive?
-    users = seg[/Допущено участников\s*(\d+)/, 1].to_i
+    all = seg[/Ставки участников(.*)/, 1].to_s.scan(/\(участник №\s*(\d+)/).flatten   # на странице все ставки
+    r['bids'] = all.size if all.any?
+    users = [seg.scan(/Допущено участников\s*(\d+)/).flatten.map(&:to_i).max.to_i, all.uniq.size, st == 'single' ? 1 : 0].max
     r['users'] = users if users.positive?
     at = Src.ts(seg[/Окончание торгов\s*(\d{2}\.\d{2}\.\d{4})/, 1].to_s + ' ' + seg[/Окончание торгов\s*\d{2}\.\d{2}\.\d{4}\S*\s*(\d{1,2}:\d{2})/, 1].to_s)
     r['at'] = at if at
@@ -125,7 +138,7 @@ module Res
          elsif s =~ /отмен/i then 'cancelled'
          else 'pending'
          end
-    r = { 'st' => st, 'start' => Src.num(t[/Начальная цена:\s*([\d\s,]+?)\s*руб/, 1]), 'bids' => bids.size, 'users' => users,
+    r = { 'v' => V, 'st' => st, 'start' => Src.num(t[/Начальная цена:\s*([\d\s,]+?)\s*руб/, 1]), 'bids' => bids.size, 'users' => users,
           'at' => Src.ts("#{t[/Дата проведения\s+(\d{2}\.\d{2}\.\d{4})/, 1]} 12:00") }
     r['price'] = bids.max if %w[sold single].include?(st) && bids.any?
     r

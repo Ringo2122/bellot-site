@@ -285,7 +285,9 @@ def fetch_result(l)
     eid = l['eid'] || ((html = Src.get(l['url'])) && Res.ea_eid(html))
     eid ? [Res.ea_result(Res.ea_info(eid)), { 'eid' => eid }] : [nil, {}]
   when 'ipmtorgi.by', 'cpo.by'
-    (html = Src.get(l['url'])) ? [Res.ipm_result(html), {}] : [nil, {}]
+    html = Src.get(l['url']) or return [nil, {}]
+    all = (u = Res.ipm_all_bids_url(html, l['platform'] == 'cpo.by' ? Src::CPO : Src::IPM)) && Src.get(u)   # все ставки, а не последние
+    [Res.ipm_result(html, all), {}]
   when 'beltorgi.by'
     (html = Src.get(l['url'])) ? [Res.bt_result(html), {}] : [nil, {}]
   when 'konfiskat.by'
@@ -303,7 +305,7 @@ end
 due = db.values.select do |l|
   next false unless l['status'] == 'archive' && l['why'] == 'deadline'
   r = l['result'] || {}
-  next false if Res::FINAL.include?(r['st']) || r['tries'].to_i >= 12
+  next false if (Res::FINAL.include?(r['st']) && r['v'].to_i >= Res::V) || r['tries'].to_i >= 12   # итоги старой версии разбора — перепроверить
   t = l['torg'] || l['req_to'].to_i + 86_400
   t < now - 1800 && t > now - 21 * 86_400
 end.sort_by { |l| -(l['torg'] || l['req_to']).to_i }.first(RES_CAP)

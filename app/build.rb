@@ -5,7 +5,7 @@
 #   index.html  шаблон + короткие записи активных лотов
 #   arch.js     архив — грузится, только когда посетитель его открыл
 #   det/pN.js   подробности и условия покупки (для калькулятора) пачками по 40 — грузятся на странице лота
-#   ph/pN.js    фото пачками по 40 — грузятся, когда карточка на экране
+#   ph/<id>.jpg фото, по файлу на лот — браузер грузит только те, что на экране
 #   admin/      админка
 # Страница остаётся лёгкой, сколько бы лотов ни накопилось в архиве.
 #
@@ -248,12 +248,12 @@ puts "ждут проверки: #{queued}" if queued.positive?
 FileUtils.rm_rf(OUT)
 FileUtils.mkdir_p([File.join(OUT, 'ph'), File.join(OUT, 'det'), File.join(OUT, 'admin')])
 
-# пачки: активные по разделам в порядке показа, затем архив от свежих к старым
+# подробности — пачками: активные по разделам в порядке показа, затем архив от свежих к старым.
+# Фото — каждое отдельным файлом ph/<id>.jpg: странице лота нужно одно фото, а не пачка из 40 (0,6–0,9 МБ)
 order = active.group_by { |l| l['section'] }.values.flatten + arch
 packs = 0
 order.each_slice(PACK) do |chunk|
   det = {}
-  ph = {}
   chunk.each do |l|
     l['pk'] = packs
     secs = Store.details(l['key'])
@@ -266,10 +266,9 @@ order.each_slice(PACK) do |chunk|
       end
     end
     det[l['id']] = { 's' => ENV['MASK'] ? mask(secs) : secs, 't' => l['terms'] || {} }
-    ph[l['id']] = Base64.strict_encode64(File.binread(ph_src[l['key']] || Store.ph_path(l['key']))) if l['photo']
+    FileUtils.cp(ph_src[l['key']] || Store.ph_path(l['key']), File.join(OUT, 'ph', "#{l['id']}.jpg")) if l['photo']
   end
   File.write(File.join(OUT, 'det', "p#{packs}.js"), "__det(#{packs},#{JSON.generate(det)});")
-  File.write(File.join(OUT, 'ph', "p#{packs}.js"), "__ph(#{packs},#{JSON.generate(ph)});")
   packs += 1
 end
 

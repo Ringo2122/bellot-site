@@ -756,16 +756,10 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const addScript = src => { const s=document.createElement('script'); s.src=src; s.async=true; document.head.appendChild(s); };
 
 /* ───────── подгрузка: фото, подробности, архив ───────── */
-const PH = {}, PHQ = {};
-window.__ph = (n, m) => { Object.assign(PH, m); PHQ[n] = 'ok'; paint(); };
-function paint(){
-  document.querySelectorAll('img[data-ph]').forEach(im=>{
-    const b = PH[im.dataset.ph];
-    if(b){ im.src = 'data:image/jpeg;base64,' + b; im.removeAttribute('data-ph'); }
-    else if(!PHQ[im.dataset.pk]){ PHQ[im.dataset.pk] = 'wait'; addScript(`ph/p${im.dataset.pk}.js`); }
-  });
-}
-const pic = (l, cls) => `<img${cls?` class="${cls}"`:''} data-ph="${esc(l.photo)}" data-pk="${l.pk}" alt="${esc(l.name)}">`;
+/* Фото — отдельные файлы ph/<id>.jpg (~30 КБ): браузер грузит только те, что на экране (loading=lazy).
+   Раньше были пачки по 40 фото (0,6–0,9 МБ) — ради одной картинки на странице лота качалась вся пачка. */
+function paint(){}
+const pic = (l, cls) => `<img${cls?` class="${cls}"`:''} src="ph/${encodeURIComponent(l.photo)}.jpg"${cls==='big'?'':' loading="lazy"'} decoding="async" alt="${esc(l.name)}">`;
 
 const DET = {}, DETQ = {};
 window.__det = (n, m) => { Object.assign(DET, m); const w = DETQ[n]; DETQ[n] = 'ok'; if(Array.isArray(w)) w.forEach(f=>f()); };
@@ -942,6 +936,7 @@ function applyFilters(list, f){
     if(f.pmin && l.price < +f.pmin) return false;
     if(f.pmax && l.price > +f.pmax) return false;
     if(f.cat && l.section!==f.cat) return false;
+    if(arch && f.res && !resMatch(l, f.res)) return false;
     if(f.dfrom && torgAt(l) < new Date(f.dfrom+'T00:00:00').getTime()/1000) return false;
     if(f.dto && torgAt(l) > new Date(f.dto+'T23:59:59').getTime()/1000) return false;
     if(f.plat && l.platform!==f.plat && !(l.alt||[]).some(a=>a.platform===f.plat)) return false;
@@ -958,10 +953,12 @@ function applyFilters(list, f){
   out.sort((a,b)=> s==='price-asc'?a.price-b.price : s==='price-desc'?b.price-a.price
     : s==='name'?a.name.localeCompare(b.name,'ru') : s==='new'?(b.first_seen||0)-(a.first_seen||0)
     : s==='closed'?(b.closed||0)-(a.closed||0)
+    : s==='sale-desc'?((b.result&&b.result.price)||0)-((a.result&&a.result.price)||0)
+    : s==='prem-desc'?((prem(b.result)??-1e9)-(prem(a.result)??-1e9))
     : s==='disc'?((discount(b)??-999)-(discount(a)??-999)) : a.req_to-b.req_to);
   return out;
 }
-const nFilters = f => ['q','cat','region','pmin','pmax','dfrom','dto','plat','photo','mkt','soon','fresh'].filter(k=>f[k]).length;
+const nFilters = f => ['q','cat','res','region','pmin','pmax','dfrom','dto','plat','photo','mkt','soon','fresh'].filter(k=>f[k]).length;
 /* дата торгов; если площадка её не дала — ориентировочно следующий день после приёма заявок */
 const torgAt = l => l.torg || l.req_to + 86400;
 /* фильтры, которые переносятся при смене категории на странице раздела */
@@ -977,8 +974,13 @@ function fitFilters(){
 addEventListener('resize', fitFilters);
 const SORTS_ACTIVE = [['deadline','Заявки закрываются раньше'],['new','Сначала новые'],['disc','Дисконт к рынку'],
   ['price-asc','Цена по возрастанию'],['price-desc','Цена по убыванию'],['name','По названию']];
-const SORTS_ARCH = [['closed','Недавно завершённые'],['price-asc','Цена по возрастанию'],
-  ['price-desc','Цена по убыванию'],['name','По названию']];
+const SORTS_ARCH = [['closed','Недавно завершённые'],['sale-desc','Цена продажи: дороже'],['prem-desc','Рост цены на торгах'],
+  ['price-asc','Начальная цена по возрастанию'],['price-desc','Начальная цена по убыванию'],['name','По названию']];
+/* итог торгов лота в архиве — для фильтра «Итог торгов» */
+const resKey = l => l.why==='removed' ? 'removed' : l.result && RES[l.result.st] ? l.result.st : 'pending';
+const RES_F = [['sold_any','Продан — любой'],['sold','Торги состоялись'],['single','Продан единственному участнику'],['failed','Торги не состоялись'],
+  ['cancelled','Торги отменены'],['removed','Снят с площадки до торгов'],['pending','Итоги ещё не опубликованы']];
+const resMatch = (l, f) => f==='sold_any' ? ['sold','single'].includes(resKey(l)) : resKey(l)===f;
 
 function filterPanel(list, f, section){
   const arch = f.st==='arch';
@@ -992,6 +994,8 @@ function filterPanel(list, f, section){
       <div class="fg"><label>Показать</label><div class="seg" id="f-st">
         <button type="button" data-st=""${arch?'':' class="on"'}>Активные <small>${nA}</small></button>
         <button type="button" data-st="arch"${arch?' class="on"':''}>Архив <small>${nX}</small></button></div></div>
+      ${arch?`<div class="fg"><label for="f-res">Итог торгов</label><select id="f-res"><option value="">Все · ${nf(list.length)}</option>
+        ${RES_F.map(([k,t])=>{ const n = list.filter(l=>resMatch(l,k)).length; return n||f.res===k ? `<option value="${k}"${f.res===k?' selected':''}>${t} · ${nf(n)}</option>` : ''; }).join('')}</select></div>`:''}
       <div class="fg"><label for="f-q">Поиск</label><input id="f-q" type="search" value="${esc(f.q||'')}" placeholder="название, адрес"></div>
       <div class="fg"><label for="f-cat">Категория</label><select id="f-cat"><option value="">Все категории</option>
         ${SECTIONS.map(([s,n])=>{ const c = (arch?(ARCH||[]):DATA).filter(l=>l.section===s).length;
@@ -1018,18 +1022,33 @@ function crumbs(parts){
   return `<div class="crumbs"><a href="#/">Главная</a>${parts.map(([t,h])=>' → '+(h?`<a href="${h}">${esc(t)}</a>`:esc(t))).join('')}</div>`;
 }
 
+/* Фильтры каталога живут в адресе (#/s/avto?region=…&pmin=…): «Назад» с лота возвращает тот же поиск,
+   а место в списке и «Показать ещё» восстанавливаются из CAT_POS. */
+const FKEYS = ['st','sort','q','cat','res','region','pmin','pmax','dfrom','dto','plat','photo','mkt'];
+const CAT_POS = {};   // адрес каталога → { y, show, t }
+let CAT_NOW = null;   // открытый каталог: { hash, show }
 function pageCatalog(section, params){
   const q = params.get('q');
   FSTATE = CARRY || {}; CARRY = null;
-  if(q) FSTATE.q = q;
-  if(params.get('st')==='arch') FSTATE.st = 'arch';
+  FKEYS.forEach(k=>{ const v = params.get(k); if(v) FSTATE[k] = v; });
   const view = params.get('view');
   if(view==='soon') FSTATE.soon = 1;
-  if(view==='new'){ FSTATE.fresh = 1; FSTATE.sort = 'new'; }
+  if(view==='new'){ FSTATE.fresh = 1; FSTATE.sort = FSTATE.sort || 'new'; }
   if(view==='pin') FSTATE.pin = 1;
+  const basePath = section ? '/s/' + section : '/catalog';
+  const defSort = () => FSTATE.st==='arch' ? 'closed' : view==='new' ? 'new' : 'deadline';
+  // адрес страницы по текущим фильтрам — replaceState: без новой записи в истории и без перерисовки
+  const syncUrl = () => { const p = new URLSearchParams(); if(view) p.set('view', view);
+    FKEYS.forEach(k=>{ const v = FSTATE[k]; if(v && !(k==='sort' && v===defSort())) p.set(k, v); });
+    const h = basePath + (p.toString() ? '?' + p : '');
+    if(h !== CUR){ CUR = h; history.replaceState(history.state, '', '#' + h); }
+    CAT_NOW = { hash:h, show }; };
   const title = section ? secName(section) : view==='soon' ? 'Истекающие торги' : view==='new' ? 'Новые лоты' : view==='pin' ? 'Рекомендуем'
     : (q ? 'Поиск по каталогу' : FSTATE.st==='arch' ? 'Архив торгов' : 'Все лоты');
   const STEP = 36; let show = STEP;
+  // вернулись с лота кнопкой «Назад» — тот же объём списка и то же место
+  const pos = CAT_POS[CUR];
+  if(pos && (PREV||'').startsWith('/lot/') && Date.now() - pos.t < 3*3600e3){ show = pos.show; RESTORE_Y = pos.y; }
   const baseOf = () => { const src = FSTATE.st==='arch' ? (ARCH||[]) : DATA;
     return section ? src.filter(l=>l.section===section) : src; };
   $('#app').innerHTML = `<div class="wrap">
@@ -1043,11 +1062,12 @@ function pageCatalog(section, params){
     const v = id => (document.getElementById(id)||{}).value || '';
     const c = id => (document.getElementById(id)||{}).checked ? '1' : '';
     FSTATE = {st:FSTATE.st, sort:FSTATE.sort, soon:FSTATE.soon, fresh:FSTATE.fresh, pin:FSTATE.pin, q:v('f-q').trim(), region:v('f-region'), pmin:v('f-pmin'),
-      pmax:v('f-pmax'), dfrom:v('f-dfrom'), dto:v('f-dto'), plat:v('f-plat'), photo:c('f-photo'), mkt:c('f-mkt'), cat:section?'':v('f-cat')};
+      pmax:v('f-pmax'), dfrom:v('f-dfrom'), dto:v('f-dto'), plat:v('f-plat'), photo:c('f-photo'), mkt:c('f-mkt'), cat:section?'':v('f-cat'),
+      res:FSTATE.st==='arch'?v('f-res'):''};
   };
   const drawPanel = () => {
     $('#fwrap').innerHTML = filterPanel(baseOf(), FSTATE, section);
-    ['f-q','f-cat','f-region','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt'].forEach(id=>{
+    ['f-q','f-cat','f-res','f-region','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt'].forEach(id=>{
       const el = document.getElementById(id); if(!el) return;
       el.addEventListener(el.tagName==='SELECT'||el.type==='checkbox'||el.type==='date'?'change':'input', ()=>{
         read();
@@ -1058,7 +1078,10 @@ function pageCatalog(section, params){
         render(); });
     });
     requestAnimationFrame(fitFilters);
-    $('#f-reset').onclick = () => { FSTATE = {st:FSTATE.st}; drawPanel(); render(); };
+    // «Сбросить» — к исходному виду этой страницы: раздел, лента («Истекающие», «Новые»), режим «Активные / Архив»
+    $('#f-reset').onclick = () => { FSTATE = { st:FSTATE.st };
+      if(view==='soon') FSTATE.soon = 1; if(view==='new'){ FSTATE.fresh = 1; FSTATE.sort = 'new'; } if(view==='pin') FSTATE.pin = 1;
+      drawPanel(); render(); window.scrollTo({ top:0, behavior:'smooth' }); };
     $('#f-close').onclick = closeDrawer;
     $('#f-apply').onclick = closeDrawer;
     document.querySelectorAll('#f-st button').forEach(b=>b.onclick = () => {
@@ -1096,12 +1119,14 @@ function pageCatalog(section, params){
         + (list.length>show ? `<button class="btn more" id="more" type="button">Показать ещё ${Math.min(STEP,list.length-show)} · осталось ${list.length-show}</button>` : '')
       : `<div class="panel empty">${arch&&!base.length?'Архив раздела пока пуст — лоты попадают сюда после окончания приёма заявок.':'По этим условиям ничего не нашлось. Попробуйте смягчить фильтры.'}</div>`);
     const mb = $('#more'); if(mb) mb.onclick = () => { show += STEP; render(true); };
+    syncUrl();
     const ta = $('#to-arch'); if(ta) ta.onclick = e => { e.preventDefault(); FSTATE = {st:'arch', q:FSTATE.q}; drawPanel(); render(); window.scrollTo({top:0,behavior:'smooth'}); };
     paint();
   };
   $('#ov').onclick = closeDrawer;
-  if(FSTATE.st==='arch' && !ARCH) loadArch().then(()=>{ if($('#fwrap')){ drawPanel(); render(); } });
-  drawPanel(); render();
+  // render(true) — не сбрасывать объём списка: при возврате с лота он восстановлен выше
+  if(FSTATE.st==='arch' && !ARCH) loadArch().then(()=>{ if($('#fwrap')){ drawPanel(); render(true); } });
+  drawPanel(); render(true);
 }
 
 function marketBlock(l){
@@ -2146,7 +2171,7 @@ async function meProfile(M){
 }
 
 /* ───────── роутер с переходом страниц ───────── */
-let CUR = null;
+let CUR = null, PREV = null, RESTORE_Y = null;
 function render(path, params){
   const links = [...document.querySelectorAll('nav.main a')], full = location.hash || '#/';
   const cur = links.find(a=>a.getAttribute('href')===full) || links.find(a=>a.getAttribute('href')==='#'+path);
@@ -2166,10 +2191,12 @@ function go(){
   const h = location.hash.replace(/^#/,'') || '/';
   if(h===CUR) return;
   const first = CUR===null;
-  CUR = h;
+  if(CAT_NOW && CAT_NOW.hash===CUR) CAT_POS[CUR] = { y:window.scrollY, show:CAT_NOW.show, t:Date.now() };
+  CAT_NOW = null;
+  PREV = CUR; CUR = h;
   const [path, qs] = h.split('?');
   const params = new URLSearchParams(qs||'');
-  const swap = () => { render(path, params); window.scrollTo(0,0); paint(); };
+  const swap = () => { render(path, params); window.scrollTo(0, RESTORE_Y || 0); RESTORE_Y = null; paint(); };
   if(first || reduced || document.hidden){ swap(); return; }
   const bar = $('#bar');
   bar.className = ''; void bar.offsetWidth; bar.className = 'go';
