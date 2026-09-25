@@ -753,7 +753,8 @@ const left = l => l.req_to*1000 < Date.now() ? -1 : Math.round((day0(l.req_to*10
 const leftTxt = d => d===0 ? 'сегодня' : d===1 ? 'завтра' : d+' '+plural(d,'день','дня','дней');
 const isNew = l => l.first_seen && SNAP - l.first_seen < 36*3600;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const addScript = src => { const s=document.createElement('script'); s.src=src; s.async=true; document.head.appendChild(s); };
+/* ?v=SNAP — номер сборки: после обновления сайта браузер не возьмёт из кеша старые пачки и архив (Pages кеширует на 10 минут) */
+const addScript = src => { src += (src.includes('?') ? '&' : '?') + 'v=' + SNAP; const s=document.createElement('script'); s.src=src; s.async=true; document.head.appendChild(s); };
 
 /* ───────── подгрузка: фото, подробности, архив ───────── */
 /* Фото — отдельные файлы ph/<id>.jpg (~30 КБ): браузер грузит только те, что на экране (loading=lazy).
@@ -2132,7 +2133,7 @@ async function meReport(M, id){
     }catch(e){ utoast(e.message, true); } b.disabled = false; };
 }
 
-function loadStatsJs(){ return new Promise((res, rej)=>{ if(window.BLStats) return res(); const s = document.createElement('script'); s.src = 'stats.js';
+function loadStatsJs(){ return new Promise((res, rej)=>{ if(window.BLStats) return res(); const s = document.createElement('script'); s.src = 'stats.js?v=' + SNAP;
   s.onload = res; s.onerror = () => rej(new Error('не загрузилась аналитика')); document.head.appendChild(s); }); }
 async function meStats(M, arg, params){
   M.innerHTML = '<h1>Аналитика рынка</h1><div class="skel"></div>';

@@ -288,7 +288,7 @@ File.write(File.join(OUT, '.nojekyll'), '')
 adm = File.read(File.join(__dir__, 'admin.html'), encoding: 'UTF-8')
 FileUtils.cp(File.join(__dir__, 'stats.js'), File.join(OUT, 'stats.js'))   # аналитика: общая для админки и кабинета
 File.write(File.join(OUT, 'admin', 'index.html'),
-           adm.sub('__SB_URL__') { ENV['SB_URL'].to_s }.sub('__SB_KEY__') { ENV['SB_KEY'].to_s })
+           adm.sub('__SB_URL__') { ENV['SB_URL'].to_s }.sub('__SB_KEY__') { ENV['SB_KEY'].to_s }.sub('__BUILD__', now.to_s))
 
 # копия каталога для админки: значения площадки + отметки сборки (что показано, почему скрыто)
 published = active.map { |l| [l['key'], true] }.to_h
