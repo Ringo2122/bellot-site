@@ -23,32 +23,35 @@
   const COL = { nedvizhimost:'#12508f', avto:'#d9761f', gruz:'#1d7a4d', spec:'#7a4fa3', oborud:'#7b8794' };
   const REG = ['г. Минск','Минская область','Брестская область','Витебская область','Гомельская область','Гродненская область','Могилевская область'];
 
-// Тип объекта по названию лота — для «какие объекты продаются». У легковых — марка.
-// \b в JS не работает с кириллицей — границы слова через (?:^|[^a-zа-я])
-const W = w => `(?:^|[^a-zа-я0-9])(?:${w})(?:[^a-zа-я0-9]|$)`;
-const BRANDS = [['volkswagen|фольксваген|vw','Volkswagen'],['audi|ауди','Audi'],['bmw|бмв','BMW'],['mercedes|мерседес','Mercedes-Benz'],['opel|опель','Opel'],
-  ['ford|форд','Ford'],['renault|рено','Renault'],['peugeot|пежо','Peugeot'],['citroen|ситроен','Citroen'],['toyota|тойота','Toyota'],['nissan|ниссан','Nissan'],
-  ['mazda|мазда','Mazda'],['kia|киа','Kia'],['hyundai|хендай|хундай|хендэ','Hyundai'],['skoda|шкода','Skoda'],['lada|лада|ваз|vaz','Lada (ВАЗ)'],['geely|джили','Geely'],
-  ['chevrolet|шевроле','Chevrolet'],['mitsubishi|митсубиси|мицубиси','Mitsubishi'],['honda|хонда','Honda'],['volvo|вольво','Volvo'],['fiat|фиат','Fiat'],
-  ['daewoo|дэу','Daewoo'],['subaru|субару','Subaru'],['suzuki|сузуки','Suzuki'],['lexus|лексус','Lexus'],['land rover|range rover|ленд ровер','Land Rover'],
-  ['chery|чери','Chery'],['haval|хавейл','Haval'],['belgee|белджи','Belgee'],['газ|gaz','ГАЗ'],['уаз|uaz','УАЗ'],['seat','Seat'],['dacia|дачия','Dacia']]
-  .map(([re,t])=>[new RegExp(W(re)), t]);
-const KIND = {
-  nedvizhimost:[['квартир','Квартиры'],['доля|доли','Доли'],['машино-?мест|гараж','Гаражи и машино-места'],['аренд','Право аренды'],['жилой дом|жилого дома|коттедж|'+W('дом'),'Жилые дома'],
-    ['дач|садов','Дачи и садовые домики'],['незаверш','Незавершённое строительство'],['земельн|участ','Земельные участки'],['магазин|торгов','Торговые объекты'],
-    ['склад|хранилищ','Склады'],['офис|административ','Офисы'],['производ|цех|завод|мастерск','Производственные'],['комплекс','Комплексы'],
-    ['помещени','Помещения'],['здани|строени|сооружени','Здания и сооружения']],
-  gruz:[['тягач','Тягачи'],['самосвал','Самосвалы'],['автобус','Автобусы'],['прицеп','Прицепы и полуприцепы'],['фургон|рефриж|изотерм','Фургоны'],['цистерн','Цистерны'],['бортов','Бортовые']],
-  spec:[['трактор','Тракторы'],['экскаватор','Экскаваторы'],['погрузчик','Погрузчики'],['кран','Краны'],['комбайн','Комбайны'],['бульдозер','Бульдозеры'],['каток','Катки']],
-  oborud:[['станок|станк','Станки'],['котел|котл','Котлы'],['компрессор','Компрессоры'],['генератор|электростанц','Генераторы'],['лини','Производственные линии'],['холодил|морозил','Холодильное'],['мебел','Мебель']]
-};
-Object.values(KIND).forEach(a=>a.forEach(x=>{ x[0] = new RegExp(x[0]); }));
-const OTHER = { nedvizhimost:'Прочая недвижимость', avto:'Прочие марки', gruz:'Прочая грузовая техника', spec:'Прочая спецтехника', oborud:'Прочее оборудование' };
-function kindOf(l){
-  const n = ' ' + String(l.name||'').toLowerCase().replace(/ё/g,'е') + ' ';
-  const hit = (l.section==='avto' ? BRANDS : KIND[l.section] || []).find(([re])=>re.test(n));
-  return hit ? hit[1] : OTHER[l.section] || 'Прочее';
-}
+  // Тип объекта по названию лота — для «какие объекты продаются». У легковых — марка.
+  // \b в JS не работает с кириллицей — границы слова через (?:^|[^a-zа-я])
+  const W = w => `(?:^|[^a-zа-я0-9])(?:${w})(?:[^a-zа-я0-9]|$)`;
+  const BRANDS = [['volkswagen|фольксваген|vw','Volkswagen'],['audi|ауди','Audi'],['bmw|бмв','BMW'],['mercedes|мерседес','Mercedes-Benz'],['opel|опель','Opel'],
+    ['ford|форд','Ford'],['renault|рено','Renault'],['peugeot|пежо','Peugeot'],['citroen|ситроен','Citroen'],['toyota|тойота','Toyota'],['nissan|ниссан','Nissan'],
+    ['mazda|мазда','Mazda'],['kia|киа','Kia'],['hyundai|хендай|хундай|хендэ','Hyundai'],['skoda|шкода','Skoda'],['lada|лада|ваз|vaz','Lada (ВАЗ)'],['geely|джили','Geely'],
+    ['chevrolet|шевроле','Chevrolet'],['mitsubishi|митсубиси|мицубиси','Mitsubishi'],['honda|хонда','Honda'],['volvo|вольво','Volvo'],['fiat|фиат','Fiat'],
+    ['daewoo|дэу','Daewoo'],['subaru|субару','Subaru'],['suzuki|сузуки','Suzuki'],['lexus|лексус','Lexus'],['land rover|range rover|ленд ровер','Land Rover'],
+    ['chery|чери','Chery'],['haval|хавейл','Haval'],['belgee|белджи','Belgee'],['газ|gaz','ГАЗ'],['уаз|uaz','УАЗ'],['seat','Seat'],['dacia|дачия','Dacia']]
+    .map(([re,t])=>[new RegExp(W(re)), t]);
+  const KIND = {
+    nedvizhimost:[['квартир','Квартиры'],['доля|доли','Доли'],['машино-?мест|гараж','Гаражи и машино-места'],['аренд','Право аренды'],['жилой дом|жилого дома|коттедж|'+W('дом'),'Жилые дома'],
+      ['дач|садов','Дачи и садовые домики'],['незаверш','Незавершённое строительство'],['земельн|участ','Земельные участки'],['магазин|торгов','Торговые объекты'],
+      ['склад|хранилищ','Склады'],['офис|административ','Офисы'],['производ|цех|завод|мастерск','Производственные'],['комплекс','Комплексы'],
+      ['помещени','Помещения'],['здани|строени|сооружени','Здания и сооружения']],
+    gruz:[['тягач','Тягачи'],['самосвал','Самосвалы'],['автобус','Автобусы'],['прицеп','Прицепы и полуприцепы'],['фургон|рефриж|изотерм','Фургоны'],['цистерн','Цистерны'],['бортов','Бортовые']],
+    spec:[['трактор','Тракторы'],['экскаватор','Экскаваторы'],['погрузчик','Погрузчики'],['кран','Краны'],['комбайн','Комбайны'],['бульдозер','Бульдозеры'],['каток','Катки']],
+    oborud:[['станок|станк','Станки'],['котел|котл','Котлы'],['компрессор','Компрессоры'],['генератор|электростанц','Генераторы'],['лини','Производственные линии'],['холодил|морозил','Холодильное'],['мебел','Мебель']]
+  };
+  Object.values(KIND).forEach(a=>a.forEach(x=>{ x[0] = new RegExp(x[0]); }));
+  const OTHER = { nedvizhimost:'Прочая недвижимость', avto:'Прочие марки', gruz:'Прочая грузовая техника', spec:'Прочая спецтехника', oborud:'Прочее оборудование' };
+  // площадки пишут латинские марки с русскими буквами («МITSUBISHI», «МAZ»): в словах, где есть латиница, русские двойники — в латиницу
+  const HOMO = { 'а':'a', 'в':'b', 'е':'e', 'к':'k', 'м':'m', 'н':'h', 'о':'o', 'р':'p', 'с':'c', 'т':'t', 'у':'y', 'х':'x' };
+  const unmix = s => s.replace(/[a-zа-я]+/g, w => /[a-z]/.test(w) && /[а-я]/.test(w) ? w.replace(/[авекмнорстух]/g, c=>HOMO[c]) : w);
+  function kindOf(l){
+    const n = ' ' + unmix(String(l.name||'').toLowerCase().replace(/ё/g,'е')) + ' ';
+    const hit = (l.section==='avto' ? BRANDS : KIND[l.section] || []).find(([re])=>re.test(n));
+    return hit ? hit[1] : OTHER[l.section] || 'Прочее';
+  }
 
   const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const nf = n => n==null||n==='' ? '—' : Math.round(+n).toLocaleString('ru-RU');
@@ -213,73 +216,73 @@ function kindOf(l){
         + tbl(['Лот','Площадка','Было, BYN','Стало, BYN','Снижение'], drops.slice(0,10).map(([l,d])=>[link(l), esc(l.platform), nf(l.price0), nf(l.price), `<b>−${d}%</b>`]))
         : '<p class="mut">Пока ни один лот не подешевел — история цен копится с 24.09.2026.</p>'}</div>`);
     }
-if(on.has('results')){
-  // итоги торгов по лотам, торги которых закончились в выбранный период
-  const ST = { sold:['Продан','#1d7a4d'], single:['Продан единственному участнику','#4cae7d'], failed:['Не состоялись','#d9761f'], cancelled:['Отменены','#9aa3ad'] };
-  const fin = lots.filter(l=>l.status==='archive' && l.result && ST[l.result.st] && inS(l) && (l.result.at || l.closed) >= from);
-  const sold = fin.filter(l=>(l.result.st==='sold' || l.result.st==='single') && l.result.price > 0);
-  const pr = sold.filter(l=>l.result.start > 0).map(l=>[l, Math.round((l.result.price / l.result.start - 1) * 100)]).sort((a,b)=>b[1]-a[1]);
-  const byPlat = PLATS.map(p=>{ const f = fin.filter(l=>l.platform===p), s = f.filter(l=>l.result.st==='sold'||l.result.st==='single');
-    return f.length ? [esc(p), nf(f.length), nf(s.length), pc(s.length, f.length), (()=>{ const m = med(s.filter(l=>l.result.start>0).map(l=>(l.result.price/l.result.start-1)*100)); return m===null?'—':(m>=0?'+':'')+Math.round(m)+'%'; })()] : null; }).filter(Boolean);
-  P.push(`<div class="pnl"><h2>Итоги торгов</h2>${fin.length ? `<p style="margin-top:0">Торги закончились по <b>${nf(fin.length)}</b> ${plural(fin.length,'лоту','лотам','лотам')}: продано ${nf(sold.length)} (${pc(sold.length, fin.length)})${pr.length ? `, медианная цена продажи — <b>${(m=>(m>=0?'+':'')+Math.round(m))(med(pr.map(x=>x[1])))}%</b> к начальной` : ''}.</p>
-    ${hbars(Object.entries(ST).map(([k,[t,c]])=>[t, fin.filter(l=>l.result.st===k).length, pc(fin.filter(l=>l.result.st===k).length, fin.length), c]))}
-    ${byPlat.length ? tbl(['Площадка','Торги закончились','Продано','Доля продаж','Цена продажи к начальной'], byPlat) : ''}
-    ${pr.length ? `<h2 style="margin-top:14px">Самый большой рост цены на торгах</h2>` + tbl(['Лот','Площадка','Начальная, BYN','Продан за, BYN','Рост'], pr.slice(0,10).map(([l,d])=>[link(l), esc(l.platform), nf(l.result.start), nf(l.result.price), `<b>${d>=0?'+':''}${d}%</b>`])) : ''}`
-    : '<p class="mut">Итоги собираются с 25.09.2026: робот заглядывает на площадку после даты торгов.</p>'}</div>`);
-}
-if(on.has('sales') && o.sales){
-  // Продажи на торгах: по постоянной таблице sales — итоги копятся дольше архива (180 дней)
-  const S = o.sales.filter(x=>inS(x) && x.at >= from);
-  const isSold = x => (x.st==='sold' || x.st==='single') && x.price > 0;
-  const pm = x => x.start > 0 && x.price > 0 ? (x.price / x.start - 1) * 100 : null;
-  const mt = v => v === null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(Math.round(v)) + '%';
-  const grp = f => { const m = {}; S.forEach(x=>{ (m[f(x) || '—'] ||= []).push(x); }); return m; };
-  const stat = xs => { const s = xs.filter(isSold), p = s.map(pm).filter(v=>v!==null);
-    return { n:xs.length, sold:s.length, sum:s.reduce((a,x)=>a+ +x.price,0), med:med(p), share:xs.length ? s.length/xs.length : 0 }; };
-  const row = (name, xs, pre=[]) => { const t = stat(xs);
-    return [name, ...pre, nf(t.n), nf(t.sold), t.n >= 2 && !t.sold ? '<b style="color:#b3261e">0% — не продаётся</b>' : pc(t.sold, t.n), mt(t.med), t.sum ? big(t.sum) : '—']; };
-  const H = ['Завершилось торгов','Продано','Доля продаж','Цена продажи к начальной (медиана)','Сумма продаж, BYN'];
-  if(!S.length){
-    P.push('<div class="pnl"><h2>Продажи на торгах</h2><p class="mut">За выбранный период итогов нет. Итоги собираются с 25.09.2026 и копятся — чем дольше работает робот, тем точнее картина.</p></div>');
-  } else {
-    const sold = S.filter(isSold), pms = sold.map(pm).filter(v=>v!==null), all = stat(S);
-    const B = [[-1e9,-0.5,'Дешевле начальной','#d9761f'],[-0.5,0.5,'По начальной цене','#7b8794'],[0.5,5.5,'До +5%','#8fbfa6'],[5.5,20,'+5…20%','#4cae7d'],
-               [20,50,'+20…50%','#2f9464'],[50,100,'+50…100%','#1d7a4d'],[100,1e9,'Больше +100%','#145c39']];
-    const byReg = Object.entries(grp(x=>REG.includes(x.region) ? x.region : 'не указан / другое')).sort((a,b)=>b[1].length-a[1].length);
-    const byKind = Object.entries(grp(x=>(x.section||'') + '|' + kindOf(x))).sort((a,b)=>stat(b[1]).sold-stat(a[1]).sold || b[1].length-a[1].length);
-    const byPlat = PLATS.filter(p=>p!=='cpo.by').map(p=>[p, S.filter(x=>x.platform===p)]).filter(([,xs])=>xs.length);
-    const UB = [[1,1,'1 участник'],[2,2,'2 участника'],[3,5,'3–5 участников'],[6,1e9,'6 и больше']];
-    const comp = UB.map(([a,b,t])=>{ const xs = sold.filter(x=>x.users >= a && x.users <= b), p = xs.map(pm).filter(v=>v!==null);
-      return xs.length ? [t, nf(xs.length), mt(med(p)), nf(med(xs.map(x=>+x.bids||0)))] : null; }).filter(Boolean);
-    const dead = [...byKind.filter(([,xs])=>xs.length >= 3 && !stat(xs).sold).map(([k,xs])=>k.split('|')[1] + ' · ' + xs.length),
-                  ...byReg.filter(([,xs])=>xs.length >= 3 && !stat(xs).sold).map(([k,xs])=>k + ' · ' + xs.length)];
-    const topP = [...sold].sort((a,b)=>b.price-a.price).slice(0,10), topR = sold.filter(x=>pm(x)!==null).sort((a,b)=>pm(b)-pm(a)).slice(0,10);
-    const below = sold.filter(x=>pm(x)!==null && pm(x) < -0.5).sort((a,b)=>pm(a)-pm(b)).slice(0,10);
-    const lt = xs => tbl(['Лот','Площадка','Регион','Начальная, BYN','Продан за, BYN','К начальной','Участников'],
-      xs.map(x=>[link(x), esc(x.platform), esc(x.region||'—'), nf(x.start), `<b>${nf(x.price)}</b>`, mt(pm(x)), x.users || '—']));
-    P.push(`<div class="pnl"><h2>Продажи на торгах</h2>
-      <p class="mut" style="margin-top:0">По итогам завершённых торгов всех площадок (ЦПО — без повторов с ИПМ). Итоги собираются с 25.09.2026 и не удаляются вместе с архивом.</p>
-      <div class="bk-kpis">
-        <div class="bk-kpi"><b>${nf(all.n)}</b><span>торгов завершилось</span></div>
-        <div class="bk-kpi"><b>${nf(all.sold)}</b><span>продано — ${pc(all.sold, all.n)}</span></div>
-        <div class="bk-kpi"><b>${big(all.sum)}</b><span>BYN — сумма продаж</span></div>
-        <div class="bk-kpi"><b>${mt(med(pms))}</b><span>медиана цены продажи к начальной</span></div>
-        <div class="bk-kpi"><b>${pc(pms.filter(v=>v > 0.5).length, pms.length)}</b><span>продано дороже начальной</span></div>
-        <div class="bk-kpi"><b>${pc(pms.filter(v=>v < -0.5).length, pms.length)}</b><span>продано дешевле начальной</span></div>
-      </div>
-      <h2>Цена продажи относительно начальной</h2>${pms.length ? hbars(B.map(([a,b,t,c])=>{ const n = pms.filter(v=>v >= a && v < b).length; return [t, n, pc(n, pms.length), c]; })) : '<p class="mut">Продаж пока нет.</p>'}
-      <h2 style="margin-top:16px">Регионы: где продаётся</h2>${tbl(['Регион', ...H], byReg.map(([k,xs])=>row(esc(k), xs)))}
-      <h2 style="margin-top:16px">Какие объекты продаются</h2>${tbl(['Тип объекта','Раздел', ...H], byKind.slice(0,25).map(([k,xs])=>row(esc(k.split('|')[1]), xs, [esc(SEC_RU[k.split('|')[0]]||'—')])))}
-      <p class="mut">Тип определяется по названию лота, у легковых — марка.</p>
-      <h2 style="margin-top:16px">Площадки</h2>${tbl(['Площадка', ...H], byPlat.map(([p,xs])=>row(esc(p), xs)))}
-      ${comp.length ? `<h2 style="margin-top:16px">Конкуренция: чем больше участников, тем дороже</h2>${tbl(['Участников','Продано','Цена продажи к начальной (медиана)','Ставок (медиана)'], comp)}` : ''}
-      ${dead.length ? `<h2 style="margin-top:16px">Не продаётся</h2><p style="margin-top:0">Три и больше завершённых торгов — и ни одной продажи: ${dead.map(esc).join(' · ')}</p>` : ''}
-      ${topP.length ? `<h2 style="margin-top:16px">Самые дорогие продажи</h2>${lt(topP)}` : ''}
-      ${topR.length ? `<h2 style="margin-top:16px">Самый большой рост цены</h2>${lt(topR)}` : ''}
-      ${below.length ? `<h2 style="margin-top:16px">Проданы дешевле начальной</h2><p class="mut" style="margin-top:0">Торги на понижение и повторные торги со сниженной ценой.</p>${lt(below)}` : ''}
-    </div>`);
-  }
-}
+    if(on.has('results')){
+      // итоги торгов по лотам, торги которых закончились в выбранный период
+      const ST = { sold:['Продан','#1d7a4d'], single:['Продан единственному участнику','#4cae7d'], failed:['Не состоялись','#d9761f'], cancelled:['Отменены','#9aa3ad'] };
+      const fin = lots.filter(l=>l.status==='archive' && l.result && ST[l.result.st] && inS(l) && (l.result.at || l.closed) >= from);
+      const sold = fin.filter(l=>(l.result.st==='sold' || l.result.st==='single') && l.result.price > 0);
+      const pr = sold.filter(l=>l.result.start > 0).map(l=>[l, Math.round((l.result.price / l.result.start - 1) * 100)]).sort((a,b)=>b[1]-a[1]);
+      const byPlat = PLATS.map(p=>{ const f = fin.filter(l=>l.platform===p), s = f.filter(l=>l.result.st==='sold'||l.result.st==='single');
+        return f.length ? [esc(p), nf(f.length), nf(s.length), pc(s.length, f.length), (()=>{ const m = med(s.filter(l=>l.result.start>0).map(l=>(l.result.price/l.result.start-1)*100)); return m===null?'—':(m>=0?'+':'')+Math.round(m)+'%'; })()] : null; }).filter(Boolean);
+      P.push(`<div class="pnl"><h2>Итоги торгов</h2>${fin.length ? `<p style="margin-top:0">Торги закончились по <b>${nf(fin.length)}</b> ${plural(fin.length,'лоту','лотам','лотам')}: продано ${nf(sold.length)} (${pc(sold.length, fin.length)})${pr.length ? `, медианная цена продажи — <b>${(m=>(m>=0?'+':'')+Math.round(m))(med(pr.map(x=>x[1])))}%</b> к начальной` : ''}.</p>
+        ${hbars(Object.entries(ST).map(([k,[t,c]])=>[t, fin.filter(l=>l.result.st===k).length, pc(fin.filter(l=>l.result.st===k).length, fin.length), c]))}
+        ${byPlat.length ? tbl(['Площадка','Торги закончились','Продано','Доля продаж','Цена продажи к начальной'], byPlat) : ''}
+        ${pr.length ? `<h2 style="margin-top:14px">Самый большой рост цены на торгах</h2>` + tbl(['Лот','Площадка','Начальная, BYN','Продан за, BYN','Рост'], pr.slice(0,10).map(([l,d])=>[link(l), esc(l.platform), nf(l.result.start), nf(l.result.price), `<b>${d>=0?'+':''}${d}%</b>`])) : ''}`
+        : '<p class="mut">Итоги собираются с 25.09.2026: робот заглядывает на площадку после даты торгов.</p>'}</div>`);
+    }
+    if(on.has('sales') && o.sales){
+      // Продажи на торгах: по постоянной таблице sales — итоги копятся дольше архива (180 дней)
+      const S = o.sales.filter(x=>inS(x) && x.at >= from);
+      const isSold = x => (x.st==='sold' || x.st==='single') && x.price > 0;
+      const pm = x => x.start > 0 && x.price > 0 ? (x.price / x.start - 1) * 100 : null;
+      const mt = v => v === null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(Math.round(v)) + '%';
+      const grp = f => { const m = {}; S.forEach(x=>{ (m[f(x) || '—'] ||= []).push(x); }); return m; };
+      const stat = xs => { const s = xs.filter(isSold), p = s.map(pm).filter(v=>v!==null);
+        return { n:xs.length, sold:s.length, sum:s.reduce((a,x)=>a+ +x.price,0), med:med(p), share:xs.length ? s.length/xs.length : 0 }; };
+      const row = (name, xs, pre=[]) => { const t = stat(xs);
+        return [name, ...pre, nf(t.n), nf(t.sold), t.n >= 3 && !t.sold ? '<b style="color:#b3261e">0% — не продаётся</b>' : pc(t.sold, t.n), mt(t.med), t.sum ? big(t.sum) : '—']; };
+      const H = ['Завершилось торгов','Продано','Доля продаж','Цена продажи к начальной (медиана)','Сумма продаж, BYN'];
+      if(!S.length){
+        P.push('<div class="pnl"><h2>Продажи на торгах</h2><p class="mut">За выбранный период итогов нет. Итоги собираются с 25.09.2026 и копятся — чем дольше работает робот, тем точнее картина.</p></div>');
+      } else {
+        const sold = S.filter(isSold), pms = sold.map(pm).filter(v=>v!==null), all = stat(S);
+        const B = [[-1e9,-0.5,'Дешевле начальной','#d9761f'],[-0.5,0.5,'По начальной цене','#7b8794'],[0.5,5.5,'До +5%','#8fbfa6'],[5.5,20,'+5…20%','#4cae7d'],
+                   [20,50,'+20…50%','#2f9464'],[50,100,'+50…100%','#1d7a4d'],[100,1e9,'Больше +100%','#145c39']];
+        const byReg = Object.entries(grp(x=>REG.includes(x.region) ? x.region : 'не указан / другое')).sort((a,b)=>b[1].length-a[1].length);
+        const byKind = Object.entries(grp(x=>(x.section||'') + '|' + kindOf(x))).sort((a,b)=>stat(b[1]).sold-stat(a[1]).sold || b[1].length-a[1].length);
+        const byPlat = PLATS.filter(p=>p!=='cpo.by').map(p=>[p, S.filter(x=>x.platform===p)]).filter(([,xs])=>xs.length);
+        const UB = [[1,1,'1 участник'],[2,2,'2 участника'],[3,5,'3–5 участников'],[6,1e9,'6 и больше']];
+        const comp = UB.map(([a,b,t])=>{ const xs = sold.filter(x=>x.users >= a && x.users <= b), p = xs.map(pm).filter(v=>v!==null);
+          return xs.length ? [t, nf(xs.length), mt(med(p)), nf(med(xs.map(x=>+x.bids||0)))] : null; }).filter(Boolean);
+        const dead = [...byKind.filter(([,xs])=>xs.length >= 3 && !stat(xs).sold).map(([k,xs])=>k.split('|')[1] + ' · ' + xs.length),
+                      ...byReg.filter(([,xs])=>xs.length >= 3 && !stat(xs).sold).map(([k,xs])=>k + ' · ' + xs.length)];
+        const topP = [...sold].sort((a,b)=>b.price-a.price).slice(0,10), topR = sold.filter(x=>pm(x)!==null).sort((a,b)=>pm(b)-pm(a)).slice(0,10);
+        const below = sold.filter(x=>pm(x)!==null && pm(x) < -0.5).sort((a,b)=>pm(a)-pm(b)).slice(0,10);
+        const lt = xs => tbl(['Лот','Площадка','Регион','Начальная, BYN','Продан за, BYN','К начальной','Участников'],
+          xs.map(x=>[link(x), esc(x.platform), esc(x.region||'—'), nf(x.start), `<b>${nf(x.price)}</b>`, mt(pm(x)), x.users || '—']));
+        P.push(`<div class="pnl"><h2>Продажи на торгах</h2>
+          <p class="mut" style="margin-top:0">По итогам завершённых торгов всех площадок (ЦПО — без повторов с ИПМ). Итоги собираются с 25.09.2026 и не удаляются вместе с архивом.</p>
+          <div class="bk-kpis">
+            <div class="bk-kpi"><b>${nf(all.n)}</b><span>торгов завершилось</span></div>
+            <div class="bk-kpi"><b>${nf(all.sold)}</b><span>продано — ${pc(all.sold, all.n)}</span></div>
+            <div class="bk-kpi"><b>${big(all.sum)}</b><span>BYN — сумма продаж</span></div>
+            <div class="bk-kpi"><b>${mt(med(pms))}</b><span>медиана цены продажи к начальной</span></div>
+            <div class="bk-kpi"><b>${pc(pms.filter(v=>v > 0.5).length, pms.length)}</b><span>продано дороже начальной</span></div>
+            <div class="bk-kpi"><b>${pc(pms.filter(v=>v < -0.5).length, pms.length)}</b><span>продано дешевле начальной</span></div>
+          </div>
+          <h2>Цена продажи относительно начальной</h2>${pms.length ? hbars(B.map(([a,b,t,c])=>{ const n = pms.filter(v=>v >= a && v < b).length; return [t, n, pc(n, pms.length), c]; })) : '<p class="mut">Продаж пока нет.</p>'}
+          <h2 style="margin-top:16px">Регионы: где продаётся</h2>${tbl(['Регион', ...H], byReg.map(([k,xs])=>row(esc(k), xs)))}
+          <h2 style="margin-top:16px">Какие объекты продаются</h2>${tbl(['Тип объекта','Раздел', ...H], byKind.slice(0,25).map(([k,xs])=>row(esc(k.split('|')[1]), xs, [esc(SEC_RU[k.split('|')[0]]||'—')])))}
+          <p class="mut">Тип определяется по названию лота, у легковых — марка.</p>
+          <h2 style="margin-top:16px">Площадки</h2>${tbl(['Площадка', ...H], byPlat.map(([p,xs])=>row(esc(p), xs)))}
+          ${comp.length ? `<h2 style="margin-top:16px">Конкуренция: чем больше участников, тем дороже</h2>${tbl(['Участников','Продано','Цена продажи к начальной (медиана)','Ставок (медиана)'], comp)}` : ''}
+          ${dead.length ? `<h2 style="margin-top:16px">Не продаётся</h2><p style="margin-top:0">Три и больше завершённых торгов — и ни одной продажи: ${dead.map(esc).join(' · ')}</p>` : ''}
+          ${topP.length ? `<h2 style="margin-top:16px">Самые дорогие продажи</h2>${lt(topP)}` : ''}
+          ${topR.length ? `<h2 style="margin-top:16px">Самый большой рост цены</h2>${lt(topR)}` : ''}
+          ${below.length ? `<h2 style="margin-top:16px">Проданы дешевле начальной</h2><p class="mut" style="margin-top:0">Торги на понижение и повторные торги со сниженной ценой.</p>${lt(below)}` : ''}
+        </div>`);
+      }
+    }
     if(on.has('quality')){
       const rows = PLATS.map(p=>{ const m = market.filter(l=>l.platform===p); if(!m.length) return null;
         return [esc(p), nf(m.length), pc(m.filter(l=>!l.photo).length, m.length), pc(m.filter(l=>!(+l.price>0)).length, m.length),
