@@ -650,6 +650,24 @@
   .rres .note{font-size:13px;color:var(--ink-2);margin:8px 0 0}
   .pm{display:inline-block;margin-left:8px;font-size:12.5px;font-weight:700;padding:1px 7px;border-radius:9px}
   .pm.up{background:var(--ok-l);color:var(--ok)}.pm.dn{background:var(--accent-l);color:#9a4f0e}
+  .xs{margin-top:22px;padding:20px 22px}
+  .xs h2{font-size:20px;margin:0 0 4px}
+  .xs h3{font-size:15px;margin:18px 0 6px}
+  .xsub{color:var(--ink-2);font-size:14px;margin:0 0 14px}
+  .xk{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .xk div{background:var(--bg);border-radius:8px;padding:10px 12px}
+  .xk b{display:block;font-size:20px}
+  .xk span{font-size:12.5px;color:var(--ink-2)}
+  .xest{background:var(--ok-l);border-radius:8px;padding:10px 14px;margin:14px 0 0;font-size:15px}
+  .xl{border-top:1px solid var(--hair)}
+  .xr{display:flex;gap:14px;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--hair)}
+  .xr .xn{min-width:0;font-size:14px}
+  .xr .xn span{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px}
+  .xr .xv{text-align:right;white-space:nowrap;font-size:14px;display:flex;flex-direction:column;gap:2px;align-items:flex-end}
+  .xr .mut{color:var(--ink-3);font-size:12.5px}
+  .xr b.ok{color:var(--ok)}
+  .lmap{height:340px;border-radius:8px;border:1px solid var(--hair);background:var(--bg);z-index:0}
+  @media (max-width:560px){ .xr{flex-direction:column;gap:4px} .xr .xv{text-align:left;align-items:flex-start;flex-direction:row;flex-wrap:wrap;gap:4px 10px} .lmap{height:260px} }
   .lot .ft .rs{font-weight:700}.lot .ft .rs.ok{color:var(--ok)}.lot .ft .rs.no{color:#9a4f0e}
   .fres{font-size:13.5px;color:var(--ink-2);background:var(--bg);border-radius:6px;padding:7px 9px;margin:0 0 8px;line-height:1.7}
   .fres .ntag{margin-right:6px}
@@ -804,13 +822,21 @@ const norm = s => String(s||'').toLowerCase().replace(/ё/g,'е');
 /* отсекаем окончание: «квартиры в минске» находит «Квартира, г. Минск»; номера и VIN не трогаем */
 const stem = w => /\d/.test(w) ? w : w.length>=6 ? w.slice(0,-2) : w.length===5 ? w.slice(0,-1) : w;
 const qwords = q => norm(q).split(/[\s,]+/).filter(w=>w.length>1 || /\d/.test(w)).map(stem);
+/* поиск по описанию: VIN, кадастровый и инвентарный номера, адрес, марка, начало описания — srch.js, грузится при первом поиске */
+let SRCH = null; const SRCHW = [];
+window.__srch = m => { SRCH = m; SRCHW.splice(0).forEach(f=>f()); };
+function loadSrch(){ return new Promise(res=>{ if(SRCH) return res(SRCH); SRCHW.push(()=>res(SRCH)); if(SRCHW.length===1) addScript('srch.js'); }); }
+/* «500/С-37246» набрали русской «С» — в индексе номера латиницей */
+const LATW = {а:'a',в:'b',е:'e',к:'k',м:'m',н:'h',о:'o',р:'p',с:'c',т:'t',у:'y',х:'x'};
+const hayOf = l => norm(l.name)+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor)+' '+((SRCH && SRCH[l.id]) || '');
+const hasW = (hay, w) => hay.includes(w) || (/\d/.test(w) && hay.includes(w.replace(/[авекмнорстух]/g, c=>LATW[c])));
 function findLots(q, n){
   const words = qwords(q);
   if(!words.length) return {total:0, top:[]};
   const res = [];
   for(const l of DATA){
-    const nm = norm(l.name), hay = nm+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor);
-    if(!words.every(w=>hay.includes(w))) continue;
+    const nm = norm(l.name), hay = hayOf(l);
+    if(!words.every(w=>hasW(hay, w))) continue;
     // выше — совпадение в названии и в его начале
     res.push([(nm.startsWith(words[0])?3:0) + words.filter(w=>nm.includes(w)).length*2 - nm.length/400, l]);
   }
@@ -835,7 +861,7 @@ function attachSuggest(input, box, done){
     box.classList.add('on'); cur = -1;
   };
   input.addEventListener('input', ()=>{ clearTimeout(tm); tm = setTimeout(draw, 90); });
-  input.addEventListener('focus', draw);
+  input.addEventListener('focus', ()=>{ draw(); if(!SRCH) loadSrch().then(()=>{ if(document.activeElement===input) draw(); }); });
   input.addEventListener('keydown', e=>{
     const links = [...box.querySelectorAll('a')];
     if((e.key==='ArrowDown' || e.key==='ArrowUp') && links.length){
@@ -945,8 +971,7 @@ function applyFilters(list, f){
     if(f.soon && !isSoon(l)) return false;
     if(f.fresh && !isNew(l)) return false;
     if(f.pin && !l.pin) return false;
-    if(f.q){ const s=(l.name+' '+(l.location||'')+' '+(l.debtor||'')+' '+l.art).toLowerCase();
-      if(!s.includes(f.q.toLowerCase())) return false; }
+    if(f.q){ const hay = hayOf(l); if(!qwords(f.q).every(w=>hasW(hay, w))) return false; }
     return true;
   });
   const s = f.sort || (arch?'closed':'deadline');
@@ -996,7 +1021,7 @@ function filterPanel(list, f, section){
         <button type="button" data-st="arch"${arch?' class="on"':''}>Архив <small>${nX}</small></button></div></div>
       ${arch?`<div class="fg"><label for="f-res">Итог торгов</label><select id="f-res"><option value="">Все · ${nf(list.length)}</option>
         ${RES_F.map(([k,t])=>{ const n = list.filter(l=>resMatch(l,k)).length; return n||f.res===k ? `<option value="${k}"${f.res===k?' selected':''}>${t} · ${nf(n)}</option>` : ''; }).join('')}</select></div>`:''}
-      <div class="fg"><label for="f-q">Поиск</label><input id="f-q" type="search" value="${esc(f.q||'')}" placeholder="название, адрес"></div>
+      <div class="fg"><label for="f-q">Поиск</label><input id="f-q" type="search" value="${esc(f.q||'')}" placeholder="название, адрес, VIN, кадастровый №"></div>
       <div class="fg"><label for="f-cat">Категория</label><select id="f-cat"><option value="">Все категории</option>
         ${SECTIONS.map(([s,n])=>{ const c = (arch?(ARCH||[]):DATA).filter(l=>l.section===s).length;
           return `<option value="${s}"${(section||f.cat)===s?' selected':''}>${n} · ${nf(c)}</option>`; }).join('')}</select></div>
@@ -1109,6 +1134,7 @@ function pageCatalog(section, params){
     const sv = $('#f-save'); if(sv) sv.onclick = () => saveSearch(section);
     $('#f-open').onclick = () => { $('#fp').classList.add('open'); $('#ov').classList.add('open'); };
     let hint = '';
+    if(FSTATE.q && !SRCH) loadSrch().then(()=>{ if($('#res')) render(true); });
     if(!arch && FSTATE.q){
       if(ARCH){ const n = applyFilters(section?ARCH.filter(l=>l.section===section):ARCH, {...FSTATE, st:'arch'}).length;
         if(n) hint = `<div class="hint">В архиве ещё <b>${n}</b> ${plural(n,'совпадение','совпадения','совпадений')} — <a href="#" id="to-arch">показать архив</a></div>`; }
@@ -1326,6 +1352,74 @@ function multiBlock(l){
   </div>`;
 }
 
+/* ───────── «сколько за такие отдают»: похожие завершённые торги, история объекта, карта ─────────
+   Данные считает робот при сборке (similar.rb) и кладёт в подробности лота: c — похожие, h — история, g — точка на карте */
+const AST = { sold:'Продан', single:'Продан единственному участнику', failed:'Торги не состоялись', cancelled:'Торги отменены', pending:'Итогов нет', removed:'Снят с площадки' };
+const sgn = p => (p >= 0 ? '+' : '−') + Math.abs(p) + '%';
+function aucRes(a){
+  if(a.pr){ const p = a.s > 0 ? Math.round((a.pr / a.s - 1) * 100) : null;
+    return `<b>${nf(a.pr)} BYN</b>${p !== null ? `<span class="pm ${p >= 0 ? 'up' : 'dn'}">${sgn(p)}</span>` : ''}`; }
+  return `<span>${AST[a.st] || '—'}</span>`;
+}
+const aucLink = a => a.id ? `<a href="#/lot/${encodeURIComponent(a.id)}">${esc(a.n)}</a>` : `<a href="${esc(a.u)}" target="_blank" rel="noopener">${esc(a.n)} ↗</a>`;
+const usTxt = n => n ? ` · ${n} ${plural(n,'участник','участника','участников')}` : '';
+function simBlock(l, c){
+  const arch = l.status==='archive', veh = l.section!=='nedvizhimost';
+  const est = !arch && c.sold >= 2 && c.pm != null && l.price > 0 ? Math.round(l.price * (1 + c.pm / 100)) : null;
+  return `<section class="panel xs" id="x-sim"><h2>Сколько за такие отдают на самом деле</h2>
+    <p class="xsub">Завершённые торги похожих объектов: <b>${esc(c.by)}</b>${veh ? ' · любой регион' : ''}</p>
+    <div class="xk">
+      <div><b>${c.n}</b><span>завершилось торгов</span></div>
+      <div><b>${c.sold}</b><span>продано — ${Math.round(c.sold / c.n * 100)}%</span></div>
+      ${c.pm != null ? `<div><b>${sgn(c.pm)}</b><span>цена продажи к начальной, медиана</span></div>` : ''}
+      ${c.pr ? `<div><b>${nf(c.pr)} BYN</b><span>цена продажи, медиана</span></div>` : ''}
+      ${c.sqm ? `<div><b>${nf(c.sqm)} BYN</b><span>за м² при продаже, медиана</span></div>` : ''}
+      ${c.us ? `<div><b>${c.us}</b><span>${plural(c.us,'участник','участника','участников')}, медиана</span></div>` : ''}
+    </div>
+    ${est ? `<p class="xest">Если торги пройдут как у похожих, этот лот уйдёт примерно за <b>${nf(est)} BYN</b> (${sgn(c.pm)} к стартовой цене).</p>` : ''}
+    <h3>Похожие завершённые торги</h3>
+    <div class="xl">${c.items.map(a=>`<div class="xr"><div class="xn">${aucLink(a)}<span>${dt(a.d)} · ${esc(a.p)}${a.y ? ` · ${a.y} г. в.` : ''}${a.a ? ` · ${nf(a.a)} м²` : ''}${usTxt(a.us)}</span></div>
+      <div class="xv"><span class="mut">начальная ${nf(a.s)} BYN</span>${aucRes(a)}</div></div>`).join('')}</div>
+    <p class="note">${c.sold < 3 ? 'Продаж пока мало — ориентир грубый. ' : ''}Сравниваем ${veh ? 'ту же марку и модель, год выпуска ±2, в любом регионе' : 'объекты той же категории в том же населённом пункте'}. Медиана — середина ряда: половина продаж дешевле, половина дороже.</p>
+  </section>`;
+}
+function histBlock(l, h){
+  const arch = l.status==='archive', last = h.find(a=>a.st!=='active');
+  const now = h.find(a=>a.st==='active');
+  let lead = 'Этот же объект уже выставлялся на торги.';
+  if(!arch && last && last.s > 0 && l.price > 0){ const p = Math.round((l.price / last.s - 1) * 100);
+    lead = `Прошлые торги — ${dt(last.d)}, ${(AST[last.st] || 'итог неизвестен').toLowerCase()}${last.pr ? ` за ${nf(last.pr)} BYN` : ''}. Стартовая цена с тех пор ${p ? (p < 0 ? 'снижена на ' : 'выросла на ') + Math.abs(p) + '%' : 'не изменилась'}.`; }
+  else if(arch && now) lead = `Объект снова на торгах — приём заявок до ${dt(now.d)}.`;
+  return `<section class="panel xs" id="x-hist"><h2>История объекта</h2><p class="xsub">${lead}</p>
+    <div class="xl">${h.map(a=>`<div class="xr"><div class="xn"><b>${dt(a.d)}</b> · ${esc(a.p)}<span>${aucLink(a)}</span></div>
+      <div class="xv"><span class="mut">${a.st==='active' ? 'стартовая' : 'начальная'} ${nf(a.s)} BYN</span>${a.st==='active' ? `<b class="ok">Сейчас на торгах</b>` : aucRes(a)}${a.us ? `<span class="mut">${a.us} ${plural(a.us,'участник','участника','участников')}</span>` : ''}</div></div>`).join('')}</div>
+    <p class="note">Тот же объект узнаём по VIN, инвентарному или кадастровому номеру, у недвижимости — ещё по названию и адресу.</p></section>`;
+}
+let LEAF = null;
+function loadLeaflet(){
+  if(LEAF) return LEAF;
+  const base = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+  const put = (tag, attrs) => new Promise((res, rej)=>{ const e = document.createElement(tag); Object.assign(e, attrs); e.onload = res; e.onerror = rej; document.head.appendChild(e); });
+  LEAF = Promise.all([put('link', { rel:'stylesheet', href:base + 'leaflet.min.css' }), put('script', { src:base + 'leaflet.min.js' })])
+    .then(()=>window.L).catch(e=>{ LEAF = null; throw e; });
+  return LEAF;
+}
+function mapBlock(l, g){
+  const prec = { s:'Точка — на улице: дом на карте не нашёлся. ', p:'Точка — по населённому пункту: точного адреса на карте нет. ' }[g[2]] || '';
+  return `<section class="panel xs" id="x-map"><h2>Где находится</h2><div id="lmap" class="lmap"></div>
+    <p class="note">${prec}Адрес по данным площадки: ${esc(g[3] || l.location || '—')}.
+      <a href="https://yandex.by/maps/?pt=${g[1]},${g[0]}&z=${g[2]==='p'?12:16}&l=map" target="_blank" rel="noopener">Яндекс Карты ↗</a> ·
+      <a href="https://www.google.com/maps/search/?api=1&query=${g[0]},${g[1]}" target="_blank" rel="noopener">Google Maps ↗</a></p></section>`;
+}
+function drawMap(g){
+  loadLeaflet().then(L=>{
+    const el = document.getElementById('lmap'); if(!el || el._leaflet_id) return;
+    const m = L.map(el, { scrollWheelZoom:false }).setView([g[0], g[1]], g[2]==='a' ? 16 : g[2]==='s' ? 15 : 12);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(m);
+    (g[2]==='p' ? L.circle([g[0], g[1]], { radius:900, color:'#12508f', weight:2, fillOpacity:.12 }) : L.marker([g[0], g[1]])).addTo(m);
+  }).catch(()=>{ const el = document.getElementById('lmap'); if(el) el.outerHTML = '<p class="note">Карта не загрузилась — откройте адрес в Яндекс Картах или Google Maps по ссылкам ниже.</p>'; });
+}
+
 function pageLot(id){
   let l = byId(id);
   if(!l && !ARCH){
@@ -1373,6 +1467,7 @@ function pageLot(id){
         ${l.market?marketBlock(l):''}
       </div>
     </div>
+    <div id="xsim"></div>
     ${arch?'':'<section class="panel calcx" id="calcx"><div class="skel"></div></section>'}
     <div class="accs" id="accs"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     ${arch?'':`<div class="sec"><div class="sec-h"><h2>Похожие лоты</h2><a href="#/s/${l.section}">Весь раздел →</a></div>
@@ -1382,6 +1477,9 @@ function pageLot(id){
   loadDet(l).then(det=>{
     if(CUR!=='/lot/'+encodeURIComponent(id)) return;
     if(!arch) calcBlock(l, det);
+    // похожие завершённые торги, история объекта; карта — только у активных
+    $('#xsim').innerHTML = (det.c ? simBlock(l, det.c) : '') + (det.h ? histBlock(l, det.h) : '') + (!arch && det.g ? mapBlock(l, det.g) : '');
+    if(!arch && det.g) drawMap(det.g);
     // одноимённые секции склеиваем, порядок — от важного к справочному
     const groups = {};
     (det.s||[]).forEach(s=>{ const t = secTitle(s.h); (groups[t] = groups[t]||[]).push(...s.rows); });
@@ -1769,18 +1867,20 @@ const favBtn = l => UB ? `<button class="favb${(ULOTS[l.id]||{}).fav?' on':''}" 
 /* страница лота: избранное, слежение, этап и заметка */
 function bindLotUser(l){
   const box = $('#ubox'); if(!box || !UB) return;
+  const arch = l.status==='archive';
   const draw = () => {
     const u = ULOTS[l.id] || {};
     box.innerHTML = `<div class="ucta">
         <button class="btn${u.fav?' on':''}" type="button" id="u-fav">${IC.star}<span>${u.fav?'В избранном':'В избранное'}</span></button>
-        <button class="btn${u.watch?' on':''}" type="button" id="u-watch">${IC.bell}<span>${u.watch?'Слежу за изменениями':'Следить за изменениями'}</span></button></div>
+        <button class="btn${u.watch?' on':''}" type="button" id="u-watch">${IC.bell}<span>${arch ? (u.watch?'Сообщу, если выставят снова':'Сообщить, если выставят снова') : (u.watch?'Слежу за изменениями':'Следить за изменениями')}</span></button></div>
       ${ME && (u.fav || u.watch) ? `<div class="unote">
         <label>Мой этап<select id="u-stage"><option value="">—</option>${STAGES.map(([k,t])=>`<option value="${k}"${u.stage===k?' selected':''}>${t}</option>`).join('')}</select></label>
         <label>Заметка — видна только вам<textarea id="u-note" rows="2" placeholder="Например: съездить на осмотр в субботу">${esc(u.note||'')}</textarea></label></div>` : ''}
-      <p class="uhint">${u.watch ? 'Сообщим в личный кабинет, если изменится цена, сроки или лот снимут с торгов.' : ME ? 'Уведомления об изменениях приходят в личный кабинет.' : '<a href="#/login">Войдите</a>, чтобы сохранять лоты и получать уведомления об изменениях.'}</p>`;
+      <p class="uhint">${arch ? (u.watch ? 'Сообщим в личный кабинет, если этот объект снова выставят на торги — на этой или другой площадке.' : ME ? 'Объект снова выставят на торги — сообщим в личный кабинет.' : '<a href="#/login">Войдите</a>, чтобы узнать, если объект выставят снова.')
+        : u.watch ? 'Сообщим в личный кабинет, если изменится цена, сроки или лот снимут с торгов.' : ME ? 'Уведомления об изменениях приходят в личный кабинет.' : '<a href="#/login">Войдите</a>, чтобы сохранять лоты и получать уведомления об изменениях.'}</p>`;
     const act = (id, fn) => { const x = document.getElementById(id); if(x) x.onclick = fn; };
     act('u-fav', async () => { if(!ME) return needLogin(); try{ await ulot(l.id, { fav:!u.fav }); utoast(!u.fav ? 'Добавлено в избранное' : 'Убрано из избранного'); draw(); }catch(e){ utoast(e.message, true); } });
-    act('u-watch', async () => { if(!ME) return needLogin(); try{ await ulot(l.id, { watch:!u.watch }); utoast(!u.watch ? 'Будем сообщать об изменениях' : 'Слежение выключено'); draw(); }catch(e){ utoast(e.message, true); } });
+    act('u-watch', async () => { if(!ME) return needLogin(); try{ await ulot(l.id, { watch:!u.watch }); utoast(!u.watch ? (arch ? 'Сообщим, если объект выставят снова' : 'Будем сообщать об изменениях') : 'Слежение выключено'); draw(); }catch(e){ utoast(e.message, true); } });
     const st = $('#u-stage'), nt = $('#u-note');
     if(st) st.onchange = async () => { try{ await ulot(l.id, { stage:st.value||null }); utoast('Сохранено'); }catch(e){ utoast(e.message, true); } };
     if(nt) nt.onchange = async () => { try{ await ulot(l.id, { note:nt.value.trim()||null }); utoast('Заметка сохранена'); }catch(e){ utoast(e.message, true); } };
@@ -1903,7 +2003,7 @@ function lotLine(l){
   return `${esc(l.platform)} · ${esc(secName(l.section))} · <b>${nf(l.price)} BYN</b> · ${arch ? (l.why==='removed'?'снят с площадки':'приём заявок завершён') : `заявки до ${dtm(l.req_to)}${d>=0&&d<=7?` <span class="dl">${d<=0?'сегодня':d===1?'завтра':'через '+d+' дн.'}</span>`:''}`}`;
 }
 const NK = { price_down:['Цена ↓','g'], price_up:['Цена ↑',''], deadline:['Сроки',''], torg:['Сроки',''], closed:['Завершён','a'], reopened:['Снова на торгах','g'],
-  remind3:['Напоминание','a'], remind1:['Напоминание','a'], search:['Новые лоты','b'], order:['Заявка','b'], report:['Отчёт','b'] };
+  relist:['Снова на торгах','g'], remind3:['Напоминание','a'], remind1:['Напоминание','a'], search:['Новые лоты','b'], order:['Заявка','b'], report:['Отчёт','b'] };
 const agoTxt = t => { const s = (Date.now() - new Date(t)) / 1000; return s < 3600 ? Math.max(1, Math.round(s/60)) + ' мин назад' : s < 86400 ? Math.round(s/3600) + ' ч назад' : dtm(new Date(t)/1000); };
 function notifRow(n){
   const [k, c] = NK[n.kind] || ['Событие',''];

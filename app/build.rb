@@ -4,7 +4,9 @@
 # Сборка сайта из памяти (data/) в _site/:
 #   index.html  шаблон + короткие записи активных лотов
 #   arch.js     архив — грузится, только когда посетитель его открыл
-#   det/pN.js   подробности и условия покупки (для калькулятора) пачками по 40 — грузятся на странице лота
+#   det/pN.js   подробности и условия покупки (для калькулятора) пачками по 40 — грузятся на странице лота;
+#               там же похожие завершённые торги, история объекта и точка на карте (similar.rb, geo.rb)
+#   srch.js     поиск по описанию: VIN, кадастровый и инвентарный номера, адрес, должник — грузится при поиске
 #   ph/<id>.jpg фото, по файлу на лот — браузер грузит только те, что на экране
 #   admin/      админка
 # Страница остаётся лёгкой, сколько бы лотов ни накопилось в архиве.
@@ -24,6 +26,7 @@ require 'uri'
 require_relative 'store'
 require_relative 'regions'
 require_relative 'sb'
+require_relative 'similar'
 
 OUT  = ENV['OUT'] || File.join(Store::ROOT, '_site')
 TMP  = File.join(Store::ROOT, 'tmp')
@@ -62,12 +65,12 @@ end
 ADM = if Sb.on?
         begin
           { 'cfg' => Sb.settings, 'ov' => Sb.all('overrides').map { |o| [o['key'], o] }.to_h,
-            'rules' => Sb.all('dup_rules'), 'photos' => Sb.all('lot_photos', 'key,updated_at') }
+            'rules' => Sb.all('dup_rules'), 'photos' => Sb.all('lot_photos', 'key,updated_at'), 'sales' => Sb.all('sales') }
         rescue StandardError => e
           abort "база админки не ответила — сайт не пересобираю, остаётся прежняя версия: #{e.message}"
         end
       else
-        { 'cfg' => {}, 'ov' => {}, 'rules' => [], 'photos' => [] }
+        { 'cfg' => {}, 'ov' => {}, 'rules' => [], 'photos' => [], 'sales' => [] }
       end
 CFG = ADM['cfg']
 OV = ADM['ov']
@@ -245,6 +248,11 @@ puts "ждут проверки: #{queued}" if queued.positive?
 FileUtils.rm_rf(OUT)
 FileUtils.mkdir_p([File.join(OUT, 'ph'), File.join(OUT, 'det'), File.join(OUT, 'admin')])
 
+# «Сколько за такие отдают»: похожие завершённые торги и история объекта (similar.rb)
+shown = (active + arch).map { |l| [l['key'], l['id']] }.to_h
+sim = Similar.run(lots, shown, ADM['sales'], ->(k) { Store.details(k) })
+puts "похожие торги: у #{sim.count { |_, v| v['c'] }} лотов, история объекта: у #{sim.count { |_, v| v['h'] }}"
+
 # подробности — пачками: активные по разделам в порядке показа, затем архив от свежих к старым.
 # Фото — каждое отдельным файлом ph/<id>.jpg: странице лота нужно одно фото, а не пачка из 40 (0,6–0,9 МБ)
 order = active.group_by { |l| l['section'] }.values.flatten + arch
@@ -262,7 +270,13 @@ order.each_slice(PACK) do |chunk|
         secs.unshift('h' => 'Сведения о лоте', 'rows' => [['Описание', d]])
       end
     end
-    det[l['id']] = { 's' => ENV['MASK'] ? mask(secs) : secs, 't' => l['terms'] || {} }
+    x = { 's' => ENV['MASK'] ? mask(secs) : secs, 't' => l['terms'] || {} }
+    x.merge!((sim[l['key']] || {}).slice('c', 'h'))
+    # карта — только у активных; адрес — тот, по которому искали точку (у konfiskat — место хранения)
+    if l['status'] == 'active' && l['geo'].is_a?(Array)
+      x['g'] = l['geo'] + [l['platform'] == 'konfiskat.by' ? Obj.storage(Obj.rows_of(secs)) : l['location']]
+    end
+    det[l['id']] = x
     FileUtils.cp(ph_src[l['key']] || Store.ph_path(l['key']), File.join(OUT, 'ph', "#{l['id']}.jpg")) if l['photo']
   end
   File.write(File.join(OUT, 'det', "p#{packs}.js"), "__det(#{packs},#{JSON.generate(det)});")
@@ -281,6 +295,19 @@ html = tpl.sub('__DATA__') { JSON.generate(active.map(&slim)) }
           .sub('__CFG__') { JSON.generate(pub) }
 File.write(File.join(OUT, 'index.html'), html)
 File.write(File.join(OUT, 'arch.js'), "__arch(#{JSON.generate(arch.map(&slim))});")
+# поиск по описанию: то, чего нет в карточке, — номера объекта, адрес, марка и модель, начало описания
+SRCH_ROWS = /\A(?:Адрес \(местонахождение\)|Местоположение имущества|Местонахождение имущества|Местонахождение|Местоположение|Марка|Модель|Марка \(модель\)|Идентификационный номер|Регистрационный номер|Кадастровый номер|Инвентарный номер.*|Инв\. номер|Год выпуска|Год)\z/
+DESC_ROWS = /\A(?:Описание(?: имущества)?|Дополнительная информация(?: по всему лоту)?)\z/
+srch = order.map do |l|
+  rows = Obj.rows_of(Store.details(l['key']))
+  ids = Obj.ids(l['name'], rows).map { |x| x.split(':', 2)[1] }
+  desc = rows.select { |k, _| k =~ DESC_ROWS }.map { |_, v| v }.join(' ')[0, l['status'] == 'active' ? 300 : 150]
+  # название, место, должник и номер лота поиск берёт из карточки — здесь только то, чего в ней нет
+  t = [*rows.select { |k, _| k =~ SRCH_ROWS }.map { |_, v| v }, *ids, *ids.map { |x| x.delete('/-') }, desc].compact.join(' ')
+  t = t.gsub(/&#(\d+);/) { $1.to_i.chr('UTF-8') }.downcase.tr('ё', 'е').gsub(/\s+/, ' ').split(' ').uniq.join(' ')
+  [l['id'], t] unless t.empty?
+end.compact.to_h
+File.write(File.join(OUT, 'srch.js'), "__srch(#{JSON.generate(srch)});")
 File.write(File.join(OUT, '.nojekyll'), '')
 adm = File.read(File.join(__dir__, 'admin.html'), encoding: 'UTF-8')
 FileUtils.cp(File.join(__dir__, 'stats.js'), File.join(OUT, 'stats.js'))   # аналитика: общая для админки и кабинета
@@ -298,6 +325,7 @@ mirror = lots.map do |l|
           'market' => l['market'] && l['market'].slice('median', 'n', 'source', 'low', 'high', 'manual', 'link'),
           'reasons' => reasons[l['key']] || [], 'dup_with' => dup_with[l['key']], 'dup_of' => dup_of[l['key']],
           'alt' => l['alt'], 'published' => published[l['key']] || (l['status'] == 'archive' && !hidden_why[l['key']]),
+          'prev' => l['status'] == 'active' ? (sim[l['key']] || {})['prev'] : nil,   # прошлые торги объекта — для «выставлен снова»
           'hidden_why' => hidden_why[l['key']], 'synced' => now)
 end
 FileUtils.mkdir_p(TMP)
@@ -321,5 +349,5 @@ by = Hash.new(0)
 active.each { |l| by[l['section']] += 1 }
 kb = ->(f) { (File.size(File.join(OUT, f)) / 1024.0).round }
 puts "активных #{active.size} (#{by.map { |k, v| "#{k} #{v}" }.join(', ')}), в архиве #{arch.size}"
-puts "index.html #{kb.('index.html')} КБ, arch.js #{kb.('arch.js')} КБ, пачек #{packs}, " \
+puts "index.html #{kb.('index.html')} КБ, arch.js #{kb.('arch.js')} КБ, srch.js #{kb.('srch.js')} КБ, пачек #{packs}, " \
      "фото #{order.count { |l| l['photo'] }}, ориентиров #{active.count { |l| l['market'] }}"

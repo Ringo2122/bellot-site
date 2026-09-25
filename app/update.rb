@@ -18,6 +18,7 @@ require_relative 'store'
 require_relative 'sb'
 require_relative 'results'
 require_relative 'backfill'
+require_relative 'geo'
 require 'fileutils'
 
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
@@ -336,7 +337,14 @@ due.group_by { |l| l['platform'] }.map do |plat, ls|
 end.each(&:join)
 
 # ── архив площадок: завершённые за месяц торги, которых у нас нет (после итогов — у лотов konfiskat уже есть ссылка на торги) ──
+# карта активных лотов — параллельно (другой сервис, свой темп: запрос в секунду)
+geo_t = Thread.new do
+  Geo.run(db, stat, Time.now + BACK_MIN * 60)
+rescue StandardError => e
+  STDERR.puts "карта: ошибка #{e.message}"
+end
 backfill(db, stat, pstat, now)
+geo_t.join
 
 cut = now - RETAIN_DAYS * 86_400
 db.delete_if do |k, l|

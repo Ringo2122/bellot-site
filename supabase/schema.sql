@@ -46,6 +46,7 @@ alter table lots add column if not exists price0 numeric;
 alter table lots add column if not exists area_num numeric;
 alter table lots add column if not exists debtor text;
 alter table lots add column if not exists result jsonb;   -- итоги торгов: st, start, price, bids, users, at
+alter table lots add column if not exists prev text[];    -- прошлые торги того же объекта (id лотов архива) — для «выставлен снова»
 
 -- ── решения человека ──
 create table if not exists overrides (
@@ -600,6 +601,14 @@ begin
     end if;
     update saved_searches set notified_at = now() where id = s.id;
   end loop;
+  -- объект снова на торгах: человек следит за лотом архива, а робот узнал тот же объект в новом лоте (lots.prev, similar.rb)
+  insert into notifications (user_id, lot, kind, title, body)
+  select distinct on (ul.user_id, l.id) ul.user_id, l.id, 'relist', l.name,
+         'Объект снова на торгах: стартовая цена ' || fmt_n(l.price) || ' BYN, приём заявок до ' || fmt_t(l.req_to)
+  from user_lots ul join lots l on l.status = 'active' and l.published and ul.lot = any(l.prev)
+  where ul.watch and notify_on(ul.user_id, 'status')
+    and not exists (select 1 from notifications x where x.user_id = ul.user_id and x.lot = l.id and x.kind = 'relist');
+  get diagnostics c = row_count; n := n + c;
   delete from notifications where created_at < now() - interval '180 days';
   return n;
 end $$;
