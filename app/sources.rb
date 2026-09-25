@@ -1,7 +1,8 @@
 # encoding: utf-8
 #
-# Разбор трёх площадок: e-auction.by, ipmtorgi.by, beltorgi.by.
-# Для каждой — список активных карточек раздела и разбор страницы лота.
+# Разбор площадок: e-auction.by, ipmtorgi.by, beltorgi.by, konfiskat.by (торги — на torgikonfiskat.by).
+# Для каждой — список активных карточек раздела, разбор страницы лота и список завершённых торгов (архив).
+# cpo.by (ЦПО) с 25.09.2026 не собираем: это рекламная витрина торгов ИПМ.
 # Карточка списка: key, platform, art, name, price, req_to, url, thumb (+ служебные поля).
 # Страница лота: details (секции «ключ — значение»), location, debtor, area, torg, photo.
 require 'json'
@@ -17,8 +18,8 @@ module Src
   EA = 'https://e-auction.by'
   IPM = 'https://ipmtorgi.by'
   BT = 'https://beltorgi.by'
-  CPO = 'https://www.cpo.by'
   KF = 'https://konfiskat.by'
+  TK = 'https://torgikonfiskat.by'
   MAX_PAGES = 40
 
   EA_SUBS = {
@@ -39,14 +40,6 @@ module Src
       return out if out.size > 1500
       sleep 2
     end
-    nil
-  end
-
-  def post_json(url, data)
-    out = IO.popen(['curl', '-sS', '-m', '60', '-A', UA, '-H', 'X-Requested-With: XMLHttpRequest',
-                    '-d', data, url], err: File::NULL, &:read)
-    JSON.parse(out.to_s.force_encoding('UTF-8'))
-  rescue JSON::ParserError
     nil
   end
 
@@ -79,11 +72,13 @@ module Src
 
   # ---------------- e-auction.by ----------------
   # Пагинация за последней страницей повторяет её же — стоп на повторах.
-  def ea_list(path)
+  # since — архив: вкладка «Завершённые» (?type=f), по сроку заявок от поздних к ранним; берём лоты со сроком после since
+  def ea_list(path, since: nil)
     out = []
     seen = {}
-    (1..MAX_PAGES).each do |p|
-      html = get(p == 1 ? "#{EA}#{path}" : "#{EA}#{path}?PAGEN_1=#{p}") or break
+    (1..(since ? 80 : MAX_PAGES)).each do |p|
+      q = [since && 'type=f', p > 1 && "PAGEN_1=#{p}"].select { |x| x }.join('&')
+      html = get("#{EA}#{path}" + (q.empty? ? '' : "?#{q}")) or break
       got = html.split('class="product-item column').drop(1).map do |ch|
         ch = ch[0, 6000]
         href = ch[/href="(\/[^"]+)"/, 1]
@@ -93,14 +88,15 @@ module Src
           'name' => txt(ch[/class="text-header">\s*([^<]*)/m, 1]),
           'sub' => href.split('/').reject(&:empty?)[1],
           'price' => ch[/data-cur="BYN" data-value="([0-9.]+)"/, 1].to_f,
-          'req_to' => ch[/data-endrequest="(\d+)"/, 1].to_i,
+          'req_to' => ch[/data-endrequest="(\d+)"/, 1].to_i, 'start_req' => ch[/data-startrequest="(\d+)"/, 1].to_i,
           'url' => EA + href, 'eid' => ch[/product-id="(\d+)"/, 1],   # номер торгов — по нему итоги и дата онлайн-торгов
           'thumb' => (u = ch[/<img src="(\/upload\/[^"]+)"/, 1]) && EA + u }
       end.compact
       fresh = got.reject { |c| seen[c['key']] }
       break if fresh.empty?
       fresh.each { |c| seen[c['key']] = true }
-      out.concat(fresh)
+      out.concat(since ? fresh.select { |c| c['req_to'] >= since } : fresh)
+      break if since && fresh.map { |c| c['req_to'] }.max.to_i < since
       sleep 0.6
     end
     out
@@ -153,11 +149,13 @@ module Src
   # ---------------- ipmtorgi.by ----------------
   # Список отсортирован по сроку заявок по убыванию и тянет архив до 2019 года:
   # после первой страницы с закрытыми лотами активных дальше нет.
-  def ipm_list(path)
+  # since — архив: листаем дальше и берём лоты, у которых приём заявок закрылся после since
+  def ipm_list(path, since: nil)
     out = []
     seen = {}
     now = Time.now.to_i
-    (1..MAX_PAGES).each do |p|
+    lo = since || now
+    (1..(since ? 80 : MAX_PAGES)).each do |p|
       html = get(p == 1 ? "#{IPM}#{path}" : "#{IPM}#{path}?PAGEN_1=#{p}") or break
       got = html.split('class="c-list__item"').drop(1).map do |ch|
         ch = ch[0, 4000]
@@ -176,9 +174,9 @@ module Src
       fresh = got.reject { |c| seen[c['key']] }
       break if fresh.empty?
       fresh.each { |c| seen[c['key']] = true }
-      out.concat(fresh.select { |c| c['req_to'].to_i > now })
+      out.concat(fresh.select { |c| since ? c['req_to'].to_i.between?(since, now) : c['req_to'].to_i > now })
       oldest = got.map { |c| c['req_to'] }.compact.min
-      break if oldest && oldest < now
+      break if oldest && oldest < lo
       sleep 0.6
     end
     out
@@ -234,38 +232,41 @@ module Src
   end
 
   # ---------------- beltorgi.by ----------------
-  # Каталог грузится скриптом: страница раздела отдаёт content_id и cachekey (меняется при
-  # каждом открытии), карточки приходят JSON-ом из POST /assets/category.php, по 80.
+  # Каталог — обычные страницы /<раздел>/?limit=80&page=N (с 25.09.2026; раньше карточки приходили
+  # JSON-ом из POST /assets/category.php). По умолчанию площадка показывает «приём заявок» и «ожидание приёма».
+  # Архив — тот же каталог с фильтром status: 2,3 — состоявшиеся торги, 4,5,12,13 — несостоявшиеся
+  # (ожидаются повторные); sort=3&dir=0 — по дате аукциона от поздних к ранним. Дат в карточке нет — они на странице лота.
+  BT_DONE = { 'sold' => '2%2C3', 'failed' => '4%2C5%2C12%2C13' }.freeze
+
+  def bt_page(slug, page, status = nil)
+    html = get("#{BT}/#{slug}/?limit=80&page=#{page}" + (status ? "&status=#{status}&sort=3&dir=0" : '')) or return nil
+    html.split('class="col mb-4"').drop(1).map do |ch|
+      id = ch[/card-img-top-(\d+)/, 1] or next
+      href = ch[/<a class="text-dark" href="([^"]+)"/, 1] or next
+      thumb = ch[%r{src="(/assets/images/products/\d+/small/[^"]+)"}, 1]
+      { 'key' => "bt-#{id}", 'platform' => 'beltorgi.by', 'art' => ch[/Лот №\s*(\d+)/, 1] || id,
+        'name' => txt(ch[/class="card-title[^"]*">(.*?)<\/a>/m, 1]),
+        'region' => txt(ch[/bi-geo-alt"><\/i>([^<]*)/, 1]).tr('ё', 'е').sub(/обл\.?\z/, 'область'),
+        'price' => num(ch[/<span class="price"><span>([^<]+)/, 1]),
+        # «До начала приема заявок» — лот объявлен, но заявки ещё не принимают
+        'open' => ch.include?('До окончания приема заявок'),
+        # срока в списке нет — только обратный отсчёт; по нему видно, что лот перевыставили
+        'est' => bt_left(ch),
+        'url' => "#{BT}/#{href}",
+        'thumb' => thumb && BT + thumb.sub('/small/', '/big/') }
+    end.compact
+  end
+
   def bt_list(slug)
-    page = get("#{BT}/#{slug}/") or return []
-    cid = page[/name="content_id" value="(\d+)"/, 1]
-    key = page[/name="cachekey" value="(\d+)"/, 1]
-    return [] unless cid && key
-    form = "content_id=#{cid}&cachekey=#{key}&tpl=CardTplList&view=tab&tpltable=CardTplTable" \
-           '&ListWrapper=ListWrapper&filtr%5Barray%5D%5Bresult%5D=1%2C6%2C8&limit=80&sort=1&order=1'
     seen = {}
     out = []
     (1..MAX_PAGES).each do |p|
-      j = post_json("#{BT}/assets/category.php", form + "&page=#{p}") or break
-      got = j['output'].to_s.split('class="col mb-4"').drop(1).map do |ch|
-        id = ch[/card-img-top-(\d+)/, 1] or next
-        href = ch[/<a class="text-dark" href="([^"]+)"/, 1] or next
-        thumb = ch[%r{src="(/assets/images/products/\d+/small/[^"]+)"}, 1]
-        { 'key' => "bt-#{id}", 'platform' => 'beltorgi.by', 'art' => ch[/Лот №\s*(\d+)/, 1] || id,
-          'name' => txt(ch[/class="card-title[^"]*">(.*?)<\/a>/m, 1]),
-          'region' => txt(ch[/bi-geo-alt"><\/i>([^<]*)/, 1]).tr('ё', 'е').sub(/обл\.?\z/, 'область'),
-          'price' => num(ch[/<span class="price"><span>([^<]+)/, 1]),
-          # «До начала приема заявок» — лот объявлен, но заявки ещё не принимают
-          'open' => ch.include?('До окончания приема заявок'),
-          # срока в списке нет — только обратный отсчёт; по нему видно, что лот перевыставили
-          'est' => bt_left(ch),
-          'url' => "#{BT}/#{href}",
-          'thumb' => thumb && BT + thumb.sub('/small/', '/big/') }
-      end.compact
+      got = bt_page(slug, p) or break
       fresh = got.reject { |c| seen[c['key']] }
       break if fresh.empty?
       fresh.each { |c| seen[c['key']] = true }
       out.concat(fresh)
+      break if got.size < 80
       sleep 0.6
     end
     out
@@ -342,37 +343,44 @@ module Src
     t['v'] = 2
     t
   end
-  # ---------------- cpo.by (ЗАО «Центр промышленной оценки») ----------------
-  # Сайт организатора; торги он проводит на ipmtorgi.by, поэтому лоты почти все те же, с тем же
-  # номером и сроками. Список — по 9, по дате аукциона от поздних к ранним, с архивом: стоп на первой
-  # странице, где есть прошедшие даты. Страница лота — шаблон ИПМ (ipm_detail с хостом ЦПО).
-  def cpo_list(section)
+  # ---------------- torgikonfiskat.by — торги konfiskat.by ----------------
+  # Аукционы konfiskat.by проходят на torgikonfiskat.by. Для архива берём оттуда каталог автотранспорта
+  # с фильтром статуса: «Завершены» (80|81) — последние дни, «Архив» — всё прошлое. По дате аукциона
+  # от поздних к ранним, по 8 на странице. «Лот №» на странице торгов — тот же номер, что у лота на konfiskat.by.
+  def tk_archive(since)
     out = []
     seen = {}
-    today = Time.now.to_i - 86_400
-    (1..MAX_PAGES).each do |p|
-      html = get("#{CPO}/auctions/filter/section-is-#{section}/apply/" + (p > 1 ? "?PAGEN_1=#{p}" : '')) or break
-      got = html.split('class="sales__item"').drop(1).map do |ch|
-        ch = ch[0, 5000]
-        slug = ch[%r{href="https://www\.cpo\.by/auctions/([^/"]+)/"}, 1] or next
-        day = ts(ch[/sales__item-title-date.*?(\d{2}\.\d{2}\.\d{4})/m, 1].to_s + ' 00:00')
-        pr = txt(ch[/sales__item-price__bottom[^>]*>(.*?)<div class="valute_price"/m, 1]).gsub('&nbsp;', '')
-        img = ch[/background-image: url\('(\/upload\/[^']+)'\)/, 1]
-        { 'key' => "cpo-#{slug}", 'platform' => 'cpo.by', 'art' => slug,
-          'name' => txt(ch[/sales__item-title-title">(.*?)<\/div>/m, 1]),
-          'price' => pr.include?('BYN') ? num(pr[/[\d\s.,]+(?=\s*BYN)/]) : 0.0,
-          'day' => day, 'location' => txt(ch[/location--addr"><span>(.*?)<\/span>/m, 1]),
-          'url' => "#{CPO}/auctions/#{slug}/", 'thumb' => img && CPO + img }
-      end.compact
-      break if got.empty?
-      fresh = got.reject { |c| seen[c['key']] }
-      break if fresh.empty?
-      fresh.each { |c| seen[c['key']] = true }
-      out.concat(fresh.select { |c| c['day'].to_i >= today })
-      break if got.map { |c| c['day'] }.compact.min.to_i < today
-      sleep 0.6
-  end
+    now = Time.now.to_i
+    %w[80%7C81 ARCHIVE].each do |st|
+      (1..250).each do |p|
+        html = get("#{TK}/auto-auction/?arrFilter_pf%5BPROPERTY_UF_AUC_STATUS%5D=#{st}&set_filter=Apply" + (p > 1 ? "&PAGEN_1=#{p}" : '')) or break
+        got = html.scan(/product-card mini-card" id="bx_\d+_(\d+)".*?class="date">\s*([^<]+?)\s*<\/span>.*?<img src="([^"]+)".*?class="product-title"\s*>\s*([^<]+?)\s*<\/a>.*?class="price">(.*?)<\/p>/m)
+                  .map do |id, d, img, name, pr|
+          { 'tk_id' => id, 'day' => ts(d), 'name' => txt(name), 'price' => num(pr.gsub('&#160;', '').gsub(/<[^>]+>/, '')),
+            'url' => "#{TK}/auto-auction/#{id}/", 'thumb' => img.start_with?('/') ? TK + img : nil }
+        end
+        fresh = got.reject { |c| seen[c['tk_id']] }
+        break if fresh.empty?
+        fresh.each { |c| seen[c['tk_id']] = true }
+        # в «Архиве» есть и снятые лоты с датой в будущем — это не завершённые торги
+        out.concat(fresh.select { |c| c['day'].to_i.between?(since, now) })
+        break if fresh.map { |c| c['day'].to_i }.max < since
+        sleep 1
+      end
+    end
     out
+  end
+
+  # Страница торгов: характеристики «Ключ: значение», описание, фото, полное название — в <title>
+  def tk_detail(html)
+    rows = html.scan(/<li>\s*<p>([^<:]{2,80}):\s*<span>(.*?)<\/span><\/p>\s*<\/li>/m).map { |k, v| [txt(k), txt(v)] }
+               .reject { |k, v| v.empty? || k =~ /Ссылка на извещение|Телефон|Код/ }
+    extra = txt(html[/<h3>Дополнительная информация<\/h3>\s*<div class="text">(.*?)<\/div>/m, 1]).sub(/\s*Аукцион проводится.*/m, '')
+    rows.unshift(['Описание', extra]) unless extra.empty?
+    pics = html.scan(%r{src="(/upload/avto/[^"]+\.(?:jpg|jpeg|png))"}i).flatten.uniq
+    { 'title' => txt(html[/<title>(.*?)<\/title>/m, 1]), 'art' => (rows.assoc('Лот №') || [])[1],
+      'details' => rows.empty? ? [] : [{ 'h' => 'Информация о предмете торгов', 'rows' => rows }],
+      'photo_url' => pics.first && TK + pics.first }
   end
 
   # ---------------- konfiskat.by (РУП «Торговый дом «Восточный») ----------------

@@ -160,14 +160,12 @@ end
 active = lots.select { |l| l['status'] == 'active' && !hidden_why[l['key']] }.sort_by { |l| l['req_to'].to_i }
 arch = lots.select { |l| l['status'] == 'archive' && !hidden_why[l['key']] }.sort_by { |l| -l['closed'].to_i }
 
-# Один лот на нескольких площадках — одна карточка. ЦПО показывает лоты своих торгов на ИПМ,
-# бывает и так, что объект выставлен на двух площадках с разными датами. Признак дубля —
-# одинаковые название и стартовая цена на РАЗНЫХ площадках (на одной площадке это разные лоты).
-# Главная запись — та, где торги раньше; остальные уходят в «alt»: площадка, ссылка, сроки.
-# У ИПМ и ЦПО общий номер лота (12 цифр) — он надёжнее: у лотов в долларах ЦПО не показывает цену в рублях.
+# Один лот на нескольких площадках — одна карточка: бывает, что объект выставлен на двух площадках
+# с разными датами. Признак дубля — одинаковые название и стартовая цена на РАЗНЫХ площадках
+# (на одной площадке это разные лоты). Главная запись — та, где торги раньше; остальные уходят в «alt»:
+# площадка, ссылка, сроки. (До 25.09.2026 так склеивались ИПМ и ЦПО; ЦПО больше не собираем.)
 # Из админки можно склеить любые два лота вручную (merge) или разъединить ошибочную склейку (split).
 sig = lambda do |l|
-  next "n|#{l['art']}" if %w[ipmtorgi.by cpo.by].include?(l['platform']) && l['art'].to_s =~ /\A\d{9,}\z/
   l['name'].to_s.downcase.tr('ё', 'е').gsub(/[^a-zа-я0-9]/, '') + '|' + l['price'].to_f.round.to_s
 end
 when_ = ->(l) { l['torg'] || l['req_to'].to_i + 86_400 }
@@ -190,8 +188,7 @@ dup_of = {}
 active.group_by { |l| sigs[l['key']] }.each do |s, g|
   next if g.size < 2
   next if !manual[s] && g.map { |l| l['platform'] }.uniq.size < 2
-  # при равных сроках главная — торговая площадка (ИПМ), а не витрина организатора (ЦПО)
-  main = g.min_by { |l| [when_.(l), l['req_to'].to_i, l['platform'] == 'cpo.by' ? 1 : 0, l['price'].to_f.positive? ? 0 : 1] }
+  main = g.min_by { |l| [when_.(l), l['req_to'].to_i, l['price'].to_f.positive? ? 0 : 1] }
   others = if manual[s]
              g - [main]
            else
@@ -309,7 +306,6 @@ File.write(File.join(TMP, 'mirror.json'), JSON.generate(mirror))
 # Значения — с правками из админки (раздел, место), включая прошлые торги перевыставленных лотов
 FINAL_ST = %w[sold single failed cancelled].freeze
 sales = lots.flat_map do |l|
-  next [] if l['platform'] == 'cpo.by'   # ЦПО — витрина торгов ИПМ: та же сделка посчиталась бы дважды
   ([l['result']] + (l['results'] || [])).compact.select { |r| FINAL_ST.include?(r['st']) }.map do |r|
     { 'key' => l['key'], 'at' => (r['at'] || l['closed'] || l['req_to']).to_i, 'id' => l['id'], 'platform' => l['platform'],
       'section' => l['section'], 'region' => l['region'], 'location' => l['location'], 'name' => l['name'], 'debtor' => l['debtor'],

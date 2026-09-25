@@ -715,7 +715,6 @@
       <li><a href="https://e-auction.by" target="_blank" rel="noopener">БелЮрОбеспечение</a></li>
       <li><a href="https://ipmtorgi.by" target="_blank" rel="noopener">ИПМ-Торги</a></li>
       <li><a href="https://beltorgi.by" target="_blank" rel="noopener">Белреализация</a></li>
-      <li><a href="https://www.cpo.by" target="_blank" rel="noopener">Центр промышленной оценки</a></li>
       <li><a href="https://konfiskat.by" target="_blank" rel="noopener">Торговый дом «Восточный»</a></li>
       <li><a href="https://bankrot.gov.by" target="_blank" rel="noopener">Реестр банкротств</a></li>
     </ul></div>
@@ -1218,7 +1217,7 @@ function calcBlock(l, det){
       ? 'Из карточки лота на площадке.' + (t.fee_later ? ' Сумму затрат площадка объявит до начала торгов — впишите её, когда узнаете.' : '')
     : l.platform==='konfiskat.by'
       ? 'Затраты на организацию и проведение торгов оплачиваются отдельно — сумму сообщает организатор (РУП «Торговый дом «Восточный»). Задаток — 10% по извещению.'
-    : ['ipmtorgi.by','cpo.by'].includes(l.platform)
+    : l.platform==='ipmtorgi.by'
       ? 'Из карточки лота на площадке. Точную сумму затрат площадка сообщает до начала торгов.'
       : 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.';
   const feesHtml = `<div class="cx-fees"><div class="cx-fh">Расходы сверх цены лота</div>
@@ -1551,9 +1550,9 @@ function pageAbout(){
     <div class="sec"><h2>Что уже работает в прототипе</h2>
       <table class="plain">
         <tr><th>Функция</th><th>Состояние</th></tr>
-        <tr><td>Сбор лотов с площадок</td><td>Работает: e-auction.by, ipmtorgi.by, beltorgi.by — ${DATA.length} активных лотов</td></tr>
-        <tr><td>Обновление каталога</td><td>Работает: дважды в день, в 11:00 и 18:00</td></tr>
-        <tr><td>Архив завершённых торгов</td><td>Работает: ${ARCHN._||0} лотов, хранятся полгода</td></tr>
+        <tr><td>Сбор лотов с площадок</td><td>Работает: e-auction.by, ipmtorgi.by, beltorgi.by, konfiskat.by — ${DATA.length} активных лотов</td></tr>
+        <tr><td>Обновление каталога</td><td>Работает: несколько раз в день</td></tr>
+        <tr><td>Архив завершённых торгов</td><td>Работает: ${ARCHN._||0} лотов с итогами торгов, хранятся полгода</td></tr>
         <tr><td>Фильтры, поиск, рыночный ориентир</td><td>Работает</td></tr>
         <tr><td>Калькулятор торгов</td><td>Работает</td></tr>
         <tr><td>Уведомления в Telegram</td><td>Работает отдельным ботом</td></tr>
@@ -2135,16 +2134,22 @@ async function meReport(M, id){
 
 function loadStatsJs(){ return new Promise((res, rej)=>{ if(window.BLStats) return res(); const s = document.createElement('script'); s.src = 'stats.js?v=' + SNAP;
   s.onload = res; s.onerror = () => rej(new Error('не загрузилась аналитика')); document.head.appendChild(s); }); }
+let ME_STATS = null;
 async function meStats(M, arg, params){
   M.innerHTML = '<h1>Аналитика рынка</h1><div class="skel"></div>';
   await loadStatsJs();
-  const out = []; for(let off = 0; ; off += 1000){ const r = await uapi(`lots?select=${BLStats.FIELDS}&order=key&limit=1000&offset=${off}`); out.push(...r); if(r.length < 1000) break; }
-  const [daily, cfg] = await Promise.all([ uapi('daily?select=day,stats&order=day.asc&limit=400'), uapi('settings?k=eq.cab_stats&select=v') ]);
-  const blocks = (cfg[0] && cfg[0].v && cfg[0].v.blocks) || BLStats.DEFAULT_CAB;
-  const sales = []; if(blocks.includes('sales')) for(let off = 0; ; off += 1000){ const r = await uapi(`sales?select=*&order=key,at&limit=1000&offset=${off}`); sales.push(...r); if(r.length < 1000) break; }
+  // данные держим 5 минут: смена фильтра не перекачивает тысячи лотов
+  if(!ME_STATS || Date.now() - ME_STATS.at > 300000){
+    const out = []; for(let off = 0; ; off += 1000){ const r = await uapi(`lots?select=${BLStats.FIELDS}&order=key&limit=1000&offset=${off}`); out.push(...r); if(r.length < 1000) break; }
+    const [daily, cfg] = await Promise.all([ uapi('daily?select=day,stats&order=day.asc&limit=400'), uapi('settings?k=eq.cab_stats&select=v') ]);
+    const blocks = (cfg[0] && cfg[0].v && cfg[0].v.blocks) || BLStats.DEFAULT_CAB;
+    const sales = []; if(blocks.includes('sales')) for(let off = 0; ; off += 1000){ const r = await uapi(`sales?select=*&order=key,at&limit=1000&offset=${off}`); sales.push(...r); if(r.length < 1000) break; }
+    ME_STATS = { at:Date.now(), out, daily, blocks, sales };
+  }
+  const { out, daily, blocks, sales } = ME_STATS;
   M.innerHTML = '<h1>Аналитика рынка</h1><p class="lede">Торги по имуществу должников со всех площадок, которые собирает БелЛот.</p><div id="mst"></div>';
-  BLStats.render($('#mst'), { lots:out, daily, sales, per:params.get('per')||'30', sec:params.get('sec')||'', blocks,
-    href:(p, s) => '#/me/stats?' + new URLSearchParams(Object.entries({ per:p, sec:s }).filter(([,v])=>v)).toString() });
+  BLStats.render($('#mst'), { lots:out, daily, sales, blocks, f:Object.fromEntries(['per','sec','plat','reg','kind'].map(k=>[k, params.get(k) || ''])),
+    href:x => '#/me/stats?' + new URLSearchParams(Object.entries(x).filter(([,v])=>v)).toString() });
 }
 
 async function meProfile(M){

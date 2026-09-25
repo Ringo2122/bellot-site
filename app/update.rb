@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 # encoding: utf-8
 #
-# Обновление памяти сайта: обходит три площадки, добавляет новые лоты,
-# обновляет цену и срок у известных, отправляет в архив закрытые.
+# Обновление памяти сайта: обходит площадки, добавляет новые лоты, обновляет цену и срок у известных,
+# отправляет в архив закрытые, собирает итоги торгов и добирает из архивов площадок завершённые торги (backfill.rb).
 # Запускается GitHub Actions в 11:00 и 18:00 по Минску; руками — ruby app/update.rb
 #
 # В архив лот уходит, когда:
@@ -17,11 +17,12 @@ require_relative 'regions'
 require_relative 'store'
 require_relative 'sb'
 require_relative 'results'
+require_relative 'backfill'
 require 'fileutils'
 
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
-WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'cpo.by' => 2, 'konfiskat.by' => 1 }.freeze   # konfiskat.by банит частые запросы
+WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfiskat.by' => 1 }.freeze   # konfiskat.by банит частые запросы
 MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
 # Настройки из админки: выключенные площадки не обходим, минимальная цена по разделам — своя.
 # База недоступна — работаем по умолчаниям.
@@ -53,12 +54,13 @@ PLAN = {
                      ['/auctions/stanki-oborudovanie/', 'oborud']],
   'beltorgi.by'  => [['nedvizhimost', 'nedvizhimost'], ['legkovye-avto', 'avto'], ['gruzovye-avto', 'gruz'],
                      ['avtobusy', 'gruz'], ['specztexnika', 'spec'], ['stanki-i-oborudovanie', 'oborud']],
-  # ЦПО — сайт организатора торгов на ИПМ: лоты почти все те же, склеиваются при сборке сайта (build.rb)
-  'cpo.by'       => [['nedvizhimost', 'nedvizhimost'], ['transport-i-spetstekhnika', nil], ['stanki-oborudovanie', 'oborud']],
   # konfiskat.by: 'auto' — легковые и грузовые вперемешку, разносим по названию
   'konfiskat.by' => [['avtotransport/auktsiony', 'auto'], ['nedvizhimost/auktsiony', 'nedvizhimost'],
                      ['own-property/auctions', 'oborud']]
 }.freeze
+# Площадки, которые больше не собираем: их лоты удаляются из памяти вместе с подробностями и фото.
+# cpo.by (ЦПО) — рекламная витрина торгов ИПМ-Торгов, те же лоты (решение Артёма 25.09.2026)
+DROPPED = %w[cpo.by].freeze
 
 # У ИПМ-Торгов транспорт и спецтехника — один раздел; разносим по началу названия
 def ipm_kind(name)
@@ -78,7 +80,6 @@ def list(plat, path)
   case plat
   when 'e-auction.by' then Src.ea_list(path)
   when 'ipmtorgi.by'  then Src.ipm_list(path)
-  when 'cpo.by'       then Src.cpo_list(path)
   when 'konfiskat.by' then Src.kf_list(path)
   else Src.bt_list(path)
   end
@@ -89,7 +90,6 @@ def fetch_detail(c)
   d = case c['platform']
       when 'e-auction.by' then Src.ea_detail(html)
       when 'ipmtorgi.by'  then Src.ipm_detail(html)
-      when 'cpo.by'       then Src.ipm_detail(html, Src::CPO)
       when 'konfiskat.by' then Src.kf_detail(html, c)
       else Src.bt_detail(html)
       end
@@ -105,13 +105,13 @@ end
 
 def new_lot(c, sec, d, src, now)
   plat = c['platform']
-  loc = %w[ipmtorgi.by cpo.by].include?(plat) ? c['location'].to_s : d['location'].to_s
+  loc = plat == 'ipmtorgi.by' ? c['location'].to_s : d['location'].to_s
   if plat == 'beltorgi.by' && loc !~ /обл|г\.\s*Минск/
     loc = [c['region'], loc].reject { |x| x.to_s.empty? }.join(', ')
   end
   price = c['price'].to_f.positive? ? c['price'] : d['price_byn'].to_f
   { 'key' => c['key'], 'status' => 'active', 'src' => src, 'first_seen' => now, 'last_seen' => now,
-    'art' => %w[ipmtorgi.by cpo.by].include?(plat) && !d['lotno'].to_s.empty? ? d['lotno'] : c['art'],
+    'art' => plat == 'ipmtorgi.by' && !d['lotno'].to_s.empty? ? d['lotno'] : c['art'],
     'name' => plat == 'beltorgi.by' && !d['title'].to_s.empty? ? d['title'] : c['name'],
     'price' => price, 'prices' => [[now, price]],
     # у ИПМ точное время — в карточке лота; у beltorgi в списке его нет вовсе
@@ -125,6 +125,12 @@ end
 now = Time.now.to_i
 t0 = Time.now
 db = Store.load.each_with_object({}) { |l, h| h[l['key']] = l }
+dropped = 0
+db.delete_if do |k, l|
+  next false unless DROPPED.include?(l['platform'])
+  [Store.det_path(k), Store.ph_path(k)].each { |x| File.delete(x) if File.exist?(x) }
+  dropped += 1
+end
 before = db.values.count { |l| l['status'] == 'active' }
 mx = Mutex.new
 seen = {}          # ключи, которые площадки показали в этом прогоне
@@ -133,6 +139,7 @@ stat = Hash.new(0)
 pstat = Hash.new { |h, k| h[k] = Hash.new(0) }   # по площадкам — для отчёта в админке
 terms_left = TERMS_CAP
 ea_torg_left = EA_TORG_CAP
+stat['удалено: площадка исключена'] = dropped if dropped.positive?
 
 PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }.map do |plat, secs|
   Thread.new do
@@ -284,9 +291,9 @@ def fetch_result(l)
   when 'e-auction.by'
     eid = l['eid'] || ((html = Src.get(l['url'])) && Res.ea_eid(html))
     eid ? [Res.ea_result(Res.ea_info(eid)), { 'eid' => eid }] : [nil, {}]
-  when 'ipmtorgi.by', 'cpo.by'
+  when 'ipmtorgi.by'
     html = Src.get(l['url']) or return [nil, {}]
-    all = (u = Res.ipm_all_bids_url(html, l['platform'] == 'cpo.by' ? Src::CPO : Src::IPM)) && Src.get(u)   # все ставки, а не последние
+    all = (u = Res.ipm_all_bids_url(html)) && Src.get(u)   # все ставки, а не последние
     [Res.ipm_result(html, all), {}]
   when 'beltorgi.by'
     (html = Src.get(l['url'])) ? [Res.bt_result(html), {}] : [nil, {}]
@@ -327,6 +334,9 @@ due.group_by { |l| l['platform'] }.map do |plat, ls|
     end
   end
 end.each(&:join)
+
+# ── архив площадок: завершённые за месяц торги, которых у нас нет (после итогов — у лотов konfiskat уже есть ссылка на торги) ──
+backfill(db, stat, pstat, now)
 
 cut = now - RETAIN_DAYS * 86_400
 db.delete_if do |k, l|

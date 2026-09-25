@@ -54,7 +54,7 @@ stale = remote.select { |p| p =~ %r{\A(index\.html|\.nojekyll|ph/p\d+\.js)\z} }
 tree += stale.map { |p| { 'path' => p, 'mode' => '100644', 'type' => 'blob', 'sha' => nil } }
 
 t = api('POST', "repos/#{REPO}/git/trees", 'base_tree' => base, 'tree' => tree)
-msg = SEED ? 'код сайта и первая память' : 'код сайта'
+msg = SEED ? 'код сайта и первая память' : (ENV['MSG'] || 'код сайта').dup.force_encoding('UTF-8')
 c = api('POST', "repos/#{REPO}/git/commits", 'message' => msg, 'tree' => t['sha'], 'parents' => [parent])
 api('PATCH', "repos/#{REPO}/git/refs/heads/main", 'sha' => c['sha'])
 File.delete(File.join(ROOT, 'data', 'seed.tgz')) if SEED
