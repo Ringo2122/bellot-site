@@ -305,6 +305,19 @@ mirror = lots.map do |l|
 end
 FileUtils.mkdir_p(TMP)
 File.write(File.join(TMP, 'mirror.json'), JSON.generate(mirror))
+# итоги завершённых торгов — в постоянную таблицу sales (sync.rb): аналитика продаж копится дольше архива.
+# Значения — с правками из админки (раздел, место), включая прошлые торги перевыставленных лотов
+FINAL_ST = %w[sold single failed cancelled].freeze
+sales = lots.flat_map do |l|
+  next [] if l['platform'] == 'cpo.by'   # ЦПО — витрина торгов ИПМ: та же сделка посчиталась бы дважды
+  ([l['result']] + (l['results'] || [])).compact.select { |r| FINAL_ST.include?(r['st']) }.map do |r|
+    { 'key' => l['key'], 'at' => (r['at'] || l['closed'] || l['req_to']).to_i, 'id' => l['id'], 'platform' => l['platform'],
+      'section' => l['section'], 'region' => l['region'], 'location' => l['location'], 'name' => l['name'], 'debtor' => l['debtor'],
+      'area_num' => l['area_num'], 'url' => l['url'], 'st' => r['st'], 'start' => r['start'], 'price' => r['price'],
+      'bids' => r['bids'], 'users' => r['users'] }
+  end
+end.uniq { |x| [x['key'], x['at']] }
+File.write(File.join(TMP, 'sales.json'), JSON.generate(sales))
 File.write(File.join(TMP, 'build.json'), JSON.generate('published' => active.size, 'queue' => queued, 'merged' => dup_of.size,
                                                         'archive' => arch.size, 'photos' => active.count { |l| l['photo'] }))
 

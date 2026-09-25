@@ -28,6 +28,11 @@ if mirror && ENV['JOB_OK'] != 'false'
                         'stats' => { 'active' => act.size, 'published' => mirror.count { |l| l['status'] == 'active' && l['published'] },
                                      'value' => act.sum { |l| l['price'].to_f }.round, 'by_platform' => cnt.('platform'),
                                      'by_section' => cnt.('section'), 'value_by_section' => val.('section') } }], 'day')
+  # итоги завершённых торгов — в постоянную таблицу для аналитики продаж
+  if (sales = read.('sales.json')) && sales.any?
+    Sb.upsert('sales', sales.map { |x| x.merge('updated_at' => Time.now.utc.iso8601) }, 'key,at')
+    puts "итогов торгов в аналитике: #{sales.size}"
+  end
   # личный кабинет: новые лоты по сохранённым поискам и напоминания о сроках — сразу после обновления каталога
   begin
     n = Sb.req('post', 'rpc/cab_tick', {})

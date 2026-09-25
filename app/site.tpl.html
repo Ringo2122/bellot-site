@@ -2139,8 +2139,10 @@ async function meStats(M, arg, params){
   await loadStatsJs();
   const out = []; for(let off = 0; ; off += 1000){ const r = await uapi(`lots?select=${BLStats.FIELDS}&order=key&limit=1000&offset=${off}`); out.push(...r); if(r.length < 1000) break; }
   const [daily, cfg] = await Promise.all([ uapi('daily?select=day,stats&order=day.asc&limit=400'), uapi('settings?k=eq.cab_stats&select=v') ]);
+  const blocks = (cfg[0] && cfg[0].v && cfg[0].v.blocks) || BLStats.DEFAULT_CAB;
+  const sales = []; if(blocks.includes('sales')) for(let off = 0; ; off += 1000){ const r = await uapi(`sales?select=*&order=key,at&limit=1000&offset=${off}`); sales.push(...r); if(r.length < 1000) break; }
   M.innerHTML = '<h1>Аналитика рынка</h1><p class="lede">Торги по имуществу должников со всех площадок, которые собирает БелЛот.</p><div id="mst"></div>';
-  BLStats.render($('#mst'), { lots:out, daily, per:params.get('per')||'30', sec:params.get('sec')||'', blocks:(cfg[0] && cfg[0].v && cfg[0].v.blocks) || BLStats.DEFAULT_CAB,
+  BLStats.render($('#mst'), { lots:out, daily, sales, per:params.get('per')||'30', sec:params.get('sec')||'', blocks,
     href:(p, s) => '#/me/stats?' + new URLSearchParams(Object.entries({ per:p, sec:s }).filter(([,v])=>v)).toString() });
 }
 

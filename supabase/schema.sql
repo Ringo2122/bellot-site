@@ -78,6 +78,17 @@ create table if not exists daily (                -- снимок каталог
   stats jsonb not null,
   updated_at timestamptz not null default now()
 );
+-- итоги завершённых торгов — копятся навсегда (архив робота живёт 180 дней): аналитика продаж.
+-- Один лот может торговаться несколько раз (повторные торги) — ключ «лот + время окончания торгов»
+create table if not exists sales (
+  key text not null,
+  at bigint not null,                          -- когда закончились торги
+  id text, platform text, section text, region text, location text, name text, debtor text, area_num numeric, url text,
+  st text not null,                            -- sold | single | failed | cancelled
+  start numeric, price numeric, bids int, users int,
+  updated_at timestamptz not null default now(),
+  primary key (key, at)
+);
 create table if not exists runs (
   id bigserial primary key,
   at timestamptz not null default now(),
@@ -120,7 +131,7 @@ $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['lots','overrides','lot_photos','dup_rules','settings','runs','bot_runs','leads','daily'] loop
+  foreach t in array array['lots','overrides','lot_photos','dup_rules','settings','runs','bot_runs','leads','daily','sales'] loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists admin_all on %I', t);
     execute format('create policy admin_all on %I for all to anon, authenticated using ((select is_admin())) with check ((select is_admin()))', t);
@@ -369,6 +380,8 @@ create policy own_read on leads for select to anon, authenticated using (user_id
 -- кабинет: аналитика рынка по копии каталога и снимкам дня, настройка видимых блоков
 drop policy if exists user_read on lots;
 create policy user_read on lots for select to anon, authenticated using ((select cur_user()) is not null);
+drop policy if exists user_read on sales;
+create policy user_read on sales for select to anon, authenticated using ((select cur_user()) is not null);
 drop policy if exists user_read on daily;
 create policy user_read on daily for select to anon, authenticated using ((select cur_user()) is not null);
 drop policy if exists user_read on settings;

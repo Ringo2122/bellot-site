@@ -755,11 +755,12 @@ async function loadAll(path){ const out = []; for(let off = 0; ; off += 1000){ c
 async function pStats(params){
   const per = params.get('per') || '30', sec = params.get('sec') || '';
   const since = new Date(Date.now() - (per==='all' ? 365 : +per)*86400000).toISOString();
-  const [lots, daily, leads, bots] = await Promise.all([
+  const [lots, daily, leads, bots, sales] = await Promise.all([
     loadAll(`lots?select=${BLStats.FIELDS}&order=key`),
     api('daily?select=day,stats&order=day.asc&limit=400'),
     api('leads?select=created_at,status&limit=5000'),
-    api(`bot_runs?select=at,sent,stats&at=gte.${since}&limit=20000`) ]);
+    api(`bot_runs?select=at,sent,stats&at=gte.${since}&limit=20000`),
+    loadAll('sales?select=*&order=key,at') ]);
   await loadSettings();
   const cab = new Set((SET.cab_stats||{}).blocks || BLStats.DEFAULT_CAB);
   V().innerHTML = `<h1>Аналитика</h1><p class="lede">Рынок — активные лоты всех площадок без дублей и скрытых вами.</p><div id="an"></div>
@@ -767,7 +768,7 @@ async function pStats(params){
       <p class="muted" style="margin-top:0">Отметьте блоки, которые показывать в разделе «Аналитика» кабинета. Действует сразу, публиковать не нужно. «Качество данных» и «Заявки и бот» — только для админки.</p>
       <div class="grid2">${BLStats.BLOCKS.filter(([k])=>!BLStats.ADMIN_ONLY.includes(k)).map(([k,t])=>`<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-cab="${k}"${cab.has(k)?' checked':''}> ${t}</label>`).join('')}</div>
       <div class="saverow"><button class="btn pri" id="cabsave">Сохранить</button></div></div>`;
-  BLStats.render($('#an'), { lots, daily, leads, bots, per, sec, admin:true, site:'../',
+  BLStats.render($('#an'), { lots, daily, leads, bots, sales, per, sec, admin:true, site:'../',
     href:(p, s) => '#stats?' + new URLSearchParams(Object.entries({ per:p, sec:s }).filter(([,v])=>v)).toString() });
   $('#cabsave').onclick = async () => {
     const blocks = [...V().querySelectorAll('[data-cab]:checked')].map(i=>i.dataset.cab);
