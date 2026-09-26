@@ -304,8 +304,15 @@
   .gal .big{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--hair);
     background:var(--brand-l);display:block}
   .gal .noph{aspect-ratio:4/3;display:grid;place-items:center;color:var(--ink-3)}
-  .gv{position:relative}
-  .gv .big{cursor:zoom-in}
+  .gv{position:relative;border-radius:8px;overflow:hidden}
+  .gv .big{cursor:zoom-in;transition:opacity .15s .12s}
+  /* пока грузится фото площадки: наша копия 400 px — размытым фоном, поверх — индикатор (появляется через 0,15 с, чтобы не мигать) */
+  .gv .big.lq{filter:blur(6px);transform:scale(1.02)}
+  .gv.ld .big{opacity:.6}
+  .gv.ld::after,.lbx.ld::after{content:'';position:absolute;top:50%;left:50%;width:36px;height:36px;margin:-18px 0 0 -18px;border:3px solid rgba(255,255,255,.45);
+    border-top-color:#fff;border-radius:50%;opacity:0;animation:gvspin .8s linear infinite,gvon 0s .15s forwards;pointer-events:none}
+  @keyframes gvspin{to{transform:rotate(360deg)}}
+  @keyframes gvon{to{opacity:1}}
   .gv-b,.gv-full{position:absolute;border:0;background:rgba(255,255,255,.92);color:#1a2330;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18);display:grid;place-items:center}
   .gv-b{top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;font-size:26px;line-height:1;padding:0 0 3px}
   .gv-p{left:10px}.gv-n{right:10px}
@@ -1451,55 +1458,81 @@ function drawMap(g){
   }).catch(()=>{ const el = document.getElementById('lmap'); if(el) el.outerHTML = '<p class="note">Карта не загрузилась — откройте адрес в Яндекс Картах или Google Maps по ссылкам ниже.</p>'; });
 }
 
-/* ───────── галерея: все фото карточки площадки (ссылками с площадки); первое — наша копия, открывается мгновенно ───────── */
+/* ───────── галерея: все фото карточки площадки (ссылками с площадки) ─────────
+   Все фото — в полном качестве с площадки. Пока грузится первое, видна наша копия 400 px (размыто).
+   Фото сменяется только когда загружено (до этого — индикатор); следующие два и предыдущее грузятся заранее. */
 const thumbOf = (p, u) => p==='beltorgi.by' ? u.replace('/big/','/small/') : p==='belauction.by' ? u.replace(/(\.\w+)$/, '-150x150$1') : null;
+const GIMG = {};   // адрес → загрузка (общая для страницы и полноэкранного просмотра)
+function gload(u){
+  return GIMG[u] || (GIMG[u] = new Promise((res, rej)=>{
+    const im = new Image(); im.decoding = 'async';
+    im.onload = () => (im.decode ? im.decode().catch(()=>{}) : Promise.resolve()).then(()=>res(u));
+    im.onerror = () => rej(u); im.src = u; }));
+}
 function galleryBlock(l, pics){
-  const th = pics.map(u=>thumbOf(l.platform, u)), first = l.photo ? `ph/${encodeURIComponent(l.photo)}.jpg` : pics[0];
-  return `<div class="gv" id="gv"><img class="big" id="gv-img" src="${esc(first)}" alt="${esc(l.name)}">
-      <button class="gv-b gv-p" type="button" aria-label="Предыдущее фото">‹</button><button class="gv-b gv-n" type="button" aria-label="Следующее фото">›</button>
-      <button class="gv-full" type="button" aria-label="Открыть на весь экран" title="На весь экран">⤢</button><span class="gv-cnt" id="gv-cnt">1 / ${pics.length}</span></div>
-    ${th.every(Boolean) ? `<div class="gv-strip">${th.map((t,i)=>`<button type="button" data-i="${i}"${i?'':' class="on"'} aria-label="Фото ${i+1}"><img src="${esc(t)}" loading="lazy" alt=""></button>`).join('')}</div>`
+  const th = pics.map(u=>thumbOf(l.platform, u)), many = pics.length > 1;
+  const first = l.photo ? `ph/${encodeURIComponent(l.photo)}.jpg` : pics[0];
+  return `<div class="gv ld" id="gv"><img class="big${l.photo ? ' lq' : ''}" id="gv-img" src="${esc(first)}" alt="${esc(l.name)}">
+      ${many ? '<button class="gv-b gv-p" type="button" aria-label="Предыдущее фото">‹</button><button class="gv-b gv-n" type="button" aria-label="Следующее фото">›</button>' : ''}
+      <button class="gv-full" type="button" aria-label="Открыть на весь экран" title="На весь экран">⤢</button>${many ? `<span class="gv-cnt" id="gv-cnt">1 / ${pics.length}</span>` : ''}</div>
+    ${!many ? '' : th.every(Boolean) ? `<div class="gv-strip">${th.map((t,i)=>`<button type="button" data-i="${i}"${i?'':' class="on"'} aria-label="Фото ${i+1}"><img src="${esc(t)}" loading="lazy" alt=""></button>`).join('')}</div>`
       : `<div class="gv-dots">${pics.map((_,i)=>`<button type="button" data-i="${i}"${i?'':' class="on"'} aria-label="Фото ${i+1}"></button>`).join('')}</div>`}
     <p class="gv-src">${pics.length} фото с площадки ${esc(l.platform)}</p>`;
 }
+// просмотр по кругу: n — какое фото показать; ждём загрузки, потом меняем; соседей грузим заранее
+function viewer(pics, img, box, onShow){
+  let i = 0, want = null;
+  const pre = n => [n + 1, n + 2, n - 1].forEach(k=>{ const u = pics[(k + pics.length) % pics.length]; if(u) gload(u).catch(()=>{}); });
+  const show = n => {
+    if(!pics.length) return;
+    i = (n + pics.length) % pics.length; const u = pics[i]; want = u;
+    if(onShow) onShow(i);
+    box.classList.add('ld');
+    gload(u).then(()=>{ if(want !== u) return; img.src = u; img.classList.remove('lq'); box.classList.remove('ld'); })
+      .catch(()=>{ if(want !== u) return; const k = pics.indexOf(u); if(k >= 0){ pics.splice(k, 1); if(onShow) onShow(-1, k); } show(i); });   // площадка удалила фото
+    pre(i);
+  };
+  return { show, get i(){ return i; } };
+}
 function bindGallery(l, pics){
-  const img = $('#gv-img'), cnt = $('#gv-cnt'), local = l.photo ? `ph/${encodeURIComponent(l.photo)}.jpg` : null;
+  const img = $('#gv-img'), box = $('#gv'), cnt = $('#gv-cnt');
   if(!img) return;
-  let i = 0;
   const marks = () => document.querySelectorAll('.gv-strip button, .gv-dots button');
-  const show = n => { i = (n + pics.length) % pics.length; img.src = i===0 && local ? local : pics[i]; cnt.textContent = `${i+1} / ${pics.length}`;
-    marks().forEach(b=>b.classList.toggle('on', +b.dataset.i===i));
-    const nx = new Image(); nx.src = pics[(i + 1) % pics.length]; };
-  // площадка удалила фото — убираем его из просмотра
-  img.onerror = () => { if(i===0 && local) return; const b = [...marks()].find(x=>+x.dataset.i===i); if(b) b.remove();
-    pics.splice(i, 1); marks().forEach((x,k)=>x.dataset.i = k); if(pics.length) show(i); };
-  $('#gv .gv-p').onclick = () => show(i - 1);
-  $('#gv .gv-n').onclick = () => show(i + 1);
-  $('#gv .gv-full').onclick = img.onclick = () => lightbox(pics, i);
-  marks().forEach(b=>b.onclick = () => show(+b.dataset.i));
+  const v = viewer(pics, img, box, (k, rm) => {
+    // битое фото убрано из списка — убираем его метку и перенумеровываем остальные
+    if(k < 0){ const b = [...marks()].find(x=>+x.dataset.i===rm); if(b) b.remove(); marks().forEach((x,j)=>x.dataset.i = j); return; }
+    if(cnt) cnt.textContent = `${k+1} / ${pics.length}`;
+    marks().forEach(b=>b.classList.toggle('on', +b.dataset.i===k));
+    const on = document.querySelector('.gv-strip button.on'); if(on) on.scrollIntoView({ block:'nearest', inline:'nearest' });
+  });
+  const p = $('#gv .gv-p'), n = $('#gv .gv-n');
+  if(p) p.onclick = () => v.show(v.i - 1);
+  if(n) n.onclick = () => v.show(v.i + 1);
+  $('#gv .gv-full').onclick = img.onclick = () => lightbox(pics, v.i);
+  marks().forEach(b=>b.onclick = () => v.show(+b.dataset.i));
   document.querySelectorAll('.gv-strip img').forEach(t=>t.onerror = () => t.parentElement.style.display = 'none');
   let x0 = null;
   img.addEventListener('touchstart', e=>{ x0 = e.touches[0].clientX; }, { passive:true });
-  img.addEventListener('touchend', e=>{ if(x0===null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if(Math.abs(dx) > 40) show(i + (dx < 0 ? 1 : -1)); });
+  img.addEventListener('touchend', e=>{ if(x0===null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if(Math.abs(dx) > 40) v.show(v.i + (dx < 0 ? 1 : -1)); });
+  v.show(0);
 }
 function lightbox(pics, start){
-  let i = start;
   const ov = document.createElement('div'); ov.className = 'lbx';
   ov.innerHTML = `<img alt=""><button class="lbx-x" type="button" aria-label="Закрыть">×</button>${pics.length > 1 ? '<button class="lbx-p" type="button" aria-label="Предыдущее">‹</button><button class="lbx-n" type="button" aria-label="Следующее">›</button>' : ''}<span class="lbx-c"></span>`;
   const im = ov.querySelector('img'), c = ov.querySelector('.lbx-c');
-  const show = n => { i = (n + pics.length) % pics.length; im.src = pics[i]; c.textContent = `${i+1} / ${pics.length}`; const nx = new Image(); nx.src = pics[(i + 1) % pics.length]; };
+  const v = viewer(pics, im, ov, k => { if(k >= 0) c.textContent = pics.length > 1 ? `${k+1} / ${pics.length}` : ''; });
   const close = () => { ov.remove(); document.removeEventListener('keydown', key); document.body.style.overflow = ''; };
-  const key = e => { if(e.key==='Escape') close(); else if(e.key==='ArrowLeft') show(i - 1); else if(e.key==='ArrowRight') show(i + 1); };
+  const key = e => { if(e.key==='Escape') close(); else if(e.key==='ArrowLeft') v.show(v.i - 1); else if(e.key==='ArrowRight') v.show(v.i + 1); };
   ov.onclick = e => { if(e.target===ov) close(); };
   ov.querySelector('.lbx-x').onclick = close;
-  if(pics.length > 1){ ov.querySelector('.lbx-p').onclick = () => show(i - 1); ov.querySelector('.lbx-n').onclick = () => show(i + 1); }
+  if(pics.length > 1){ ov.querySelector('.lbx-p').onclick = () => v.show(v.i - 1); ov.querySelector('.lbx-n').onclick = () => v.show(v.i + 1); }
   let x0 = null;
   ov.addEventListener('touchstart', e=>{ x0 = e.touches[0].clientX; }, { passive:true });
-  ov.addEventListener('touchend', e=>{ if(x0===null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if(Math.abs(dx) > 40) show(i + (dx < 0 ? 1 : -1)); });
+  ov.addEventListener('touchend', e=>{ if(x0===null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if(Math.abs(dx) > 40) v.show(v.i + (dx < 0 ? 1 : -1)); });
   document.addEventListener('keydown', key);
   document.body.style.overflow = 'hidden';
   document.body.appendChild(ov);
-  show(i);
+  v.show(start);
 }
 
 function pageLot(id){
@@ -1560,7 +1593,7 @@ function pageLot(id){
     if(CUR!=='/lot/'+encodeURIComponent(id)) return;
     if(!arch) calcBlock(l, det);
     // все фото карточки площадки
-    if(det.p && (det.p.length > 1 || !l.photo)){ const pics = det.p.slice(); $('.gal').innerHTML = galleryBlock(l, pics); bindGallery(l, pics); }
+    if(det.p && det.p.length){ const pics = det.p.slice(); $('.gal').innerHTML = galleryBlock(l, pics); bindGallery(l, pics); }
     // похожие завершённые торги, история объекта; карта — только у активных
     $('#xsim').innerHTML = (det.c ? simBlock(l, det.c) : '') + (det.h ? histBlock(l, det.h) : '') + (!arch && det.g ? mapBlock(l, det.g) : '');
     if(!arch && det.g) drawMap(det.g);
