@@ -71,6 +71,37 @@ module Src
     (secs.flat_map { |s| s['rows'] }.find { |k, _| k =~ re } || [])[1]
   end
 
+  # ---------------- фото лота ----------------
+  # Все фото из галереи карточки площадки — ссылками (сами файлы не копируем: ~10–20 фото × 4 500 лотов — больше
+  # гигабайта, предел GitHub Pages). Сайт показывает их с площадки; главное фото хранится у нас (Store.save_photo).
+  # Берём только галерею лота — без иконок, баннеров и фото соседних лотов:
+  #   e-auction  data-mfp-src в .gallery-items (версии 1200×900)
+  #   ИПМ        ссылки слайдов .auction-gallery__main-slide (оригиналы)
+  #   beltorgi   /assets/images/products/<id лота>/big/… (id — самый частый в big: у соседних лотов — small)
+  #   konfiskat  /upload/avto/<код>…; torgikonfiskat — так же
+  #   belauction <a href=… data-fancybox=images>
+  # base — сайт, с которого страница (у konfiskat бывает konfiskat.by или torgikonfiskat.by)
+  def photos(platform, html, base = nil)
+    h = html.to_s
+    list = case platform
+           when 'e-auction.by'
+             blk = h[/gallery-items(.*?)<\/div>/m, 1].to_s
+             blk.scan(/data-mfp-src="([^"]+)"/).flatten.map { |u| EA + u }
+           when 'ipmtorgi.by'
+             h.scan(%r{auction-gallery__main-slide">\s*<a href="(/upload/[^"]+)"}).flatten.map { |u| IPM + u }
+           when 'beltorgi.by'
+             big = h.scan(%r{/assets/images/products/(\d+)/big/([^"'\s)]+\.(?:jpe?g|png|webp))}i)
+             id = big.map(&:first).group_by(&:itself).max_by { |_, v| v.size }&.first
+             big.select { |i, _| i == id }.map { |i, f| "#{BT}/assets/images/products/#{i}/big/#{f}" }
+           when 'konfiskat.by'
+             h.scan(%r{(?:src|href|data-src)="(/upload/avto/[^"]+\.(?:jpe?g|png))"}i).flatten.map { |u| (base || KF) + u }
+           when 'belauction.by'
+             h.scan(%r{href=["']?(https://belauction\.by/wp-content/uploads/[^\s"'>]+?\.(?:jpe?g|png|webp))["']?\s+data-fancybox=["']?images}i).flatten
+           else []
+           end
+    list.uniq   # все фото карточки, без ограничения
+  end
+
   # ---------------- e-auction.by ----------------
   # Пагинация за последней страницей повторяет её же — стоп на повторах.
   # since — архив: вкладка «Завершённые» (?type=f), по сроку заявок от поздних к ранним; берём лоты со сроком после since
@@ -126,7 +157,7 @@ module Src
       'location' => rows_find(secs, /Местоположение/),
       'debtor' => rows_find(secs, /^Должник/),
       'area_num' => area && area_m2('Площадь', area),
-      'photo_url' => pic && EA + pic, 'terms' => ea_terms(html) }
+      'photo_url' => pic && EA + pic, 'photos' => photos('e-auction.by', html), 'terms' => ea_terms(html) }
   end
 
   # Условия покупки для калькулятора. На e-auction: «задаток в размере 538.17 BYN»,
@@ -207,7 +238,7 @@ module Src
       'torg' => ts(txt(html[/Время начала торгов:<\/b>\s*<br\s*\/?>\s*([^<]+)/m, 1]).gsub('&nbsp;', ' ')),
       'area_num' => arow && area_m2(arow[0], arow[1]),
       'debtor' => (seller.find { |k, _| k =~ /Наименование/ } || [])[1],
-      'photo_url' => pic && host + pic, 'terms' => ipm_terms(html) }
+      'photo_url' => pic && host + pic, 'photos' => photos('ipmtorgi.by', html), 'terms' => ipm_terms(html) }
   end
 
   # «Шаг аукциона: 5% от текущей цены», «Сумма задатка: 3 336.96 BYN»,
@@ -317,7 +348,7 @@ module Src
       'req_to' => ts(rows_find(secs, /Окончание подачи заявок/)),
       'torg' => ts(rows_find(secs, /Начало торгов/)),
       'area_num' => area && (a = num(area)).positive? ? a : nil,
-      'terms' => bt_terms(secs, html) }
+      'photos' => photos('beltorgi.by', html), 'terms' => bt_terms(secs, html) }
   end
 
   # «Сумма задатка», «Шаг торгов» (фиксированный, в рублях), «Срок уплаты задатка», «Минимальная стоимость»;
@@ -381,7 +412,7 @@ module Src
     pics = html.scan(%r{src="(/upload/avto/[^"]+\.(?:jpg|jpeg|png))"}i).flatten.uniq
     { 'title' => txt(html[/<title>(.*?)<\/title>/m, 1]), 'art' => (rows.assoc('Лот №') || [])[1],
       'details' => rows.empty? ? [] : [{ 'h' => 'Информация о предмете торгов', 'rows' => rows }],
-      'photo_url' => pics.first && TK + pics.first }
+      'photo_url' => pics.first && TK + pics.first, 'photos' => pics.map { |u| TK + u } }
   end
 
   # ---------------- belauction.by (ООО «БелАукцион-Групп») ----------------
@@ -458,7 +489,7 @@ module Src
     pic = html[%r{(https://belauction\.by/wp-content/uploads/\d{4}/\d{2}/[^\s"'>]+?\.(?:jpe?g|png|webp))}i, 1]
     { 'details' => secs, 'location' => place ? [region.sub(/\Aг\. Минск\z/, ''), place].reject(&:empty?).join(', ') : region,
       'req_to' => end_t, 'torg' => end_t, 'price_byn' => num(txt(html[/id=content-bid>(.*?)<\/p>/m, 1])),
-      'photo_url' => pic && pic !~ /slide|flag/ ? pic : nil,
+      'photo_url' => pic && pic !~ /slide|flag/ ? pic : nil, 'photos' => photos('belauction.by', html),
       'terms' => { 'vat' => desc =~ /с учетом 20% НДС/i ? 'Для юрлиц текущая ставка — с НДС 20%' : nil,
                    'fee_later' => true, 'v' => 2 }.compact }
   end
@@ -549,7 +580,7 @@ module Src
     owner = extra[/Находится в собственности\s+([^.]+)/, 1]
     { 'details' => secs, 'req_to' => req, 'torg' => torg,
       'location' => n['city'] ? "г. #{n['city']}" : nil, 'debtor' => owner ? owner.strip : 'Конфискованное имущество',
-      'photo_url' => pics.first && KF + pics.first,
+      'photo_url' => pics.first && KF + pics.first, 'photos' => photos('konfiskat.by', html),
       'tk' => tk && tk.sub('http://', 'https://'),
       'terms' => { 'deposit' => card['price'].to_f * (n['deposit_pct'] || 10) / 100, 'fee_later' => true,
                    'pay_term' => n['pay'], 'v' => 2 }.reject { |_, v| v.nil? || v == 0.0 } }

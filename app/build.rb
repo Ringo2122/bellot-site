@@ -272,6 +272,7 @@ order.each_slice(PACK) do |chunk|
     end
     x = { 's' => ENV['MASK'] ? mask(secs) : secs, 't' => l['terms'] || {} }
     x.merge!((sim[l['key']] || {}).slice('c', 'h'))
+    x['p'] = l['pics'] if (l['pics'] || []).size.positive?   # все фото карточки площадки (ссылками)
     # карта — только у активных; адрес — тот, по которому искали точку (у konfiskat — место хранения)
     if l['status'] == 'active' && l['geo'].is_a?(Array)
       x['g'] = l['geo'] + [l['platform'] == 'konfiskat.by' ? Obj.storage(Obj.rows_of(secs)) : l['location']]
@@ -288,7 +289,7 @@ pub = { 'texts' => CFG['texts'] || {}, 'calc' => CFG['calc'] || {}, 'sec_off' =>
 pub['sb'] = { 'url' => ENV['SB_URL'], 'key' => ENV['SB_KEY'] } if Sb.on?
 
 archn = arch.group_by { |l| l['section'] }.map { |k, v| [k, v.size] }.to_h.merge('_' => arch.size)
-slim = ->(l) { KEEP.each_with_object({}) { |k, h| h[k] = l[k] unless l[k].nil? } }
+slim = ->(l) { KEEP.each_with_object({}) { |k, h| h[k] = l[k] unless l[k].nil? }.tap { |h| h['np'] = l['pics'].size if (l['pics'] || []).size > 1 } }
 tpl = File.read(File.join(__dir__, 'site.tpl.html'), encoding: 'UTF-8')
 html = tpl.sub('__DATA__') { JSON.generate(active.map(&slim)) }
           .sub('__SNAP__', now.to_s).sub('__ARCHN__') { JSON.generate(archn) }

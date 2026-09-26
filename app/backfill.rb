@@ -173,7 +173,7 @@ def backfill(db, stat, pstat, now)
                 'price' => price, 'prices' => [[req, price]], 'req_to' => req, 'torg' => day, 'url' => c['url'], 'tk' => c['url'],
                 'location' => loc, 'region' => loc && region_of(loc), 'debtor' => 'Конфискованное имущество',
                 'platform' => 'konfiskat.by', 'section' => sec, 'section_ru' => SEC_RU[sec], 'terms' => {},
-                'closed' => req, 'why' => 'deadline', 'result' => r.merge('checked' => now, 'tries' => 1) }
+                'closed' => req, 'why' => 'deadline', 'result' => r.merge('checked' => now, 'tries' => 1), 'pics' => d['photos'] || [] }
         add.(rec, d, [d['photo_url'], c['thumb']])
         left -= 1
       end

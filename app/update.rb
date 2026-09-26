@@ -19,6 +19,7 @@ require_relative 'sb'
 require_relative 'results'
 require_relative 'backfill'
 require_relative 'geo'
+require_relative 'pics'
 require 'fileutils'
 
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
@@ -125,6 +126,7 @@ def new_lot(c, sec, d, src, now)
     'debtor' => d['debtor'], 'area_num' => sec == 'nedvizhimost' ? d['area_num'] : nil,
     'sub_ru' => plat == 'e-auction.by' && sec == 'nedvizhimost' ? Src::EA_SUBS[c['sub']] : nil,
     'platform' => plat, 'section' => sec, 'section_ru' => SEC_RU[sec], 'terms' => d['terms'] || {} }
+    .tap { |r| r['pics'] = d['photos'] if d['photos'] }   # все фото карточки — ссылками (pics.rb)
 end
 
 now = Time.now.to_i
@@ -352,6 +354,9 @@ rescue StandardError => e
 end
 backfill(db, stat, pstat, now)
 geo_t.join
+
+# ── все фото карточки у лотов, собранных раньше (у новых — сразу) ──
+fill_pics(db, stat)
 
 cut = now - RETAIN_DAYS * 86_400
 db.delete_if do |k, l|
