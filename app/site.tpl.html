@@ -1466,7 +1466,8 @@ const GIMG = {};   // адрес → загрузка (общая для стр�
 function gload(u){
   return GIMG[u] || (GIMG[u] = new Promise((res, rej)=>{
     const im = new Image(); im.decoding = 'async';
-    im.onload = () => (im.decode ? im.decode().catch(()=>{}) : Promise.resolve()).then(()=>res(u));
+    // decode() в фоновой вкладке браузер откладывает до показа — не ждём его дольше 0,15 с
+    im.onload = () => Promise.race([im.decode ? im.decode().catch(()=>{}) : null, new Promise(r=>setTimeout(r, 150))]).then(()=>res(u));
     im.onerror = () => rej(u); im.src = u; }));
 }
 function galleryBlock(l, pics){
