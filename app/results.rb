@@ -20,6 +20,7 @@
 #   ipmtorgi.by   блок «Результаты торгов» на странице лота: цена продажи, победитель, ход торгов
 #   beltorgi.by   строка статуса на странице лота: «Торги состоялись», «приобретен единственным участником»…
 #   konfiskat.by  торги идут на torgikonfiskat.by — ссылка на них есть на странице лота konfiskat.by
+#   belauction.by страница лота после закрытия: «Аукцион закрыт по цене», таблица ставок с победителем
 require 'json'
 require_relative 'sources'
 
@@ -119,6 +120,31 @@ module Res
     at = Src.ts(seg[/Окончание торгов\s*(\d{2}\.\d{2}\.\d{4})/, 1].to_s + ' ' + seg[/Окончание торгов\s*\d{2}\.\d{2}\.\d{4}\S*\s*(\d{1,2}:\d{2})/, 1].to_s)
     r['at'] = at if at
     r['note'] = 'ожидаются повторные торги' if seg =~ /ожидаются повторные торги/
+    r
+  end
+
+  # ── belauction.by ──
+  # Продан — «Аукцион закрыт по цене: …» и в таблице ставок есть «Победитель»; ставок нет — не состоялись.
+  # Начальной цены площадка не показывает, а первая ставка символическая (1 001 BYN у машины за 24 801) — «к начальной»
+  # не считаем: start не пишем, первая ставка — в first. Участники — разные имена в ставках
+  # (сами имена — телефоны; не храним, только считаем).
+  def ba_result(html)
+    t = text(html)
+    closed = t =~ /Аукцион закрыт|Торги завершены|Аукцион завершен/i
+    end_t = html[/id=ending[^>]*>\s*(\d{9,})/, 1].to_i
+    end_t = Src.ru_date(t[/Завершение торгов:\s*(\d{1,2} [а-я]+ \d{4})/, 1]) unless end_t.positive?
+    return { 'st' => 'pending' } unless closed || (end_t && end_t < Time.now.to_i - 3600)
+    # ставки: <tbody id=tablebid><tr><th>имя</th><th>сумма BYN</th><th>дата</th><th>Да — победитель</th></tr>
+    rows = html.to_s[%r{<tbody\s+id=tablebid>(.*?)</tbody>}m, 1].to_s.scan(%r{<tr[^>]*>(.*?)</tr>}m).map { |(r)| r.scan(%r{<th[^>]*>(.*?)</th>}m).flatten.map { |c| text(c).strip } }
+    bids = rows.select { |r| r.size >= 2 }.map { |r| [r[0], Src.num(r[1])] }.select { |_, v| v.positive? }
+    won_row = rows.find { |r| r[3].to_s.start_with?('Да') }
+    price = Src.num(t[/Аукцион закрыт по цене:\s*([\d\s]+,\d{2})/, 1])
+    won = won_row && price.positive?
+    n = t[/Ставки:\s*(\d+)/, 1].to_i
+    users = bids.map(&:first).uniq.size
+    r = { 'v' => V, 'st' => won ? (users == 1 ? 'single' : 'sold') : 'failed', 'bids' => [n, bids.size].max, 'users' => users, 'at' => end_t }
+    r['first'] = bids.map(&:last).min if bids.any?
+    r['price'] = price if won
     r
   end
 

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+<style>
+  .bg1{stop-color:#eef1f5} .bg2{stop-color:#dbe1e9} .cap{fill:#6b7a8c}
+  @media (prefers-color-scheme: dark){ .bg1{stop-color:#1a2129} .bg2{stop-color:#141a21} .cap{fill:#8e9aa8} }
+</style>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="bg1"/><stop offset="1" class="bg2"/></linearGradient>
+  <radialGradient id="sh" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#0b1a2c" stop-opacity=".32"/><stop offset=".6" stop-color="#0b1a2c" stop-opacity=".12"/><stop offset="1" stop-color="#0b1a2c" stop-opacity="0"/></radialGradient>
+  <linearGradient id="gl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".5" stop-color="#fff" stop-opacity=".15"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d6ecff"/><stop offset="1" stop-color="#7fb2e0"/></linearGradient>
+  <radialGradient id="tire" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#4a525c"/><stop offset=".7" stop-color="#262b31"/><stop offset="1" stop-color="#15181c"/></radialGradient>
+  <radialGradient id="rim" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#c9d0d8"/><stop offset="1" stop-color="#7d8894"/></radialGradient>
+  <linearGradient id="gm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e9eef4"/><stop offset=".5" stop-color="#a9b6c6"/><stop offset="1" stop-color="#6c7b8f"/></linearGradient>
+<linearGradient id="gd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6b7a8e"/><stop offset="1" stop-color="#3f4a58"/></linearGradient>
+<linearGradient id="gm2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset="1" stop-color="#d98e1c"/></linearGradient>
+<linearGradient id="gd2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b8741a"/><stop offset="1" stop-color="#7e4a0c"/></linearGradient>
+
+</defs>
+<rect width="400" height="300" fill="url(#bg)"/>
+<ellipse cx="206" cy="216" rx="112" ry="15" fill="url(#sh)"/>
+<path d="M233.4 126.0 L247.8 128.1 L247.8 139.9 L233.4 142.0 L230.0 154.8 L241.3 163.8 L235.5 173.9 L222.0 168.7 L212.7 178.0 L217.9 191.5 L207.8 197.3 L198.8 186.0 L186.0 189.4 L183.9 203.8 L172.1 203.8 L170.0 189.4 L157.2 186.0 L148.2 197.3 L138.1 191.5 L143.3 178.0 L134.0 168.7 L120.5 173.9 L114.7 163.8 L126.0 154.8 L122.6 142.0 L108.2 139.9 L108.2 128.1 L122.6 126.0 L126.0 113.2 L114.7 104.2 L120.5 94.1 L134.0 99.3 L143.3 90.0 L138.1 76.5 L148.2 70.7 L157.2 82.0 L170.0 78.6 L172.1 64.2 L183.9 64.2 L186.0 78.6 L198.8 82.0 L207.8 70.7 L217.9 76.5 L212.7 90.0 L222.0 99.3 L235.5 94.1 L241.3 104.2 L230.0 113.2 Z" fill="url(#gd)" transform="translate(9 9)"/>
+<path d="M233.4 126.0 L247.8 128.1 L247.8 139.9 L233.4 142.0 L230.0 154.8 L241.3 163.8 L235.5 173.9 L222.0 168.7 L212.7 178.0 L217.9 191.5 L207.8 197.3 L198.8 186.0 L186.0 189.4 L183.9 203.8 L172.1 203.8 L170.0 189.4 L157.2 186.0 L148.2 197.3 L138.1 191.5 L143.3 178.0 L134.0 168.7 L120.5 173.9 L114.7 163.8 L126.0 154.8 L122.6 142.0 L108.2 139.9 L108.2 128.1 L122.6 126.0 L126.0 113.2 L114.7 104.2 L120.5 94.1 L134.0 99.3 L143.3 90.0 L138.1 76.5 L148.2 70.7 L157.2 82.0 L170.0 78.6 L172.1 64.2 L183.9 64.2 L186.0 78.6 L198.8 82.0 L207.8 70.7 L217.9 76.5 L212.7 90.0 L222.0 99.3 L235.5 94.1 L241.3 104.2 L230.0 113.2 Z" fill="url(#gm)"/>
+<circle cx="178" cy="134" r="24" fill="url(#gd)"/>
+<circle cx="178" cy="134" r="17" fill="#e7ecf2"/>
+<path d="M233.4 126.0 L247.8 128.1 L247.8 139.9 L233.4 142.0 L230.0 154.8 L241.3 163.8 L235.5 173.9 L222.0 168.7 L212.7 178.0 L217.9 191.5 L207.8 197.3 L198.8 186.0 L186.0 189.4 L183.9 203.8 L172.1 203.8 L170.0 189.4 L157.2 186.0 L148.2 197.3 L138.1 191.5 L143.3 178.0 L134.0 168.7 L120.5 173.9 L114.7 163.8 L126.0 154.8 L122.6 142.0 L108.2 139.9 L108.2 128.1 L122.6 126.0 L126.0 113.2 L114.7 104.2 L120.5 94.1 L134.0 99.3 L143.3 90.0 L138.1 76.5 L148.2 70.7 L157.2 82.0 L170.0 78.6 L172.1 64.2 L183.9 64.2 L186.0 78.6 L198.8 82.0 L207.8 70.7 L217.9 76.5 L212.7 90.0 L222.0 99.3 L235.5 94.1 L241.3 104.2 L230.0 113.2 Z" fill="url(#gl)" opacity=".35"/>
+<path d="M300.4 166.1 L309.8 167.5 L309.8 176.5 L300.4 177.9 L297.1 187.0 L303.3 194.1 L297.6 201.0 L289.5 196.1 L281.1 200.9 L281.3 210.4 L272.5 211.9 L269.5 203.0 L259.9 201.3 L254.0 208.7 L246.3 204.2 L249.7 195.4 L243.4 188.0 L234.2 189.8 L231.1 181.4 L239.4 176.8 L239.4 167.2 L231.1 162.6 L234.2 154.2 L243.4 156.0 L249.7 148.6 L246.3 139.8 L254.0 135.3 L259.9 142.7 L269.5 141.0 L272.5 132.1 L281.3 133.6 L281.1 143.1 L289.5 147.9 L297.6 143.0 L303.3 149.9 L297.1 157.0 Z" fill="url(#gd2)" transform="translate(7 7)"/>
+<path d="M300.4 166.1 L309.8 167.5 L309.8 176.5 L300.4 177.9 L297.1 187.0 L303.3 194.1 L297.6 201.0 L289.5 196.1 L281.1 200.9 L281.3 210.4 L272.5 211.9 L269.5 203.0 L259.9 201.3 L254.0 208.7 L246.3 204.2 L249.7 195.4 L243.4 188.0 L234.2 189.8 L231.1 181.4 L239.4 176.8 L239.4 167.2 L231.1 162.6 L234.2 154.2 L243.4 156.0 L249.7 148.6 L246.3 139.8 L254.0 135.3 L259.9 142.7 L269.5 141.0 L272.5 132.1 L281.3 133.6 L281.1 143.1 L289.5 147.9 L297.6 143.0 L303.3 149.9 L297.1 157.0 Z" fill="url(#gm2)"/>
+<circle cx="270" cy="172" r="12" fill="url(#gd2)"/>
+<circle cx="270" cy="172" r="7" fill="#fbe7c2"/>
+<text x="200" y="274" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="17" font-weight="600" letter-spacing=".6" class="cap">нет фото</text>
+</svg>

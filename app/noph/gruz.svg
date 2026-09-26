@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+<style>
+  .bg1{stop-color:#f0ecfa} .bg2{stop-color:#dfd6f3} .cap{fill:#6b7a8c}
+  @media (prefers-color-scheme: dark){ .bg1{stop-color:#1a2129} .bg2{stop-color:#141a21} .cap{fill:#8e9aa8} }
+</style>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="bg1"/><stop offset="1" class="bg2"/></linearGradient>
+  <radialGradient id="sh" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#0b1a2c" stop-opacity=".32"/><stop offset=".6" stop-color="#0b1a2c" stop-opacity=".12"/><stop offset="1" stop-color="#0b1a2c" stop-opacity="0"/></radialGradient>
+  <linearGradient id="gl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".5" stop-color="#fff" stop-opacity=".15"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d6ecff"/><stop offset="1" stop-color="#7fb2e0"/></linearGradient>
+  <radialGradient id="tire" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#4a525c"/><stop offset=".7" stop-color="#262b31"/><stop offset="1" stop-color="#15181c"/></radialGradient>
+  <radialGradient id="rim" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#c9d0d8"/><stop offset="1" stop-color="#7d8894"/></radialGradient>
+  <linearGradient id="tb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a48ae6"/><stop offset="1" stop-color="#5a3fa3"/></linearGradient>
+<linearGradient id="tt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c9b8f5"/><stop offset="1" stop-color="#b09ce9"/></linearGradient>
+<linearGradient id="tc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f8fb"/><stop offset="1" stop-color="#c3c9d4"/></linearGradient>
+
+</defs>
+<rect width="400" height="300" fill="url(#bg)"/>
+<ellipse cx="204" cy="216" rx="136" ry="15" fill="url(#sh)"/>
+<path d="M84 86 L96 76 L248 76 L236 86 Z" fill="url(#tt)"/>
+<path d="M236 86 L248 76 L248 176 L236 186 Z" fill="#4a3290"/>
+<rect x="84" y="86" width="152" height="100" rx="4" fill="url(#tb)"/>
+<path d="M88 90 L232 90 L232 104 L88 116 Z" fill="#fff" opacity=".22"/>
+<path d="M118 92 L118 180" stroke="#4d3596" stroke-width="1.4" opacity=".55"/><path d="M152 92 L152 180" stroke="#4d3596" stroke-width="1.4" opacity=".55"/><path d="M186 92 L186 180" stroke="#4d3596" stroke-width="1.4" opacity=".55"/><path d="M220 92 L220 180" stroke="#4d3596" stroke-width="1.4" opacity=".55"/>
+<path d="M244 116 L290 116 C300 116 306 122 310 132 L318 156 L318 188 L244 188 Z" fill="url(#tc)"/>
+<path d="M252 124 L288 124 C294 124 298 128 300 134 L306 152 L252 152 Z" fill="url(#glass)"/>
+<path d="M252 124 L270 124 L252 142 Z" fill="#fff" opacity=".6"/>
+<rect x="244" y="170" width="74" height="18" fill="#8f98a6"/>
+<rect x="306" y="162" width="12" height="7" rx="2" fill="#fff4c2"/>
+<rect x="80" y="184" width="240" height="8" rx="3" fill="#39414b"/>
+<circle cx="124" cy="196" r="23" fill="url(#tire)"/><circle cx="124" cy="196" r="12.9" fill="url(#rim)"/><circle cx="124" cy="196" r="4.6" fill="#8a949f"/><circle cx="124" cy="196" r="12.9" fill="none" stroke="#5d6772" stroke-width="1.5" stroke-opacity=".5"/>
+<circle cx="174" cy="196" r="23" fill="url(#tire)"/><circle cx="174" cy="196" r="12.9" fill="url(#rim)"/><circle cx="174" cy="196" r="4.6" fill="#8a949f"/><circle cx="174" cy="196" r="12.9" fill="none" stroke="#5d6772" stroke-width="1.5" stroke-opacity=".5"/>
+<circle cx="286" cy="196" r="23" fill="url(#tire)"/><circle cx="286" cy="196" r="12.9" fill="url(#rim)"/><circle cx="286" cy="196" r="4.6" fill="#8a949f"/><circle cx="286" cy="196" r="12.9" fill="none" stroke="#5d6772" stroke-width="1.5" stroke-opacity=".5"/>
+<text x="200" y="274" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="17" font-weight="600" letter-spacing=".6" class="cap">нет фото</text>
+</svg>

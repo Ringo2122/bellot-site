@@ -1,6 +1,6 @@
 # encoding: utf-8
 #
-# Разбор площадок: e-auction.by, ipmtorgi.by, beltorgi.by, konfiskat.by (торги — на torgikonfiskat.by).
+# Разбор площадок: e-auction.by, ipmtorgi.by, beltorgi.by, konfiskat.by (торги — на torgikonfiskat.by), belauction.by.
 # Для каждой — список активных карточек раздела, разбор страницы лота и список завершённых торгов (архив).
 # cpo.by (ЦПО) с 25.09.2026 не собираем: это рекламная витрина торгов ИПМ.
 # Карточка списка: key, platform, art, name, price, req_to, url, thumb (+ служебные поля).
@@ -20,6 +20,7 @@ module Src
   BT = 'https://beltorgi.by'
   KF = 'https://konfiskat.by'
   TK = 'https://torgikonfiskat.by'
+  BA = 'https://belauction.by'
   MAX_PAGES = 40
 
   EA_SUBS = {
@@ -381,6 +382,85 @@ module Src
     { 'title' => txt(html[/<title>(.*?)<\/title>/m, 1]), 'art' => (rows.assoc('Лот №') || [])[1],
       'details' => rows.empty? ? [] : [{ 'h' => 'Информация о предмете торгов', 'rows' => rows }],
       'photo_url' => pics.first && TK + pics.first }
+  end
+
+  # ---------------- belauction.by (ООО «БелАукцион-Групп») ----------------
+  # Частный онлайн-аукцион: транспорт с пробегом, аварийные авто, спецтехника, залоговое и банкротное имущество.
+  # Ставки идут онлайн до «Завершения торгов» — это и срок, и дата торгов. Цена в карточке — текущая ставка.
+  # robots.txt запрещает листать списки дальше первой страницы (*/page) и адреса с «?»: берём первые страницы
+  # общего списка и каждой категории — вместе это почти все активные лоты (25.09: 63 из ~70); архив —
+  # первые страницы «Проданные лоты» (≈ месяц) и «Завершённые аукционы» (≈ 10 дней). Пауза 2 с (Crawl-delay).
+  BA_SEC = { 'legkovye-avtomobili' => 'avto', 'avarijnye-bitye-avtomobili' => 'avto', 'mototsikly-skutery' => 'avto',
+             'gruzovye-avtomobili' => 'gruz', 'pritsepy-polupritsepy' => 'gruz', 'stroitelnaya-spetsialnaya-tehnika' => 'spec',
+             'oborudovanie-i-prochaya-tehnika' => 'oborud', 'nedvizhimost' => 'nedvizhimost',
+             'gosudarstvennaja-nedvizhimost' => 'nedvizhimost', 'chastnaja-nedvizhimost' => 'nedvizhimost' }.freeze   # запчасти не берём
+  BA_ACTIVE = (%w[active-auctions auktsiony/transportnye-sredstva] + BA_SEC.keys.map { |k| "auktsiony/#{k}" }).freeze
+  BA_DONE = %w[prodan-auction closed-auctions].freeze
+  RU_MON = %w[января февраля марта апреля мая июня июля августа сентября октября ноября декабря].freeze
+
+  # «25 сентября 2026» → полдень этого дня
+  def ru_date(s)
+    m = s.to_s.match(/(\d{1,2})\s+([а-я]+)\s+(\d{4})/) or return nil
+    mon = RU_MON.index(m[2]) or return nil
+    Time.local(m[3].to_i, mon + 1, m[1].to_i, 12, 0).to_i
+  end
+
+  def ba_cards(path)
+    html = get("#{BA}/#{path}/") or return nil
+    sleep 2
+    now = Time.now.to_i
+    html.split(/class=post\s+id=post-ID-/).drop(1).map do |ch|
+      ch = ch[0, 5000]
+      url = ch[%r{href=(https://belauction\.by/auctions/[^\s>]+/)}, 1] or next
+      cat = url.split('/')[-2]
+      sec = BA_SEC[cat] or next
+      f = ch.scan(%r{small_ttl_h>(.*?)</div>(.*?)</li>}m).map { |k, v| [txt(k).sub(/:\z/, ''), txt(v)] }.to_h
+      left = ch[/expiration_auction_p[^>]*>\s*(\d+)/, 1] || ch[/До окончания:.*?(\d{3,})/m, 1]
+      img = ch[%r{src=(https://belauction\.by/wp-content/uploads/[^\s>]+)}, 1]
+      { 'key' => "ba-#{ch[/\A\d+/]}", 'platform' => 'belauction.by', 'art' => txt(ch[/Лот №(.*?)<br/m, 1]).gsub(/\D/, ''),
+        'name' => txt(ch[/title="([^"]+)"/, 1]), 'sec' => sec, 'url' => url,
+        'price' => num(f['Текущая цена'] || f['Цена продажи'] || f['Закрыт по цене']),
+        'sold' => f.key?('Цена продажи'), 'bids' => f['Ставки'].to_i,
+        'closed_day' => ru_date(f['Закрытие торгов']), 'left' => left && now + left.to_i,
+        'thumb' => img && img.sub(/-\d+x\d+(\.\w+)\z/, '\1') }
+    end.compact
+  end
+
+  # активные: карточки с «Текущая цена» со всех первых страниц; done — архив (проданные и завершённые)
+  def ba_list(kind = :active)
+    seen = {}
+    (kind == :active ? BA_ACTIVE : BA_DONE).flat_map { |p| ba_cards(p) || [] }.select do |c|
+      next false if seen[c['key']]
+      seen[c['key']] = true
+      # срок в списке — прикидка (список отдаётся из кеша): точный срок — со страницы лота
+      kind == :active ? (c['left'] || c['closed_day'].to_i + 12 * 3600).to_i > Time.now.to_i : true
+    end
+  end
+
+  def ba_detail(html)
+    # в разметке площадки перед атрибутами бывает перенос строки: «<th⏎class=…>»
+    rows = html.scan(%r{<th\s+class=gold_thing_th>(.*?)</th>\s*<th\s+class=norm_thing_th>(.*?)</th>}m).map { |k, v| [txt(k), txt(v)] }
+               .reject { |_, v| v.empty? || v =~ /\A\*+\z/ }
+    desc = txt(html[%r{box_title>Описание</div>\s*<div\s+class="padd10 the-content-text">(.*?)</div>}m, 1])
+    desc = desc.sub(/\s*Итоговая цена выигранного лота.*\z/im, '')
+    info = %w[Резервная\ цена Расположение Открытие\ торгов Завершение\ торгов].map do |k|
+      [k, txt(html[/#{k}:<\/div>\s*<div[^>]*>(.*?)<\/div>/m, 1])]
+    end.reject { |_, v| v.empty? }
+    secs = [{ 'h' => 'Условия торгов', 'rows' => info }]
+    secs << { 'h' => 'Характеристики', 'rows' => rows } unless rows.empty?
+    secs << { 'h' => 'Сведения о лоте', 'rows' => [['Описание', desc]] } unless desc.empty?
+    region = info.to_h['Расположение'].to_s
+    region = 'г. Минск' if region == 'Минск'
+    # где стоит: «Автомобиль находится на площадке филиала … в г. Молодечно, ул. Великосельская, 38»
+    place = desc[/наход\S+[^.]{0,120}?((?:г\.|аг\.|д\.)\s*[А-ЯЁ][а-яё-]+(?:,\s*(?:ул|пр-т|пр|пер|тракт|ш)\.?\s*[А-ЯЁа-яё0-9 -]+?(?:,\s*\d+[а-яА-Я]?(?:\/\d+)?)?(?=[.;]|\s*$))?)/, 1]
+    ending = html[/id=ending[^>]*>\s*(\d{9,})/, 1].to_i
+    end_t = ending.positive? ? ending : ru_date(info.to_h['Завершение торгов'])
+    pic = html[%r{(https://belauction\.by/wp-content/uploads/\d{4}/\d{2}/[^\s"'>]+?\.(?:jpe?g|png|webp))}i, 1]
+    { 'details' => secs, 'location' => place ? [region.sub(/\Aг\. Минск\z/, ''), place].reject(&:empty?).join(', ') : region,
+      'req_to' => end_t, 'torg' => end_t, 'price_byn' => num(txt(html[/id=content-bid>(.*?)<\/p>/m, 1])),
+      'photo_url' => pic && pic !~ /slide|flag/ ? pic : nil,
+      'terms' => { 'vat' => desc =~ /с учетом 20% НДС/i ? 'Для юрлиц текущая ставка — с НДС 20%' : nil,
+                   'fee_later' => true, 'v' => 2 }.compact }
   end
 
   # ---------------- konfiskat.by (РУП «Торговый дом «Восточный») ----------------

@@ -734,6 +734,7 @@
       <li><a href="https://ipmtorgi.by" target="_blank" rel="noopener">ИПМ-Торги</a></li>
       <li><a href="https://beltorgi.by" target="_blank" rel="noopener">Белреализация</a></li>
       <li><a href="https://konfiskat.by" target="_blank" rel="noopener">Торговый дом «Восточный»</a></li>
+      <li><a href="https://belauction.by" target="_blank" rel="noopener">БелАукцион</a></li>
       <li><a href="https://bankrot.gov.by" target="_blank" rel="noopener">Реестр банкротств</a></li>
     </ul></div>
   </div>
@@ -777,6 +778,9 @@ const addScript = src => { src += (src.includes('?') ? '&' : '?') + 'v=' + SNAP;
 /* Фото — отдельные файлы ph/<id>.jpg (~30 КБ): браузер грузит только те, что на экране (loading=lazy).
    Раньше были пачки по 40 фото (0,6–0,9 МБ) — ради одной картинки на странице лота качалась вся пачка. */
 function paint(){}
+/* нет фото — объёмная заглушка раздела (noph/<раздел>.svg, tools/noph.rb) */
+const NOPH = ['nedvizhimost','avto','gruz','spec','oborud'];
+const noph = (l, cls) => `<img${cls?` class="${cls}"`:''} src="noph/${NOPH.includes(l.section)?l.section:'other'}.svg" alt="Нет фото" loading="lazy">`;
 const pic = (l, cls) => `<img${cls?` class="${cls}"`:''} src="ph/${encodeURIComponent(l.photo)}.jpg"${cls==='big'?'':' loading="lazy"'} decoding="async" alt="${esc(l.name)}">`;
 
 const DET = {}, DETQ = {};
@@ -909,7 +913,7 @@ function lotCard(l){
     + (!arch&&l.alt?`<span class="flag two">${l.alt.length} ${plural(l.alt.length,'площадка','площадки','площадок')}</span>`:'');
   return `<a class="lot${arch?' arch':''}" href="#/lot/${encodeURIComponent(l.id)}">
     <div class="ph">
-      ${l.photo?pic(l):`<div class="noph">нет фото</div>`}
+      ${l.photo?pic(l):noph(l)}
       <div class="flags">${flags}</div>
       <span class="flag t">${esc(secName(l.section))}</span>
       ${!arch&&dc!==null&&dc>=15?`<span class="flag disc">дешевле рынка на ${dc}%</span>`:''}
@@ -943,7 +947,7 @@ function resultBlock(l){
   const [t, c] = RES[r.st], p = prem(r);
   return `<aside class="panel rres ${c}"><div class="lbl">Итоги торгов</div><div class="rst">${t}</div>
     <dl class="facts">
-      <dt>Начальная цена</dt><dd>${nf(r.start || l.price)} BYN</dd>
+      ${r.start || l.platform!=='belauction.by' ? `<dt>Начальная цена</dt><dd>${nf(r.start || l.price)} BYN</dd>` : ''}
       ${r.price > 0 ? `<dt>Цена продажи</dt><dd><b>${nf(r.price)} BYN</b>${p !== null ? `<span class="pm ${p >= 0 ? 'up' : 'dn'}">${premTxt(p)}</span>` : ''}</dd>` : ''}
       <dt>Торги закончились</dt><dd>${dtm(at)}</dd>
       ${r.bids ? `<dt>Ставок</dt><dd>${r.bids}${r.users ? ` · ${r.users} ${plural(r.users,'участник','участника','участников')}` : ''}</dd>` : r.users ? `<dt>Участников</dt><dd>${r.users}</dd>` : ''}
@@ -1243,6 +1247,8 @@ function calcBlock(l, det){
       ? 'Из карточки лота на площадке.' + (t.fee_later ? ' Сумму затрат площадка объявит до начала торгов — впишите её, когда узнаете.' : '')
     : l.platform==='konfiskat.by'
       ? 'Затраты на организацию и проведение торгов оплачиваются отдельно — сумму сообщает организатор (РУП «Торговый дом «Восточный»). Задаток — 10% по извещению.'
+    : l.platform==='belauction.by'
+      ? 'Сверх ставки победитель платит сбор аукциона — размер в правилах площадки (belauction.by/sbor-auktsiona). Для юрлиц ставка указана с НДС 20%.'
     : l.platform==='ipmtorgi.by'
       ? 'Из карточки лота на площадке. Точную сумму затрат площадка сообщает до начала торгов.'
       : 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.';
@@ -1365,7 +1371,7 @@ const aucLink = a => a.id ? `<a href="#/lot/${encodeURIComponent(a.id)}">${esc(a
 const usTxt = n => n ? ` · ${n} ${plural(n,'участник','участника','участников')}` : '';
 function simBlock(l, c){
   const arch = l.status==='archive', veh = l.section!=='nedvizhimost';
-  const est = !arch && c.sold >= 2 && c.pm != null && l.price > 0 ? Math.round(l.price * (1 + c.pm / 100)) : null;
+  const est = !arch && l.platform!=='belauction.by' && c.sold >= 2 && c.pm != null && l.price > 0 ? Math.round(l.price * (1 + c.pm / 100)) : null;
   return `<section class="panel xs" id="x-sim"><h2>Сколько за такие отдают на самом деле</h2>
     <p class="xsub">Завершённые торги похожих объектов: <b>${esc(c.by)}</b>${veh ? ' · любой регион' : ''}</p>
     <div class="xk">
@@ -1379,7 +1385,7 @@ function simBlock(l, c){
     ${est ? `<p class="xest">Если торги пройдут как у похожих, этот лот уйдёт примерно за <b>${nf(est)} BYN</b> (${sgn(c.pm)} к стартовой цене).</p>` : ''}
     <h3>Похожие завершённые торги</h3>
     <div class="xl">${c.items.map(a=>`<div class="xr"><div class="xn">${aucLink(a)}<span>${dt(a.d)} · ${esc(a.p)}${a.y ? ` · ${a.y} г. в.` : ''}${a.a ? ` · ${nf(a.a)} м²` : ''}${usTxt(a.us)}</span></div>
-      <div class="xv"><span class="mut">начальная ${nf(a.s)} BYN</span>${aucRes(a)}</div></div>`).join('')}</div>
+      <div class="xv">${a.s > 0 ? `<span class="mut">начальная ${nf(a.s)} BYN</span>` : ''}${aucRes(a)}</div></div>`).join('')}</div>
     <p class="note">${c.sold < 3 ? 'Продаж пока мало — ориентир грубый. ' : ''}Сравниваем ${veh ? 'ту же марку и модель, год выпуска ±2, в любом регионе' : 'объекты той же категории в том же населённом пункте'}. Медиана — середина ряда: половина продаж дешевле, половина дороже.</p>
   </section>`;
 }
@@ -1392,7 +1398,7 @@ function histBlock(l, h){
   else if(arch && now) lead = `Объект снова на торгах — приём заявок до ${dt(now.d)}.`;
   return `<section class="panel xs" id="x-hist"><h2>История объекта</h2><p class="xsub">${lead}</p>
     <div class="xl">${h.map(a=>`<div class="xr"><div class="xn"><b>${dt(a.d)}</b> · ${esc(a.p)}<span>${aucLink(a)}</span></div>
-      <div class="xv"><span class="mut">${a.st==='active' ? 'стартовая' : 'начальная'} ${nf(a.s)} BYN</span>${a.st==='active' ? `<b class="ok">Сейчас на торгах</b>` : aucRes(a)}${a.us ? `<span class="mut">${a.us} ${plural(a.us,'участник','участника','участников')}</span>` : ''}</div></div>`).join('')}</div>
+      <div class="xv">${a.s > 0 ? `<span class="mut">${a.st==='active' ? 'стартовая' : 'начальная'} ${nf(a.s)} BYN</span>` : ''}${a.st==='active' ? `<b class="ok">Сейчас на торгах</b>` : aucRes(a)}${a.us ? `<span class="mut">${a.us} ${plural(a.us,'участник','участника','участников')}</span>` : ''}</div></div>`).join('')}</div>
     <p class="note">Тот же объект узнаём по VIN, инвентарному или кадастровому номеру, у недвижимости — ещё по названию и адресу.</p></section>`;
 }
 let LEAF = null;
@@ -1442,10 +1448,10 @@ function pageLot(id){
       ? `<b>Лот снят с площадки ${dt(l.closed)}</b> — раньше окончания приёма заявок.`
       : `<b>Приём заявок завершён ${dt(l.closed)}.</b>`} Лот в архиве БелЛота: сведения и итоги торгов сохранены.</div>`:''}
     <div class="lotpage">
-      <div class="gal">${l.photo?pic(l,'big'):'<div class="panel noph">Фотографий нет</div>'}</div>
+      <div class="gal">${l.photo?pic(l,'big'):noph(l,'big')}</div>
       <div class="rcol">
         <aside class="panel buy">
-          <div class="lbl">Стартовая цена</div>
+          <div class="lbl">${l.platform==='belauction.by' ? (arch ? 'Последняя ставка' : 'Текущая ставка') : 'Стартовая цена'}</div>
           <div class="bigprice">${nf(l.price)} BYN</div>
           ${pc?`<div class="pchg">${pc<0?'↓ снижена на '+(-pc)+'%':'↑ выросла на '+pc+'%'} — было ${nf(l.prices[0][1])} BYN</div>`:''}
           <dl class="facts">
@@ -2059,7 +2065,7 @@ async function meFav(M, arg, params){
       ${STAGES.map(([k,t])=>{ const n = ids.filter(x=>ULOTS[x].stage===k).length; return n ? `<a href="#/me/fav?f=${k}" class="${f===k?'on':''}">${t} · ${n}</a>` : ''; }).join('')}</div>
     ${list.length ? list.map(k=>{ const l = lots[k], u = ULOTS[k];
       return `<div class="frow" data-lot="${esc(k)}">
-        <a class="fth" href="#/lot/${encodeURIComponent(k)}">${l && l.photo && l.pk!=null ? pic(l) : '<span class="noph">нет фото</span>'}</a>
+        <a class="fth" href="#/lot/${encodeURIComponent(k)}">${l && l.photo && l.pk!=null ? pic(l) : l ? noph(l) : '<span class="noph">нет фото</span>'}</a>
         <div class="fbd"><a class="fnm" href="#/lot/${encodeURIComponent(k)}">${esc(l ? l.name : 'Лот ' + k)}</a>
           <div class="fmeta">${lotLine(l)}</div>
           ${l && l.status==='archive' && l.why!=='removed' ? favResult(l) : ''}

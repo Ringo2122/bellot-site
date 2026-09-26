@@ -2,7 +2,7 @@
 # encoding: utf-8
 #
 # Заливка кода в Ringo2122/bellot-site одним коммитом через GitHub API (git на машине нет).
-#   ruby tools/push.rb          код: app/, .github/, tools/, README.md — data/ не трогает
+#   ruby tools/push.rb          код: app/ (с заглушками app/noph/), .github/, tools/, README.md — data/ не трогает
 #   ruby tools/push.rb --seed   ещё и первая память: data/ упаковывается в data/seed.tgz,
 #                               робот распакует её при первом прогоне. Только если data/ в репозитории нет.
 # Память (data/) ведёт робот. Заливать её отсюда поверх — значит стереть то, что он собрал.
@@ -35,7 +35,7 @@ parent = ref['object']['sha']
 base = api('GET', "repos/#{REPO}/git/commits/#{parent}")['tree']['sha']
 remote = api('GET', "repos/#{REPO}/git/trees/#{base}?recursive=1")['tree'].map { |t| t['path'] }
 
-files = Dir.chdir(ROOT) { Dir['app/*', '.github/workflows/*', 'tools/*', 'supabase/*', 'README.md'].select { |f| File.file?(f) } }
+files = Dir.chdir(ROOT) { Dir['app/*', 'app/noph/*', '.github/workflows/*', 'tools/*', 'supabase/*', 'README.md'].select { |f| File.file?(f) } }
 if SEED
   abort('в репозитории уже есть память робота — seed не нужен и опасен') if remote.include?('data/lots.json')
   Dir.chdir(File.join(ROOT, 'data')) do

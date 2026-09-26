@@ -311,6 +311,7 @@ File.write(File.join(OUT, 'srch.js'), "__srch(#{JSON.generate(srch)});")
 File.write(File.join(OUT, '.nojekyll'), '')
 adm = File.read(File.join(__dir__, 'admin.html'), encoding: 'UTF-8')
 FileUtils.cp(File.join(__dir__, 'stats.js'), File.join(OUT, 'stats.js'))   # аналитика: общая для админки и кабинета
+FileUtils.cp_r(File.join(__dir__, 'noph'), File.join(OUT, 'noph'))   # заглушки «нет фото» по разделам (tools/noph.rb)
 File.write(File.join(OUT, 'admin', 'index.html'),
            adm.sub('__SB_URL__') { ENV['SB_URL'].to_s }.sub('__SB_KEY__') { ENV['SB_KEY'].to_s }.sub('__BUILD__', now.to_s))
 

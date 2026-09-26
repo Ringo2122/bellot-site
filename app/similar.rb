@@ -76,7 +76,9 @@ module Similar
     # ── торги: каждое завершение — отдельная запись ──
     ent = ->(k, l, r, st) do
       { 'k' => k, 'id' => shown[k], 'n' => l['name'].to_s[0, 140], 'p' => l['platform'], 'u' => l['url'],
-        'd' => (r && r['at'] || l['closed'] || l['req_to']).to_i, 's' => (r && r['start'].to_f.positive? ? r['start'] : l['price']).to_f.round,
+        'd' => (r && r['at'] || l['closed'] || l['req_to']).to_i,
+        # у belauction начальной цены нет (первая ставка символическая) — 0: в «к начальной» не идёт
+        's' => (r && r['start'].to_f.positive? ? r['start'] : r && l['platform'] == 'belauction.by' ? 0 : l['price']).to_f.round,
         'st' => st, 'pr' => r && SOLD.include?(st) && r['price'].to_f.positive? ? r['price'].to_f.round : nil,
         'us' => r && r['users'].to_i.positive? ? r['users'].to_i : nil, 'a' => (l['area_num'].to_f.positive? ? l['area_num'].to_f : nil),
         'sec' => l['section'], 'loc' => l['location'] }

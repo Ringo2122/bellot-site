@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+<style>
+  .bg1{stop-color:#eaf2fb} .bg2{stop-color:#d6e5f5} .cap{fill:#6b7a8c}
+  @media (prefers-color-scheme: dark){ .bg1{stop-color:#1a2129} .bg2{stop-color:#141a21} .cap{fill:#8e9aa8} }
+</style>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="bg1"/><stop offset="1" class="bg2"/></linearGradient>
+  <radialGradient id="sh" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#0b1a2c" stop-opacity=".32"/><stop offset=".6" stop-color="#0b1a2c" stop-opacity=".12"/><stop offset="1" stop-color="#0b1a2c" stop-opacity="0"/></radialGradient>
+  <linearGradient id="gl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".5" stop-color="#fff" stop-opacity=".15"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d6ecff"/><stop offset="1" stop-color="#7fb2e0"/></linearGradient>
+  <radialGradient id="tire" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#4a525c"/><stop offset=".7" stop-color="#262b31"/><stop offset="1" stop-color="#15181c"/></radialGradient>
+  <radialGradient id="rim" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#c9d0d8"/><stop offset="1" stop-color="#7d8894"/></radialGradient>
+  <linearGradient id="wf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffdf8"/><stop offset="1" stop-color="#eee3cf"/></linearGradient>
+<linearGradient id="ws" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e3d6bd"/><stop offset="1" stop-color="#c9b894"/></linearGradient>
+<linearGradient id="rf" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#5aa2f0"/><stop offset="1" stop-color="#1d5aa6"/></linearGradient>
+<linearGradient id="dr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9b6a3a"/><stop offset="1" stop-color="#6a4220"/></linearGradient>
+
+</defs>
+<rect width="400" height="300" fill="url(#bg)"/>
+<ellipse cx="196" cy="214" rx="118" ry="17" fill="url(#sh)"/>
+<polygon points="185.0,210.0 124.4,175.0 124.4,115.0 154.7,87.5 185.0,150.0" fill="url(#ws)"/>
+<polygon points="185.0,210.0 271.6,160.0 271.6,100.0 185.0,150.0" fill="url(#wf)"/>
+<polygon points="185.0,210.0 271.6,160.0 271.6,154.0 185.0,204.0" fill="#d9ccb2"/>
+<polygon points="185.0,157.0 278.5,103.0 244.8,33.5 151.2,87.5" fill="url(#rf)"/>
+<polygon points="185.0,157.0 278.5,103.0 278.5,109.0 185.0,163.0" fill="#164a8c"/>
+<polygon points="185.0,157.0 151.2,87.5 117.5,118.0 117.5,124.0 151.2,93.5 185.0,163.0" fill="#12407a"/>
+<polygon points="195.4,150.0 271.6,106.0 257.7,78.0 181.5,122.0" fill="url(#gl)" opacity=".45"/>
+<polygon points="237.0,180.0 252.5,171.0 252.5,131.0 237.0,140.0" fill="url(#dr)"/>
+<circle cx="249.1" cy="153.0" r="1.8" fill="#f3d27a"/>
+<polygon points="197.1,185.0 221.4,171.0 221.4,145.0 197.1,159.0" fill="#fff"/>
+<polygon points="198.9,182.0 219.6,170.0 219.6,148.0 198.9,160.0" fill="url(#glass)"/>
+<polygon points="198.9,168.0 207.5,155.0 202.3,158.0 198.9,164.0" fill="#fff" opacity=".7"/>
+<polygon points="169.4,183.0 143.4,168.0 143.4,142.0 169.4,157.0" fill="#f4ecdc"/>
+<polygon points="167.7,180.0 145.2,167.0 145.2,145.0 167.7,158.0" fill="#8fbbe3"/>
+<polygon points="162.5,139.0 146.9,130.0 146.9,112.0 162.5,121.0" fill="#8fbbe3" opacity=".9"/>
+<text x="200" y="274" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="17" font-weight="600" letter-spacing=".6" class="cap">нет фото</text>
+</svg>

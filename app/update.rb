@@ -23,7 +23,7 @@ require 'fileutils'
 
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
-WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfiskat.by' => 1 }.freeze   # konfiskat.by банит частые запросы
+WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfiskat.by' => 1, 'belauction.by' => 1 }.freeze   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
 MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
 # Настройки из админки: выключенные площадки не обходим, минимальная цена по разделам — своя.
 # База недоступна — работаем по умолчаниям.
@@ -57,7 +57,9 @@ PLAN = {
                      ['avtobusy', 'gruz'], ['specztexnika', 'spec'], ['stanki-i-oborudovanie', 'oborud']],
   # konfiskat.by: 'auto' — легковые и грузовые вперемешку, разносим по названию
   'konfiskat.by' => [['avtotransport/auktsiony', 'auto'], ['nedvizhimost/auktsiony', 'nedvizhimost'],
-                     ['own-property/auctions', 'oborud']]
+                     ['own-property/auctions', 'oborud']],
+  # belauction.by: первые страницы общего списка и категорий (robots.txt), раздел — по категории лота
+  'belauction.by' => [['active', nil]]
 }.freeze
 # Площадки, которые больше не собираем: их лоты удаляются из памяти вместе с подробностями и фото.
 # cpo.by (ЦПО) — рекламная витрина торгов ИПМ-Торгов, те же лоты (решение Артёма 25.09.2026)
@@ -82,6 +84,7 @@ def list(plat, path)
   when 'e-auction.by' then Src.ea_list(path)
   when 'ipmtorgi.by'  then Src.ipm_list(path)
   when 'konfiskat.by' then Src.kf_list(path)
+  when 'belauction.by' then Src.ba_list(:active)
   else Src.bt_list(path)
   end
 end
@@ -92,9 +95,10 @@ def fetch_detail(c)
       when 'e-auction.by' then Src.ea_detail(html)
       when 'ipmtorgi.by'  then Src.ipm_detail(html)
       when 'konfiskat.by' then Src.kf_detail(html, c)
+      when 'belauction.by' then Src.ba_detail(html)
       else Src.bt_detail(html)
       end
-  sleep c['platform'] == 'konfiskat.by' ? 1.5 : 0.4
+  sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2 }[c['platform']] || 0.4)
   d
 end
 
@@ -157,7 +161,7 @@ PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }.map do |plat, secs|
         next if plat == 'beltorgi.by' && !c['open']          # ещё не принимают заявки
         # у konfiskat в карточке — дата аукциона, заявки закрываются в 12:00 накануне: закрытые не качаем
         next if c['day'] && plat == 'konfiskat.by' && c['day'] - 12 * 3600 < Time.now.to_i
-        s = sec == 'auto' ? kf_kind(c['name']) : (sec || ipm_kind(c['name']))
+        s = c['sec'] || (sec == 'auto' ? kf_kind(c['name']) : (sec || ipm_kind(c['name'])))   # belauction — раздел из категории лота
         min = MINP[s].to_f
         next if min.positive? && c['price'].to_f.positive? && c['price'] < min
         todo << [c, s, src]
@@ -276,7 +280,7 @@ db.each_value do |l|
     l.merge!('status' => 'archive', 'closed' => l['req_to'], 'why' => 'deadline')
     stat['в архив: срок истёк'] += 1
     pstat[l['platform']]['archived'] += 1
-  elsif !seen[l['key']]
+  elsif !seen[l['key']] && l['platform'] != 'belauction.by'   # у belauction читаем только первые страницы: пропал из них — ещё не снят
     n = lists[l['src']]
     # список раздела не прочитан или короче половины известного — не верим, ждём следующего прогона
     next if n.nil? || n < active_by_src[l['src']] / 2
@@ -303,6 +307,9 @@ def fetch_result(l)
     return [nil, {}] unless tk
     sleep 1.5
     (html = Src.get(tk)) ? [Res.tk_result(html), { 'tk' => tk }] : [nil, { 'tk' => tk }]
+  when 'belauction.by'
+    sleep 2
+    (html = Src.get(l['url'])) ? [Res.ba_result(html), {}] : [nil, {}]
   else [nil, {}]
   end
 rescue StandardError => e

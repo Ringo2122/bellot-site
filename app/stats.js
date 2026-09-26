@@ -20,7 +20,7 @@
   const ADMIN_ONLY = ['quality', 'demand'];   // в кабинет не отдаются, даже если отмечены
   const SECS = [['nedvizhimost','Недвижимость'],['avto','Легковые авто'],['gruz','Грузовые и автобусы'],['spec','Спецтехника'],['oborud','Оборудование']];
   const SEC_RU = Object.fromEntries(SECS);
-  const PLATS = ['e-auction.by','ipmtorgi.by','beltorgi.by','konfiskat.by'];
+  const PLATS = ['e-auction.by','ipmtorgi.by','beltorgi.by','konfiskat.by','belauction.by'];
   const COL = { nedvizhimost:'#12508f', avto:'#d9761f', gruz:'#1d7a4d', spec:'#7a4fa3', oborud:'#7b8794' };
   const REG = ['г. Минск','Минская область','Брестская область','Витебская область','Гомельская область','Гродненская область','Могилевская область'];
 

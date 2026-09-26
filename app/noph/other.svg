@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+<style>
+  .bg1{stop-color:#f4efe6} .bg2{stop-color:#e6dccb} .cap{fill:#6b7a8c}
+  @media (prefers-color-scheme: dark){ .bg1{stop-color:#1a2129} .bg2{stop-color:#141a21} .cap{fill:#8e9aa8} }
+</style>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="bg1"/><stop offset="1" class="bg2"/></linearGradient>
+  <radialGradient id="sh" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#0b1a2c" stop-opacity=".32"/><stop offset=".6" stop-color="#0b1a2c" stop-opacity=".12"/><stop offset="1" stop-color="#0b1a2c" stop-opacity="0"/></radialGradient>
+  <linearGradient id="gl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".5" stop-color="#fff" stop-opacity=".15"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d6ecff"/><stop offset="1" stop-color="#7fb2e0"/></linearGradient>
+  <radialGradient id="tire" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#4a525c"/><stop offset=".7" stop-color="#262b31"/><stop offset="1" stop-color="#15181c"/></radialGradient>
+  <radialGradient id="rim" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#c9d0d8"/><stop offset="1" stop-color="#7d8894"/></radialGradient>
+  <linearGradient id="bt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0d3a4"/><stop offset="1" stop-color="#dcb57a"/></linearGradient>
+<linearGradient id="bf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2b877"/><stop offset="1" stop-color="#c7964f"/></linearGradient>
+<linearGradient id="bs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c18d45"/><stop offset="1" stop-color="#a0722f"/></linearGradient>
+
+</defs>
+<rect width="400" height="300" fill="url(#bg)"/>
+<ellipse cx="200" cy="214" rx="104" ry="15" fill="url(#sh)"/>
+<polygon points="185.0,210.0 115.7,170.0 115.7,80.0 185.0,120.0" fill="url(#bs)"/>
+<polygon points="185.0,210.0 254.3,170.0 254.3,80.0 185.0,120.0" fill="url(#bf)"/>
+<polygon points="185.0,120.0 254.3,80.0 185.0,40.0 115.7,80.0" fill="url(#bt)"/>
+<polygon points="214.4,103.0 224.8,97.0 155.6,57.0 145.2,63.0" fill="#f6e7c8"/>
+<polygon points="214.4,103.0 224.8,97.0 224.8,127.0 214.4,133.0" fill="#f1dcb2"/>
+<text x="200" y="274" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="17" font-weight="600" letter-spacing=".6" class="cap">нет фото</text>
+</svg>

@@ -6,6 +6,7 @@
 #   ipmtorgi.by   список раздела — он продолжается архивом
 #   beltorgi.by   каталог с фильтром «состоявшиеся» и «несостоявшиеся»
 #   konfiskat.by  каталог торгов torgikonfiskat.by («Завершены» и «Архив»)
+#   belauction.by первые страницы «Проданные лоты» (≈ месяц) и «Завершённые аукционы» (≈ 10 дней) — дальше robots.txt не пускает
 # Правила те же, что для новых лотов: разделы площадок, минимальная цена по разделу, выключенные площадки.
 # За прогон — не больше BACK_CAP лотов с площадки и не дольше BACK_MIN минут: первый месяц загрузится
 # за несколько прогонов, дальше добираются только пропущенные. Лот из архива помечен bf (время загрузки),
@@ -124,6 +125,20 @@ def backfill(db, stat, pstat, now)
             sleep 0.6
           end
         end
+      end
+    end,
+    'belauction.by' => lambda do |left|
+      Src.ba_list(:done).each do |c|
+        break if left.zero? || Time.now > stop
+        next if known.(c['key']) || skipped.(c['key'])
+        next drop.(c['key'], 'old') if c['closed_day'].to_i < since
+        sleep 2
+        html = Src.get(c['url']) or next
+        r = Res.ba_result(html)
+        next drop.(c['key'], 'min') unless back_min_ok?(c['sec'], r['price'] || c['price'])
+        d = Src.ba_detail(html)
+        add.(back_rec(c, c['sec'], d, r, 'belauction.by архив', now), d, [d['photo_url'], c['thumb']])
+        left -= 1
       end
     end,
     'konfiskat.by' => lambda do |left|
