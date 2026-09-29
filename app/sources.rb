@@ -44,10 +44,26 @@ module Src
     nil
   end
 
+  # Текст из куска HTML. Комментарии, скрипты и стили — прочь (29.09: в описания konfiskat попадали закомментированная
+  # вёрстка «-->» и служебный код сайта «BX.message({…})»); коды символов (&#40; &#x28;) — в символы.
   def txt(s)
-    s.to_s.gsub(/<button.*?<\/button>/m, ' ').gsub(/<br\s*\/?>|<\/p>/i, ' ').gsub(/<[^>]*>/, ' ')
-     .gsub('&nbsp;', ' ').gsub('&quot;', '"').gsub('&laquo;', '«').gsub('&raquo;', '»')
-     .gsub('&amp;', '&').gsub('&#039;', "'").gsub(/\s+/, ' ').strip
+    decode(s.to_s.gsub(/<!--.*?-->/m, ' ').gsub(%r{<(script|style)\b.*?</\1>}mi, ' ')
+     .gsub(/<button.*?<\/button>/m, ' ').gsub(/<br\s*\/?>|<\/p>/i, ' ').gsub(/<[^>]*>/, ' ').gsub(/<!--|-->/, ' '))
+     .gsub(/\s+/, ' ').strip
+  end
+
+  def decode(s)
+    s.to_s.gsub('&nbsp;', ' ').gsub('&quot;', '"').gsub('&laquo;', '«').gsub('&raquo;', '»').gsub('&mdash;', '—').gsub('&ndash;', '–')
+     .gsub(/&#(\d{2,5});/) { $1.to_i.chr(Encoding::UTF_8) rescue ' ' }.gsub(/&#x([0-9a-f]{2,4});/i) { $1.hex.chr(Encoding::UTF_8) rescue ' ' }
+     .gsub('&amp;', '&')
+  end
+
+  # Подчистка уже сохранённого текста (подробности до 29.09): коды символов и хвост с вёрсткой или кодом сайта.
+  # У «Описания» konfiskat — ещё и повтор списка характеристик («Описание: Тип транспорта: …») и общий текст про аукцион.
+  def clean_stored(key, v)
+    v = decode(v).sub(/\s*(?:-->|<!--|BX\.message|BX\.|function\s*\().*\z/m, '')
+    v = v.sub(/\s+Описание:\s+Тип транспорта:.*\z/m, '').sub(/\s*\.?\s*Аукцион проводится на электронной торговой площадке.*\z/m, '') if key == 'Описание'
+    v.gsub(/\s+/, ' ').strip
   end
 
   def num(s)
@@ -558,7 +574,10 @@ module Src
   def kf_detail(html, card = {})
     secs = []
     tk = html[%r{href="(https?://torgikonfiskat\.by/[a-z-]*auction/\d+/?)"}, 1]   # сами торги — на torgikonfiskat.by
-    extra = txt(html[/Дополнительная информация:\s*<\/p>(.*?)<\/div>/m, 1] || html[/Дополнительная информация:(.*?)<\/p>\s*<p/m, 1])
+    # 29.09 konfiskat сменил вёрстку: «<h2>Дополнительная информация:</h2><p itemprop="description">…» — старое правило
+    # не находило конец и тянуло страницу до конца (характеристики ещё раз, вёрстку, код сайта)
+    extra = txt(html[/itemprop="description"[^>]*>(.*?)<\/div>/m, 1] || html[/Дополнительная информация:\s*<\/(?:p|h2|h3)>(.*?)<\/div>/m, 1])
+    extra = extra.sub(/\s*\.?\s*Аукцион проводится на электронной торговой площадке.*\z/m, '')   # общий текст про аукцион — у всех лотов одинаковый
     rows = html.scan(/<li><p><span>([^<]+):<\/span>(.*?)<\/p><\/li>/m).map { |k, v| [txt(k), txt(v)] }
                .reject { |k, v| v.empty? || k =~ /Ссылка на извещение/ }
     secs << { 'h' => 'Информация о предмете торгов', 'rows' => rows } unless rows.empty?
