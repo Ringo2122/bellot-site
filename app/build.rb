@@ -28,6 +28,8 @@ require_relative 'store'
 require_relative 'regions'
 require_relative 'sb'
 require_relative 'similar'
+require_relative 'zones'
+require_relative 'bav'
 
 OUT  = ENV['OUT'] || File.join(Store::ROOT, '_site')
 TMP  = File.join(Store::ROOT, 'tmp')
@@ -35,8 +37,8 @@ TMP  = File.join(Store::ROOT, 'tmp')
 # при каждой сборке: браузер с закэшированной страницей (до 10 минут) искал лот не в той пачке — «подробных сведений нет»
 PACKS = 200
 KEEP = %w[id art name price req_to torg url location region debtor area_num platform section
-          photo pk market prices status closed why first_seen alt pin result].freeze
-SECS = %w[nedvizhimost avto gruz spec oborud].freeze
+          photo pk market prices status closed why first_seen alt pin result phx land].freeze
+SECS = %w[nedvizhimost avto gruz spec oborud arenda].freeze
 
 # Персональные данные: MASK=1 скрывает ФИО должников-физлиц и контактных лиц по осмотру.
 # По умолчанию выключено — решение владельца, вопрос открыт для юриста (закон 99-З).
@@ -93,6 +95,9 @@ lots.each do |l|
   l['debtor'] = 'Физическое лицо' if ENV['MASK'] && l['debtor'].to_s =~ FIO
   l['id'] = id_of(l['key'])
   l['photo'] = File.exist?(Store.ph_path(l['key'])) ? l['id'] : nil
+  # фильтр «Земельный участок» в «Недвижимости» — участки со всех площадок: сам лот — участок
+  # («Производственная база … земельный участок», «Здание … участка связи», «Участок теплиц» — не участки)
+  l['land'] = 1 if l['section'] == 'nedvizhimost' && (l['sub_ru'] == 'Земельные участки' || l['name'].to_s =~ /\A\s*земельн\S*\s+участ/i)
   l.delete('prices') unless (l['prices'] || []).size > 1   # показываем только если цена менялась
   # Проверка правдоподобия ориентира: дисконт больше 85% или цена выше рынка втрое —
   # почти всегда промах сопоставления (развалюха за 200 BYN, завод против помещения)
@@ -223,7 +228,7 @@ end
 reasons = {}
 active.each do |l|
   r = []
-  r << 'no_photo' unless l['photo']
+  r << 'no_photo' unless l['photo'] || l['phx'] || l['platform'] == 'mgcn.by'   # МГЦН фото не публикует вовсе — не замечание
   r << 'no_price' unless l['price'].to_f.positive?
   r << 'no_city' if l['location'].to_s.strip.empty?
   # konfiskat: извещение — скан, срок заявок поставлен по правилу организатора
@@ -280,6 +285,8 @@ order.group_by { |l| Zlib.crc32(l['id']) % PACKS }.each do |pk, chunk|
     if l['status'] == 'active' && l['geo'].is_a?(Array)
       x['g'] = l['geo'] + [l['platform'] == 'konfiskat.by' ? Obj.storage(Obj.rows_of(secs)) : l['location']]
     end
+    # «Право аренды»: ставка из извещения; для коэффициента спроса — зона Минска по карте МГЦН (zones.rb)
+    x['r'] = l['rent'].merge(l['rent']['k'] == 'ks' ? { 'z' => Zones.at(l['geo']) } : {}) if l['rent']
     det[l['id']] = x
     FileUtils.cp(ph_src[l['key']] || Store.ph_path(l['key']), File.join(OUT, 'ph', "#{l['id']}.jpg")) if l['photo']
   end
@@ -288,7 +295,8 @@ order.group_by { |l| Zlib.crc32(l['id']) % PACKS }.each do |pk, chunk|
 end
 
 # настройки, которые нужны страницам: тексты, правила калькулятора, выключенные разделы, форма заявки
-pub = { 'texts' => CFG['texts'] || {}, 'calc' => CFG['calc'] || {}, 'sec_off' => sec_off }
+pub = { 'texts' => CFG['texts'] || {}, 'calc' => CFG['calc'] || {}, 'sec_off' => sec_off,
+        'bav' => Bav.load.slice('v', 'from', 'src', 'url') }   # действующая БАВ — для расчёта аренды
 pub['sb'] = { 'url' => ENV['SB_URL'], 'key' => ENV['SB_KEY'] } if Sb.on?
 
 archn = arch.group_by { |l| l['section'] }.map { |k, v| [k, v.size] }.to_h.merge('_' => arch.size)

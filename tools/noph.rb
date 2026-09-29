@@ -200,8 +200,29 @@ box = {
   ].join("\n")
 }
 
+# ── право аренды: объёмный ключ ──
+key = {
+  defs: <<~D,
+    <linearGradient id="kg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe29a"/><stop offset=".5" stop-color="#e9a93b"/><stop offset="1" stop-color="#b8741a"/></linearGradient>
+    <linearGradient id="kd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b8741a"/><stop offset="1" stop-color="#7e4a0c"/></linearGradient>
+  D
+  svg: [
+    %(<ellipse cx="206" cy="214" rx="118" ry="14" fill="url(#sh)"/>),
+    # тень-толщина, затем лицевая сторона: кольцо, стержень, бородка
+    %(<g transform="translate(6 7)" fill="url(#kd)"><circle cx="138" cy="140" r="50"/><rect x="176" y="128" width="150" height="24" rx="6"/><path d="M280 150 h16 v30 h-16z M306 150 h16 v22 h-16z"/></g>),
+    %(<circle cx="138" cy="140" r="50" fill="url(#kg)"/>),
+    %(<circle cx="138" cy="140" r="22" fill="#fdf2e6"/>),
+    %(<circle cx="138" cy="140" r="22" fill="none" stroke="#b8741a" stroke-width="4"/>),
+    %(<rect x="176" y="128" width="150" height="24" rx="6" fill="url(#kg)"/>),
+    %(<path d="M280 150 h16 v30 h-16z M306 150 h16 v22 h-16z" fill="url(#kg)"/>),
+    %(<path d="M104 116 A50 50 0 0 1 170 104 L162 114 A38 38 0 0 0 112 124 Z" fill="#fff" opacity=".45"/>),
+    %(<rect x="182" y="131" width="138" height="6" rx="3" fill="#fff" opacity=".4"/>)
+  ].join("\n")
+}
+
 { 'nedvizhimost' => [house, '#eaf2fb', '#d6e5f5'], 'avto' => [car, '#e6f5f3', '#cfe9e5'], 'gruz' => [truck, '#f0ecfa', '#dfd6f3'],
-  'spec' => [exc, '#fdf2e6', '#f6dfc3'], 'oborud' => [cog, '#eef1f5', '#dbe1e9'], 'other' => [box, '#f4efe6', '#e6dccb'] }.each do |k, (b, c1, c2)|
+  'spec' => [exc, '#fdf2e6', '#f6dfc3'], 'oborud' => [cog, '#eef1f5', '#dbe1e9'], 'arenda' => [key, '#f8ece3', '#efd9c6'],
+  'other' => [box, '#f4efe6', '#e6dccb'] }.each do |k, (b, c1, c2)|
   File.write(File.join(OUT, "#{k}.svg"), frame(k, c1, c2, b))
 end
 puts "заглушки: #{Dir[File.join(OUT, '*.svg')].map { |f| File.basename(f) }.sort.join(', ')}"

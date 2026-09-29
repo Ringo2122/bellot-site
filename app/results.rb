@@ -21,6 +21,8 @@
 #   beltorgi.by   строка статуса на странице лота: «Торги состоялись», «приобретен единственным участником»…
 #   konfiskat.by  торги идут на torgikonfiskat.by — ссылка на них есть на странице лота konfiskat.by
 #   belauction.by страница лота после закрытия: «Аукцион закрыт по цене», таблица ставок с победителем
+#   minskestate.by статус на странице лота («Продано», «Торги не состоялись») и «Хронология торгов»
+#   mgcn.by       очные аукционы — итоги онлайн не публикуются, не проверяем
 require 'json'
 require_relative 'sources'
 
@@ -157,6 +159,28 @@ module Res
     r['first'] = bids.map(&:last).min if bids.any?
     r['price'] = price if won
     r
+  end
+
+  # ── minskestate.by ──
+  # Статус лота: «Продано», «Торги не состоялись», «Отменены»; «Хронология торгов» — все ставки (время, сумма, номер участника),
+  # сверху — последняя. «Количество участников допущенных к торгам» — число участников.
+  def me_result(html)
+    f = html.to_s.scan(%r{productCustomFieldName"><span>(.*?)</span></div>\s*<div class="productCustomFieldVal">(.*?)</div>}m)
+            .map { |k, v| [Src.txt(k), Src.txt(v)] }.to_h
+    st = f['Статус'].to_s
+    return { 'st' => 'pending' } unless st =~ /Продан|не состоял|Отмен/i
+    bids = html.to_s[%r{<table class="bidHistoryList">(.*?)</table>}m, 1].to_s
+               .scan(%r{<td>\s*(\d{2}\.\d{2}\.\d{4}[\d:\s]*)</td>\s*<td>([\d\s.,]+)BYN</td>\s*<td>\s*(\w+)\s*</td>}m)
+    users = [f['Количество участников допущенных к торгам'].to_i, bids.map(&:last).uniq.size].max
+    r = { 'v' => V, 'start' => Src.num(f['Начальная цена'].to_s[/[\d\s.,]+/]), 'bids' => bids.size, 'users' => users,
+          'at' => Src.ts(f['Окончание торгов']) }
+    if st =~ /Продан/i
+      r['st'] = users == 1 ? 'single' : 'sold'
+      r['price'] = bids.empty? ? r['start'] : Src.num(bids.first[1])
+    else
+      r['st'] = st =~ /Отмен/i ? 'cancelled' : 'failed'
+    end
+    r.reject { |_, v| v.nil? || v == 0 }
   end
 
   # ── konfiskat.by → torgikonfiskat.by ──

@@ -606,4 +606,68 @@ module Src
                    'pay_term' => n['pay'], 'v' => 2 }.reject { |_, v| v.nil? || v == 0.0 } }
   end
 
+  # ---------------- minskestate.by (ЭТП «Минск-Недвижимость» государственного предприятия «МГЦН») ----------------
+  # Электронные торги недвижимостью Минска. Список раздела — одна страница со всеми лотами, и активными, и
+  # завершёнными (статус в карточке: «Приём заявок», «Продано», «Торги не состоялись»…). robots.txt закрывает
+  # адреса с «?», «%» и «product»: листать и фильтровать списки не нужно, фото (…/img_products/…) не скачиваем —
+  # сайт показывает их ссылками, как галереи других площадок.
+  # Ключ — номер аукциона латиницей («Ч-2026.10.366» → me-ch-2026.10.366): у повторных торгов номер новый.
+  ME = 'https://minskestate.by'
+  ME_SEC = { 'nedvizhimost-v-sobstvennost' => 'nedvizhimost', 'kvartiry-i-zhilye-doma' => 'nedvizhimost',
+             'nedvizhimost-v-arendu' => 'arenda', 'transport-i-spetstekhnika' => nil, 'oborudovanie' => 'oborud' }.freeze   # nil — по названию
+  LAT = { 'а' => 'a', 'б' => 'b', 'в' => 'v', 'г' => 'g', 'д' => 'd', 'е' => 'e', 'ж' => 'zh', 'з' => 'z', 'и' => 'i', 'й' => 'j',
+          'к' => 'k', 'л' => 'l', 'м' => 'm', 'н' => 'n', 'о' => 'o', 'п' => 'p', 'р' => 'r', 'с' => 's', 'т' => 't', 'у' => 'u',
+          'ф' => 'f', 'х' => 'h', 'ц' => 'c', 'ч' => 'ch', 'ш' => 'sh', 'щ' => 'sch', 'ы' => 'y', 'э' => 'e', 'ю' => 'yu', 'я' => 'ya' }.freeze
+
+  def me_key(no)
+    'me-' + no.to_s.downcase.gsub(/[а-я]/) { |c| LAT[c] || '' }.gsub(/[^a-z0-9.-]/, '')
+  end
+
+  def me_list
+    ME_SEC.flat_map do |cat, sec|
+      html = get("#{ME}/commerce/#{cat}") or next []
+      sleep 1
+      html.split('blockProductItemLot').drop(1).map do |ch|
+        ch = ch[0, 6000]
+        href = ch[%r{href="(/commerce/#{cat}/[^"]+)"}, 1] or next
+        no = txt(ch[%r{Аукцион №:\s*<b>(.*?)</b>}m, 1])
+        next if no.empty?
+        { 'key' => me_key(no), 'platform' => 'minskestate.by', 'art' => no, 'sec' => sec, 'url' => ME + href,
+          'name' => decode(ch[/moduleProductName">\s*<a [^>]*title="([^"]+)"/, 1].to_s).strip,
+          'status' => txt(ch[%r{listLotStatus">(.*?)</div>}m, 1]), 'price' => num(txt(ch[%r{listAuctionActualPrice">(.*?)</div>}m, 1])),
+          'day' => ts(txt(ch[%r{Дата аукциона:\s*<b>(.*?)</b>}m, 1]) + ' 12:00'),
+          'phx' => ch[%r{src="(https://minskestate\.by/components/com_jshopping/files/img_products/[^"]+)"}, 1] }
+      end.compact
+    end
+  end
+
+  def me_detail(html)
+    f = html.scan(%r{productCustomFieldName"><span>(.*?)</span></div>\s*<div class="productCustomFieldVal">(.*?)</div>}m)
+            .map { |k, v| [txt(k), txt(v)] }.to_h
+    desc = txt(html[%r{id="tab_description"[^>]*>(.*?)<div class="tab-pane}m, 1])
+    seller = html[%r{id="tab_description3"[^>]*>(.*?)</div>\s*</div>}m, 1].to_s.scan(%r{productParamItem">(.*?)</div>}m)
+                 .map { |(x)| txt(x).split(/:\s*/, 2) }.select { |x| x.size == 2 && !x[1].empty? }
+    org = html[%r{id="tab_description4"[^>]*>(.*?)</div>\s*</div>}m, 1].to_s.scan(%r{productParamItem">(.*?)</div>}m)
+              .map { |(x)| txt(x).split(/:\s*/, 2) }.select { |x| x.size == 2 && !x[1].empty? && x[0] != 'Реквизиты' }
+    cond = ['Аукцион №', 'Начальная цена', 'Шаг торгов', 'Размер задатка', 'Начало приема заявок', 'Окончание приема заявок',
+            'Начало торгов', 'Ориентировочная сумма затрат на организацию и проведение торгов', 'Вознаграждение организатору торгов',
+            'Срок для возмещения затрат и (или) вознаграждения', 'Срок заключения договора', 'Срок оплаты по договору']
+    secs = [{ 'h' => 'Условия торгов', 'rows' => cond.map { |k| [k, f[k]] }.select { |_, v| v && !v.empty? } }]
+    secs << { 'h' => 'Сведения о лоте', 'rows' => [['Описание', desc]] } unless desc.empty?
+    secs << { 'h' => 'Продавец', 'rows' => seller } unless seller.empty?
+    secs << { 'h' => 'Организатор торгов', 'rows' => org } unless org.empty?
+    pics = html.scan(%r{(https://minskestate\.by/components/com_jshopping/files/img_products/[^"'\s]*/full_[^"'\s]+\.(?:jpe?g|png|webp))}i).flatten.uniq
+    step = f['Шаг торгов'].to_s
+    { 'details' => secs, 'location' => txt(html[%r{Местонахождение лота:</span>\s*<span[^>]*>(.*?)</span>}m, 1]),
+      'req_to' => ts(f['Окончание приема заявок']), 'torg' => ts(f['Начало торгов']),
+      'debtor' => (seller.assoc('Продавец') || [])[1], 'price_byn' => num(f['Начальная цена'].to_s[/[\d\s.,]+/]),
+      'area_num' => (a = desc[/площадью\s+([\d\s]+[.,]?\d*)\s*кв\.?\s*м/, 1]) && num(a),
+      'photos' => pics, 'status' => f['Статус'],
+      'terms' => { 'deposit' => num(f['Размер задатка'].to_s[/[\d\s.,]+/]), 'step_pct' => step[/\(([\d.,]+)%\)/, 1]&.tr(',', '.')&.to_f,
+                   'fee_abs' => num(f['Ориентировочная сумма затрат на организацию и проведение торгов'].to_s[/[\d\s.,]+/]),
+                   'fee_pct' => f['Вознаграждение организатору торгов'].to_s[/[\d.,]+/]&.tr(',', '.')&.to_f,
+                   'vat' => f['Начальная цена'].to_s =~ /без НДС/ ? 'Начальная цена указана без НДС' : nil, 'v' => 2 }
+                 .reject { |k, v| v.nil? || (v == 0.0 && k != 'fee_pct') } }
+  end
+
 end

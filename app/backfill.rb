@@ -7,6 +7,8 @@
 #   beltorgi.by   каталог с фильтром «состоявшиеся» и «несостоявшиеся»
 #   konfiskat.by  каталог торгов torgikonfiskat.by («Завершены» и «Архив»)
 #   belauction.by первые страницы «Проданные лоты» (≈ месяц) и «Завершённые аукционы» (≈ 10 дней) — дальше robots.txt не пускает
+#   minskestate.by список раздела — в нём и завершённые торги со статусом («Продано», «Торги не состоялись»)
+# mgcn.by (очные аукционы МГЦН) — итогов онлайн нет, архив площадки не собираем
 # Правила те же, что для новых лотов: разделы площадок, минимальная цена по разделу, выключенные площадки.
 # За прогон — не больше BACK_CAP лотов с площадки и не дольше BACK_MIN минут: первый месяц загрузится
 # за несколько прогонов, дальше добираются только пропущенные. Лот из архива помечен bf (время загрузки),
@@ -138,6 +140,23 @@ def backfill(db, stat, pstat, now)
         next drop.(c['key'], 'min') unless back_min_ok?(c['sec'], r['price'] || c['price'])
         d = Src.ba_detail(html)
         add.(back_rec(c, c['sec'], d, r, 'belauction.by архив', now), d, [d['photo_url'], c['thumb']])
+        left -= 1
+      end
+    end,
+    'minskestate.by' => lambda do |left|
+      # список раздела — и активные, и завершённые; дата в карточке — дата аукциона
+      Src.me_list.each do |c|
+        break if left.zero? || Time.now > stop
+        next if c['status'] !~ /Продан|не состоял|Отмен/i || known.(c['key']) || skipped.(c['key'])
+        next drop.(c['key'], 'old') if c['day'].to_i < since
+        sleep 1
+        html = Src.get(c['url']) or next
+        r = Res.me_result(html)
+        next if r['st'] == 'pending'
+        sec = c['sec'] || ipm_kind(c['name'])
+        next drop.(c['key'], 'min') unless back_min_ok?(sec, r['start'] || c['price'])
+        d = Src.me_detail(html)
+        add.(back_rec(c, sec, d, r, 'minskestate.by архив', now), d, [])   # фото — ссылками: robots.txt площадки закрывает их для роботов
         left -= 1
       end
     end,

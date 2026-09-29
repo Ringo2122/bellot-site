@@ -418,12 +418,14 @@
   .s-gruz{--c:#6a4fb3;--cl:#efeaf9}
   .s-spec{--c:#c2651a;--cl:#fbeee2}
   .s-oborud{--c:#4a5a70;--cl:#e9edf2}
+  .s-arenda{--c:#a0572a;--cl:#f8ece3}
   @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .s-nedvizhimost{--c:#5a9fe0;--cl:#152534}
   :root:not([data-theme="light"]) .s-avto{--c:#4fc1b8;--cl:#12302d} :root:not([data-theme="light"]) .s-gruz{--c:#a58ce8;--cl:#241c3a}
-  :root:not([data-theme="light"]) .s-spec{--c:#ec9a55;--cl:#33210f} :root:not([data-theme="light"]) .s-oborud{--c:#9fb0c6;--cl:#1d2530} }
+  :root:not([data-theme="light"]) .s-spec{--c:#ec9a55;--cl:#33210f} :root:not([data-theme="light"]) .s-oborud{--c:#9fb0c6;--cl:#1d2530}
+  :root:not([data-theme="light"]) .s-arenda{--c:#e39a6b;--cl:#35211a} }
 :root[data-theme="dark"] .s-nedvizhimost{--c:#5a9fe0;--cl:#152534} :root[data-theme="dark"] .s-avto{--c:#4fc1b8;--cl:#12302d}
 :root[data-theme="dark"] .s-gruz{--c:#a58ce8;--cl:#241c3a} :root[data-theme="dark"] .s-spec{--c:#ec9a55;--cl:#33210f}
-:root[data-theme="dark"] .s-oborud{--c:#9fb0c6;--cl:#1d2530}
+:root[data-theme="dark"] .s-oborud{--c:#9fb0c6;--cl:#1d2530} :root[data-theme="dark"] .s-arenda{--c:#e39a6b;--cl:#35211a}
   .how{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
   .how>div{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:18px;box-shadow:var(--sh)}
   .hn{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700}
@@ -773,6 +775,8 @@
       <li><a href="https://beltorgi.by" target="_blank" rel="noopener">Белреализация</a></li>
       <li><a href="https://konfiskat.by" target="_blank" rel="noopener">Торговый дом «Восточный»</a></li>
       <li><a href="https://belauction.by" target="_blank" rel="noopener">БелАукцион</a></li>
+      <li><a href="https://minskestate.by" target="_blank" rel="noopener">Минск-Недвижимость (МГЦН)</a></li>
+      <li><a href="https://mgcn.by/auctions/" target="_blank" rel="noopener">МГЦН — очные аукционы</a></li>
       <li><a href="https://bankrot.gov.by" target="_blank" rel="noopener">Реестр банкротств</a></li>
     </ul></div>
   </div>
@@ -808,7 +812,8 @@ const SECTIONS = [
   ['avto','Легковые авто'],
   ['gruz','Грузовые и автобусы'],
   ['spec','Спецтехника'],
-  ['oborud','Оборудование']
+  ['oborud','Оборудование'],
+  ['arenda','Право аренды']
 ].filter(([s])=>!(CFG.sec_off||[]).includes(s));
 /* текст из админки, если там заполнен; иначе — текст по умолчанию */
 const TX = (k, d) => { const v = (CFG.texts||{})[k]; return v && String(v).trim() ? String(v) : d; };
@@ -836,9 +841,11 @@ const addScript = src => { src += (src.includes('?') ? '&' : '?') + 'v=' + SNAP;
    Раньше были пачки по 40 фото (0,6–0,9 МБ) — ради одной картинки на странице лота качалась вся пачка. */
 function paint(){}
 /* нет фото — объёмная заглушка раздела (noph/<раздел>.svg, tools/noph.rb) */
-const NOPH = ['nedvizhimost','avto','gruz','spec','oborud'];
+const NOPH = ['nedvizhimost','avto','gruz','spec','oborud','arenda'];
 const noph = (l, cls) => `<img${cls?` class="${cls}"`:''} src="noph/${NOPH.includes(l.section)?l.section:'other'}.svg" alt="Нет фото" loading="lazy">`;
-const pic = (l, cls) => `<img${cls?` class="${cls}"`:''} src="ph/${encodeURIComponent(l.photo)}.jpg"${cls==='big'?'':' loading="lazy"'} decoding="async" alt="${esc(l.name)}">`;
+/* фото: наша копия; у minskestate — ссылкой на площадку (phx: её robots.txt закрывает фото для роботов); нет — заглушка */
+const pic = (l, cls) => !l.photo && !l.phx ? noph(l, cls)
+  : `<img${cls?` class="${cls}"`:''} src="${l.photo ? `ph/${encodeURIComponent(l.photo)}.jpg` : esc(l.phx)}"${cls==='big'?'':' loading="lazy"'} decoding="async" alt="${esc(l.name)}">`;
 
 const DET = {}, DETQ = {};
 window.__det = (n, m) => { Object.assign(DET, m); const w = DETQ[n]; DETQ[n] = 'ok'; if(Array.isArray(w)) w.forEach(f=>f()); };
@@ -967,10 +974,11 @@ function lotCard(l){
   const flags = (arch?'<span class="flag arch">архив</span>':'')
     + (!arch&&isNew(l)?'<span class="flag new">новый</span>':'')
     + (urg?`<span class="flag">${d===0?'последний день':d===1?'до завтра':d+' дн.'}</span>`:'')
-    + (!arch&&l.alt?`<span class="flag two">${l.alt.length} ${plural(l.alt.length,'площадка','площадки','площадок')}</span>`:'');
+    + (!arch&&l.alt?`<span class="flag two">${l.alt.length} ${plural(l.alt.length,'площадка','площадки','площадок')}</span>`:'')
+    + (l.platform==='mgcn.by'?'<span class="flag">очный аукцион</span>':'');
   return `<a class="lot${arch?' arch':''}" href="#/lot/${encodeURIComponent(l.id)}">
     <div class="ph">
-      ${l.photo?pic(l):noph(l)}
+      ${pic(l)}
       <div class="flags">${flags}</div>
       <span class="flag t">${esc(secName(l.section))}</span>
       ${!arch&&dc!==null&&dc>=15?`<span class="flag disc">дешевле рынка на ${dc}%</span>`:''}
@@ -1000,6 +1008,9 @@ function resShort(l){
 }
 function resultBlock(l){
   const r = resOf(l), at = (r && r.at) || l.torg || l.req_to + 86400;
+  if(l.platform==='mgcn.by') return `<aside class="panel rres"><div class="lbl">Итоги торгов</div><div class="rst">Очный аукцион</div>
+    <p class="note">Аукцион ${at*1000 > Date.now() ? 'пройдёт ' + dtm(at) : 'прошёл ' + dtm(at)} в зале МГЦН (г. Минск, ул. К. Маркса, 39). Итоги очных аукционов организатор онлайн не публикует — узнать их можно у МГЦН: +375 (17) 360-42-22.
+      <a href="${esc(l.url)}" target="_blank" rel="noopener">Извещение ↗</a></p></aside>`;
   if(!r) return `<aside class="panel rres"><div class="lbl">Итоги торгов</div><div class="rst">Итоги ещё не опубликованы</div>
     <p class="note">Торги ${at*1000 > Date.now() ? 'пройдут ' + dtm(at) : 'прошли ' + dt(at)}. Площадку проверяем каждый час${l.result && l.result.checked ? `, последняя проверка — ${dtm(l.result.checked)}` : ''}: итог появится здесь${UB ? ' и придёт уведомлением тем, кто следит за лотом' : ''}.
       <a href="${esc(l.url)}" target="_blank" rel="noopener">Посмотреть на площадке ↗</a></p></aside>`;
@@ -1029,7 +1040,8 @@ function applyFilters(list, f){
     if(f.dfrom && torgAt(l) < new Date(f.dfrom+'T00:00:00').getTime()/1000) return false;
     if(f.dto && torgAt(l) > new Date(f.dto+'T23:59:59').getTime()/1000) return false;
     if(f.plat && l.platform!==f.plat && !(l.alt||[]).some(a=>a.platform===f.plat)) return false;
-    if(f.photo && !l.photo) return false;
+    if(f.photo && !l.photo && !l.phx) return false;
+    if(f.land && !l.land) return false;
     if(f.mkt && !l.market) return false;
     if(f.soon && !isSoon(l)) return false;
     if(f.fresh && !isNew(l)) return false;
@@ -1046,12 +1058,12 @@ function applyFilters(list, f){
     : s==='disc'?((discount(b)??-999)-(discount(a)??-999)) : a.req_to-b.req_to);
   return out;
 }
-const nFilters = f => ['q','cat','res','region','pmin','pmax','dfrom','dto','plat','photo','mkt','soon','fresh'].filter(k=>f[k]).length;
+const nFilters = f => ['q','cat','res','region','pmin','pmax','dfrom','dto','plat','photo','mkt','land','soon','fresh'].filter(k=>f[k]).length;
 /* дата торгов; если площадка её не дала — ориентировочно следующий день после приёма заявок */
 const torgAt = l => l.torg || l.req_to + 86400;
 /* фильтры, которые переносятся при смене категории на странице раздела */
 let CARRY = null;
-const CARRY_KEYS = ['st','q','region','pmin','pmax','dfrom','dto','plat','photo','mkt','sort'];
+const CARRY_KEYS = ['st','q','region','pmin','pmax','dfrom','dto','plat','photo','mkt','land','sort'];
 function fitFilters(){
   const fp = $('#fp'); if(!fp) return;
   if(innerWidth <= 760){ fp.style.top = ''; return; }
@@ -1065,9 +1077,9 @@ const SORTS_ACTIVE = [['deadline','Заявки закрываются рань�
 const SORTS_ARCH = [['closed','Недавно завершённые'],['sale-desc','Цена продажи: дороже'],['prem-desc','Рост цены на торгах'],
   ['price-asc','Начальная цена по возрастанию'],['price-desc','Начальная цена по убыванию'],['name','По названию']];
 /* итог торгов лота в архиве — для фильтра «Итог торгов» */
-const resKey = l => l.why==='removed' ? 'removed' : l.result && RES[l.result.st] ? l.result.st : 'pending';
+const resKey = l => l.why==='removed' ? 'removed' : l.platform==='mgcn.by' ? 'offline' : l.result && RES[l.result.st] ? l.result.st : 'pending';
 const RES_F = [['sold_any','Продан — любой'],['sold','Торги состоялись'],['single','Продан единственному участнику'],['failed','Торги не состоялись'],
-  ['cancelled','Торги отменены'],['removed','Снят с площадки до торгов'],['pending','Итоги ещё не опубликованы']];
+  ['cancelled','Торги отменены'],['removed','Снят с площадки до торгов'],['pending','Итоги ещё не опубликованы'],['offline','Очный аукцион — итоги не публикуются']];
 const resMatch = (l, f) => f==='sold_any' ? ['sold','single'].includes(resKey(l)) : resKey(l)===f;
 
 function filterPanel(list, f, section){
@@ -1098,7 +1110,8 @@ function filterPanel(list, f, section){
         <input id="f-dto" type="date" value="${esc(f.dto||'')}" aria-label="Дата торгов до"></div></div>
       <div class="fg"><label for="f-plat">Площадка</label><select id="f-plat"><option value="">Все</option>
         ${plats.map(p=>`<option${f.plat===p?' selected':''}>${esc(p)}</option>`).join('')}</select></div>
-      <div class="fg"><label class="chk"><input type="checkbox" id="f-photo"${f.photo?' checked':''}> только с фото</label>
+      <div class="fg">${(section||f.cat)==='nedvizhimost'?`<label class="chk"><input type="checkbox" id="f-land"${f.land?' checked':''}> только земельные участки</label>`:''}
+        <label class="chk"><input type="checkbox" id="f-photo"${f.photo?' checked':''}> только с фото</label>
         <label class="chk"><input type="checkbox" id="f-mkt"${f.mkt?' checked':''}> только с рыночным ориентиром</label></div>
     </div>
     <div class="fapply"><button class="btn pri" id="f-apply" type="button">Показать</button></div>
@@ -1112,7 +1125,7 @@ function crumbs(parts){
 
 /* Фильтры каталога живут в адресе (#/s/avto?region=…&pmin=…): «Назад» с лота возвращает тот же поиск,
    а место в списке и «Показать ещё» восстанавливаются из CAT_POS. */
-const FKEYS = ['st','sort','q','cat','res','region','pmin','pmax','dfrom','dto','plat','photo','mkt'];
+const FKEYS = ['st','sort','q','cat','res','region','pmin','pmax','dfrom','dto','plat','photo','mkt','land'];
 const CAT_POS = {};   // адрес каталога → { y, show, t }
 let CAT_NOW = null;   // открытый каталог: { hash, show }
 function pageCatalog(section, params){
@@ -1150,12 +1163,12 @@ function pageCatalog(section, params){
     const v = id => (document.getElementById(id)||{}).value || '';
     const c = id => (document.getElementById(id)||{}).checked ? '1' : '';
     FSTATE = {st:FSTATE.st, sort:FSTATE.sort, soon:FSTATE.soon, fresh:FSTATE.fresh, pin:FSTATE.pin, q:v('f-q').trim(), region:v('f-region'), pmin:v('f-pmin'),
-      pmax:v('f-pmax'), dfrom:v('f-dfrom'), dto:v('f-dto'), plat:v('f-plat'), photo:c('f-photo'), mkt:c('f-mkt'), cat:section?'':v('f-cat'),
+      pmax:v('f-pmax'), dfrom:v('f-dfrom'), dto:v('f-dto'), plat:v('f-plat'), photo:c('f-photo'), mkt:c('f-mkt'), land:c('f-land'), cat:section?'':v('f-cat'),
       res:FSTATE.st==='arch'?v('f-res'):''};
   };
   const drawPanel = () => {
     $('#fwrap').innerHTML = filterPanel(baseOf(), FSTATE, section);
-    ['f-q','f-cat','f-res','f-region','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt'].forEach(id=>{
+    ['f-q','f-cat','f-res','f-region','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt','f-land'].forEach(id=>{
       const el = document.getElementById(id); if(!el) return;
       el.addEventListener(el.tagName==='SELECT'||el.type==='checkbox'||el.type==='date'?'change':'input', ()=>{
         read();
@@ -1163,6 +1176,7 @@ function pageCatalog(section, params){
         if(id==='f-cat' && section){ const v = el.value; CARRY = {};
           CARRY_KEYS.forEach(k=>{ if(FSTATE[k]) CARRY[k] = FSTATE[k]; });
           location.hash = v ? '#/s/' + v : '#/catalog'; return; }
+        if(id==='f-cat'){ if(FSTATE.cat!=='nedvizhimost') FSTATE.land = ''; drawPanel(); }   // «только земельные участки» — у недвижимости
         render(); });
     });
     requestAnimationFrame(fitFilters);
@@ -1310,6 +1324,10 @@ function calcBlock(l, det){
       ? 'Сверх ставки победитель платит сбор аукциона — размер в правилах площадки (belauction.by/sbor-auktsiona). Для юрлиц ставка указана с НДС 20%.'
     : l.platform==='ipmtorgi.by'
       ? 'Из карточки лота на площадке. Точную сумму затрат площадка сообщает до начала торгов.'
+    : l.platform==='minskestate.by'
+      ? 'Из карточки лота на площадке: ориентировочная сумма затрат на организацию торгов и вознаграждение организатора.'
+    : l.platform==='mgcn.by'
+      ? 'Очный аукцион МГЦН: шаг торгов и затраты на организацию указаны в извещении — уточните у организатора и впишите.'
       : 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.';
   const feesHtml = `<div class="cx-fees"><div class="cx-fh">Расходы сверх цены лота</div>
       <label class="cx-f"><span>${feeName}, % от итоговой цены</span><input type="number" id="cx-fp" min="0" max="30" step="0.1" value="${t.fee_pct!=null?t.fee_pct:''}" placeholder="0"></label>
@@ -1379,6 +1397,60 @@ function calcBlock(l, det){
   if(m.pick) $('#cx-sp').addEventListener('change', run);
   ['cx-fp','cx-fa'].forEach(id=>$('#'+id).addEventListener('input', run));
   run();
+}
+
+/* ───────── расчёт аренды (раздел «Право аренды», очные аукционы МГЦН) ─────────
+   Ставка — из извещения (mgcn.rb → rent): коэффициент спроса к базовой ставке или размер аренды прямо в БАВ.
+   Госимущество (Указ № 138, п. 10 Положения): аренда в месяц = 0,5 БАВ (базовая ставка г. Минска) × коэффициент
+   местонахождения (зоны 1–5: 1,0…0,6, решение Мингорисполкома № 3716) × коэффициент спроса × площадь.
+   Зона — по карте экономико-планировочных зон МГЦН (zones.rb); БАВ — действующая (bav.rb → CFG.bav). */
+function rentBlock(l, r){
+  const box = $('#calcx'); if(!box) return;
+  if(!r){ box.remove(); return; }   // ставки нет (земля в аренду) — считать нечего
+  const B = CFG.bav || {v:20.03, from:'2026-04-01'}, bav = +B.v;
+  const r2 = v => v.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const k = v => String(+(+v).toFixed(4)).replace('.', ',');
+  const line = (t, v, big) => `<div class="row${big?' big':''}"><span class="l">${t}</span><span class="r">${v}</span></div>`;
+  const rows = [], notes = []; let formula = '';
+  if(r.k === 'ks'){
+    const z = r.z || {}, kz = z.k, rng = z.rng || [0.6, 1];
+    const sum = (ks, S, kk) => 0.5 * bav * kk * ks * S;
+    const amt = (ks, S) => kz ? `${r2(sum(ks, S, kz))} BYN` : `${r2(sum(ks, S, rng[0]))} – ${r2(sum(ks, S, rng[1]))} BYN`;
+    if(r.parts.length){
+      const cap = s => esc(s[0].toUpperCase() + s.slice(1));
+      r.parts.forEach(p => rows.push(p.S ? line(`${cap(p.what)}, ${k(p.S)} м² — коэффициент спроса ${k(p.ks)}`, amt(p.ks, p.S) + ' в месяц')
+        : line(`${cap(p.what)} — коэффициент спроса ${k(p.ks)}`, amt(p.ks, 1) + ' за 1 м² в месяц')));
+      if(r.parts.every(p=>p.S)){ const tot = kk => r.parts.reduce((s,p)=>s + sum(p.ks, p.S, kk), 0);
+        rows.push(line('Аренда в месяц, всего', kz ? `${r2(tot(kz))} BYN` : `${r2(tot(rng[0]))} – ${r2(tot(rng[1]))} BYN`, true)); }
+      else notes.push('Площади частей в извещении не указаны — показана ставка за 1 м²; площади уточните у арендодателя.');
+    } else {
+      r.steps.forEach((s, i) => rows.push(line(r.steps.length === 1 ? `Коэффициент спроса ${k(s.ks)}`
+          : s.m ? `Первые ${s.m} ${plural(s.m,'месяц','месяца','месяцев')} — коэффициент спроса ${k(s.ks)}` : `Дальше — коэффициент спроса ${k(s.ks)}`,
+        amt(s.ks, r.S) + ' в месяц', i === r.steps.length - 1)));
+    }
+    const one = !r.parts.length && r.steps.length === 1, perM2 = r.parts.length && !r.parts.every(p=>p.S);
+    formula = `0,5 БАВ (базовая ставка Минска) × ${r2(bav)} руб. × ${kz ? k(kz) : 'коэффициент'} (зона) × ${one ? k(r.steps[0].ks) : 'коэффициент'} (спрос) ${perM2 ? 'за 1 м²' : `× ${k(r.S)} м²`}`
+      + (one && kz ? ` = ${r2(sum(r.steps[0].ks, r.S, kz))} BYN в месяц` : '');
+    notes.unshift(kz ? `Зона: ${z.z}-я экономико-планировочная зона Минска, коэффициент ${k(kz)} — по карте зон МГЦН.`
+      : `Зону по адресу точно определить не удалось (${esc(z.why || 'нет точки на карте')}) — коэффициент зоны от ${k(rng[0])} до ${k(rng[1])}.`);
+    if(r.alt) notes.push(`Для арендаторов с правом на понижающие коэффициенты (Указ № 138, приложение 2) коэффициент спроса — ${k(r.alt)}; итог зависит от льготы.`);
+  } else if(r.k === 'bav_m2'){
+    r.parts.forEach(p => rows.push(line(`${p.what ? esc(p.what[0].toUpperCase() + p.what.slice(1)) + ' — ' : ''}${k(p.v)} БАВ за 1 м²`,
+      `${r2(p.v * bav * r.S)} BYN в месяц`, r.parts.length === 1)));
+    formula = `${r.parts.map(p=>k(p.v)).join(' или ')} БАВ × ${r2(bav)} руб. × ${k(r.S)} м²`;
+  } else if(r.k === 'bav_total'){
+    rows.push(line(`${k(r.v)} БАВ в месяц за всю площадь`, `${r2(r.v * bav)} BYN в месяц`, true));
+    formula = `${k(r.v)} БАВ × ${r2(bav)} руб.`;
+  } else {
+    notes.push('Запись ставки нестандартная — сумму автоматически не считаем, уточните у арендодателя.');
+  }
+  const from = String(B.from || '').split('-').reverse().join('.');
+  box.innerHTML = `<div class="cx-head"><h2>Сколько стоит аренда</h2><span class="c">ставка из извещения, БАВ — действующая</span></div>
+    <div class="cx-out">${rows.join('')}
+      <div class="note">Ставка по извещению: «${esc(r.raw)}».${formula ? ` Расчёт: ${formula.replace(/\.$/, '')}.` : ''}</div>
+      ${notes.map(n=>`<div class="note">${n}</div>`).join('')}
+      <div class="note">БАВ ${r2(bav)} руб. действует с ${from}${B.src ? `: ${B.url ? `<a href="${esc(B.url)}" target="_blank" rel="noopener">${esc(B.src)}</a>` : esc(B.src)}` : ''}. При её изменении сумма пересчитается.
+        Коммунальные и эксплуатационные расходы оплачиваются сверх аренды. Начальная цена права заключения договора (${nf(l.price)} BYN) — разовый платёж победителя аукциона, в аренду не входит.</div></div>`;
 }
 
 /* заголовки секций у площадок разные и бывают обрезаны — приводим к одному виду */
@@ -1488,7 +1560,8 @@ function drawMap(g){
 /* ───────── галерея: все фото карточки площадки (ссылками с площадки) ─────────
    Все фото — в полном качестве с площадки. Пока грузится первое, видна наша копия 400 px (размыто).
    Фото сменяется только когда загружено (до этого — индикатор); следующие два и предыдущее грузятся заранее. */
-const thumbOf = (p, u) => p==='beltorgi.by' ? u.replace('/big/','/small/') : p==='belauction.by' ? u.replace(/(\.\w+)$/, '-150x150$1') : null;
+const thumbOf = (p, u) => p==='beltorgi.by' ? u.replace('/big/','/small/') : p==='belauction.by' ? u.replace(/(\.\w+)$/, '-150x150$1')
+  : p==='minskestate.by' ? u.replace('/full_','/thumb_') : null;
 const GIMG = {};   // адрес → загрузка (общая для страницы и полноэкранного просмотра)
 function gload(u){
   return GIMG[u] || (GIMG[u] = new Promise((res, rej)=>{
@@ -1577,7 +1650,7 @@ function pageLot(id){
     ${crumbs([[secName(l.section), '#/s/'+l.section], ...(arch?[['Архив', `#/s/${l.section}?st=arch`]]:[]), ['Лот '+l.art]])}
     <div class="lothead">
       <div class="tags"><span class="tag">${esc(secName(l.section))}</span>${(l.alt?l.alt.map(a=>a.platform):[l.platform]).map(p=>`<span class="tag g">${esc(p)}</span>`).join('')}
-        <span class="tag g mono">№ ${esc(String(l.art))}</span>${arch?'<span class="tag a">Архив</span>':''}${!arch&&isNew(l)?'<span class="tag n">Новый</span>':''}</div>
+        <span class="tag g mono">№ ${esc(String(l.art))}</span>${l.platform==='mgcn.by'?'<span class="tag">Очный аукцион</span>':''}${arch?'<span class="tag a">Архив</span>':''}${!arch&&isNew(l)?'<span class="tag n">Новый</span>':''}</div>
       <h1 class="lotname">${esc(l.name)}</h1>
       <div class="where">${esc(l.location||'')}</div>
     </div>
@@ -1585,19 +1658,19 @@ function pageLot(id){
       ? `<b>Лот снят с площадки ${dt(l.closed)}</b> — раньше окончания приёма заявок.`
       : `<b>Приём заявок завершён ${dt(l.closed)}.</b>`} Лот в архиве БелЛота: сведения и итоги торгов сохранены.</div>`:''}
     <div class="lotpage">
-      <div class="gal">${l.photo?pic(l,'big'):noph(l,'big')}</div>
+      <div class="gal">${pic(l,'big')}</div>
       <div class="rcol">
         <aside class="panel buy">
-          <div class="lbl">${l.platform==='belauction.by' ? (arch ? 'Последняя ставка' : 'Текущая ставка') : 'Стартовая цена'}</div>
+          <div class="lbl">${l.platform==='belauction.by' ? (arch ? 'Последняя ставка' : 'Текущая ставка') : l.section==='arenda' ? 'Начальная цена права аренды' : 'Стартовая цена'}</div>
           <div class="bigprice">${nf(l.price)} BYN</div>
           ${pc?`<div class="pchg">${pc<0?'↓ снижена на '+(-pc)+'%':'↑ выросла на '+pc+'%'} — было ${nf(l.prices[0][1])} BYN</div>`:''}
           <dl class="facts">
             <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
               :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
-            <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(l.platform==='e-auction.by'?' · онлайн':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
+            <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(['e-auction.by','minskestate.by'].includes(l.platform)?' · онлайн':l.platform==='mgcn.by'?' · очно, г. Минск, ул. К. Маркса, 39':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
             <dt>Регион</dt><dd>${esc(l.region||'—')}</dd>
             ${l.area_num?`<dt>Площадь</dt><dd>${nf(l.area_num)} м²</dd>`:''}
-            <dt>Должник</dt><dd>${esc(l.debtor||'—')}</dd>
+            <dt>${l.section==='arenda' ? 'Арендодатель' : ['minskestate.by','mgcn.by'].includes(l.platform) ? 'Продавец' : 'Должник'}</dt><dd>${esc(l.debtor||'—')}</dd>
           </dl>
           <div class="cta">
             <a class="btn pri" href="${esc(l.url)}" target="_blank" rel="noopener">На площадке ↗</a>
@@ -1622,7 +1695,8 @@ function pageLot(id){
     // лота нет в пачке подробностей — страница устарела (сайт пересобрали, браузер держит старую): перезагружаемся один раз
     try{ if(!DET[l.id]){ if(!sessionStorage.getItem('det-reload')){ sessionStorage.setItem('det-reload', '1'); location.reload(); return; } }
          else sessionStorage.removeItem('det-reload'); }catch(e){}
-    if(!arch) calcBlock(l, det);
+    // «Право аренды»: вместо калькулятора покупки — расчёт аренды по ставке из извещения
+    if(!arch) l.section==='arenda' ? rentBlock(l, det.r) : calcBlock(l, det);
     // все фото карточки площадки
     if(det.p && det.p.length){ const pics = det.p.slice(); $('.gal').innerHTML = galleryBlock(l, pics); bindGallery(l, pics); }
     // похожие завершённые торги, история объекта; карта — только у активных
@@ -1850,7 +1924,8 @@ const ICON = {
   avto:'<svg viewBox="0 0 24 24"><path d="M4 16v-3l1.6-4.2A2 2 0 0 1 7.5 7.5h9a2 2 0 0 1 1.9 1.3L20 13v3zM4 13h16"/><circle cx="7.5" cy="16.5" r="1.8"/><circle cx="16.5" cy="16.5" r="1.8"/></svg>',
   gruz:'<svg viewBox="0 0 24 24"><path d="M2 5h12v11H2zM14 9h4l3 3.5V16h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>',
   spec:'<svg viewBox="0 0 24 24"><path d="M2 20h11M3 20v-4h8v4M5 16v-3h4l2 3M11 12l3-6 5 2-1 5M18 13l2 3h-3"/></svg>',
-  oborud:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>'
+  oborud:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>',
+  arenda:'<svg viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L20 3M16 7l3 3M13.5 9.5l2 2"/></svg>'
 };
 
 function sectionTiles(){

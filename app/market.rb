@@ -87,7 +87,7 @@ def specific?(query)
 end
 
 lots.each_with_index do |l, i|
-  next if l['section'] == 'nedvizhimost' || l['status'] != 'active'
+  next if %w[nedvizhimost arenda].include?(l['section']) || l['status'] != 'active'
   next if l['market_at'].to_i > NOW - REFRESH_DAYS * 86_400
   l['market_at'] = NOW
   q, yr = query_of(l)

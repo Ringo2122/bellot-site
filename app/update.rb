@@ -20,11 +20,14 @@ require_relative 'results'
 require_relative 'backfill'
 require_relative 'geo'
 require_relative 'pics'
+require_relative 'mgcn'
+require_relative 'bav'
 require 'fileutils'
 
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
-WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfiskat.by' => 1, 'belauction.by' => 1 }.freeze   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
+WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfiskat.by' => 1, 'belauction.by' => 1,
+            'minskestate.by' => 1, 'mgcn.by' => 1 }.freeze   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
 MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
 # Настройки из админки: выключенные площадки не обходим, минимальная цена по разделам — своя.
 # База недоступна — работаем по умолчаниям.
@@ -50,7 +53,7 @@ RESULTS_ONLY = !ENV['RESULTS_ONLY'].to_s.empty?
 SWEEP = 1
 
 SEC_RU = { 'nedvizhimost' => 'Недвижимость', 'avto' => 'Легковые авто', 'gruz' => 'Грузовые и автобусы',
-           'spec' => 'Спецтехника', 'oborud' => 'Оборудование' }.freeze
+           'spec' => 'Спецтехника', 'oborud' => 'Оборудование', 'arenda' => 'Право аренды' }.freeze
 
 # площадка → [раздел площадки, раздел сайта; nil — определить по названию]
 PLAN = {
@@ -65,7 +68,11 @@ PLAN = {
   'konfiskat.by' => [['avtotransport/auktsiony', 'auto'], ['nedvizhimost/auktsiony', 'nedvizhimost'],
                      ['own-property/auctions', 'oborud']],
   # belauction.by: первые страницы общего списка и категорий (robots.txt), раздел — по категории лота
-  'belauction.by' => [['active', nil]]
+  'belauction.by' => [['active', nil]],
+  # minskestate.by: все разделы — одной страницей каждый, раздел сайта — по разделу площадки (me_list)
+  'minskestate.by' => [['commerce', nil]],
+  # mgcn.by: очные аукционы МГЦН; земельные участки — в аренду или в собственность по тексту поста (mgcn.rb)
+  'mgcn.by' => [['rent', 'arenda'], ['place', nil], ['sale', 'nedvizhimost']]
 }.freeze
 # Площадки, которые больше не собираем: их лоты удаляются из памяти вместе с подробностями и фото.
 # cpo.by (ЦПО) — рекламная витрина торгов ИПМ-Торгов, те же лоты (решение Артёма 25.09.2026)
@@ -91,20 +98,24 @@ def list(plat, path)
   when 'ipmtorgi.by'  then Src.ipm_list(path)
   when 'konfiskat.by' then Src.kf_list(path)
   when 'belauction.by' then Src.ba_list(:active)
+  when 'minskestate.by' then Src.me_list
+  when 'mgcn.by' then Mg.list(path)   # nil — список не прочитан, [] — предстоящих аукционов нет
   else Src.bt_list(path)
   end
 end
 
 def fetch_detail(c)
+  return c['d'] if c['platform'] == 'mgcn.by'   # подробности — из того же поста, он уже прочитан
   html = Src.get(c['url']) or return nil
   d = case c['platform']
       when 'e-auction.by' then Src.ea_detail(html)
       when 'ipmtorgi.by'  then Src.ipm_detail(html)
       when 'konfiskat.by' then Src.kf_detail(html, c)
       when 'belauction.by' then Src.ba_detail(html)
+      when 'minskestate.by' then Src.me_detail(html)
       else Src.bt_detail(html)
       end
-  sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2 }[c['platform']] || 0.4)
+  sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2, 'minskestate.by' => 1 }[c['platform']] || 0.4)
   d
 end
 
@@ -128,10 +139,14 @@ def new_lot(c, sec, d, src, now)
     # у ИПМ точное время — в карточке лота; у beltorgi в списке его нет вовсе
     'req_to' => plat == 'e-auction.by' ? c['req_to'] : (d['req_to'] || c['req_to']),
     'torg' => d['torg'], 'url' => c['url'], 'location' => loc, 'region' => region_of(loc),
-    'debtor' => d['debtor'], 'area_num' => sec == 'nedvizhimost' ? d['area_num'] : nil,
+    'debtor' => d['debtor'], 'area_num' => %w[nedvizhimost arenda].include?(sec) ? d['area_num'] : nil,
     'sub_ru' => plat == 'e-auction.by' && sec == 'nedvizhimost' ? Src::EA_SUBS[c['sub']] : nil,
     'platform' => plat, 'section' => sec, 'section_ru' => SEC_RU[sec], 'terms' => d['terms'] || {} }
-    .tap { |r| r['pics'] = d['photos'] if d['photos'] }   # все фото карточки — ссылками (pics.rb)
+    .tap do |r|
+      r['pics'] = d['photos'] if d['photos']   # все фото карточки — ссылками (pics.rb)
+      r['phx'] = c['phx'] if c['phx']          # minskestate: главное фото тоже ссылкой (robots.txt закрывает фото для роботов)
+      r['rent'] = d['rent'] if d['rent']       # mgcn: ставка аренды для расчёта на сайте
+    end
 end
 
 now = Time.now.to_i
@@ -147,6 +162,7 @@ before = db.values.count { |l| l['status'] == 'active' }
 mx = Mutex.new
 seen = {}          # ключи, которые площадки показали в этом прогоне
 lists = {}         # src → сколько карточек прочитано (nil — список не прочитан)
+bav_mg = []        # БАВ из извещений МГЦН: [дата начала, значение, адрес поста]
 stat = Hash.new(0)
 pstat = Hash.new { |h, k| h[k] = Hash.new(0) }   # по площадкам — для отчёта в админке
 terms_left = TERMS_CAP
@@ -174,12 +190,16 @@ end
       src = "#{plat} #{path}"
       cards = list(plat, path)
       mx.synchronize do
-        lists[src] = cards.empty? ? nil : cards.size
-        cards.each { |c| seen[c['key']] = true }
+        # у МГЦН раздел может быть без предстоящих аукционов — это не сбой
+        lists[src] = cards.nil? || (cards.empty? && plat != 'mgcn.by') ? nil : cards.size
+        (cards || []).each { |c| seen[c['key']] = true }
+        (cards || []).each { |c| bav_mg << (c['bav'] + [c['url']]) if c['bav'] }
       end
+      cards ||= []
       STDERR.puts "#{src}: в списке #{cards.size}"
       cards.each do |c|
         next if plat == 'beltorgi.by' && !c['open']          # ещё не принимают заявки
+        next if plat == 'minskestate.by' && c['status'] !~ /Приём заявок/   # в списке и завершённые — их берёт архив площадок
         # у konfiskat в карточке — дата аукциона, заявки закрываются в 12:00 накануне: закрытые не качаем
         next if c['day'] && plat == 'konfiskat.by' && c['day'] - 12 * 3600 < Time.now.to_i
         s = c['sec'] || (sec == 'auto' ? kf_kind(c['name']) : (sec || ipm_kind(c['name'])))   # belauction — раздел из категории лота
@@ -212,8 +232,15 @@ end
                 mx.synchronize { stat['дозаполнены условия'] += 1 }
               end
             end
-            # фото не скачалось — пробуем ещё, не больше трёх прогонов подряд (у части лотов фото нет вовсе)
-            if !old['photo'] && old['ph_try'].to_i < 3 && !File.exist?(Store.ph_path(c['key']))
+            # mgcn: пост могли поправить — подробности и ставку берём свежие (страница уже прочитана)
+            if c['platform'] == 'mgcn.by'
+              Store.save_details(c['key'], trim(c['d']['details']))
+              upd['rent'] = c['d']['rent'] if c['d']['rent']
+              upd['torg'] = c['torg'] if c['torg']
+            end
+            # фото не скачалось — пробуем ещё, не больше трёх прогонов подряд (у части лотов фото нет вовсе);
+            # у minskestate фото — ссылкой, у МГЦН фото нет
+            if !old['photo'] && old['ph_try'].to_i < 3 && !File.exist?(Store.ph_path(c['key'])) && !%w[minskestate.by mgcn.by].include?(c['platform'])
               d3 = fetch_detail(c)
               ok = Store.save_photo([d3 && d3['photo_url'], c['thumb']], c['key'], Src::UA)
               upd['photo'] = ok
@@ -279,7 +306,7 @@ end
             end
             rec['tk'] = d['tk'] if d['tk']
             Store.save_details(c['key'], trim(d['details'] || []))
-            rec['photo'] = Store.save_photo([d['photo_url'], c['thumb']], c['key'], Src::UA)
+            rec['photo'] = Store.save_photo([d['photo_url'], c['thumb']], c['key'], Src::UA) unless %w[minskestate.by mgcn.by].include?(plat)
             mx.synchronize do
               db[c['key']] = rec
               stat['новых'] += 1
@@ -291,6 +318,22 @@ end
     end.each(&:join)
   end
 end.each(&:join)
+
+# МГЦН продаёт объект и очно, и на своей электронной площадке minskestate.by — тогда главная онлайн-площадка
+# (решение Артёма 29.09): очную карточку того же объекта (инвентарный номер или адрес совпали) не держим
+unless RESULTS_ONLY
+  sig = lambda do |l|
+    rows = Obj.rows_of(Store.details(l['key']))
+    Obj.ids(l['name'], rows).select { |x| x.start_with?('inv:') } + [l['location'].to_s.downcase.gsub(/г\.\s*минск|[^а-яa-z0-9]/, '')]
+  end
+  me = db.values.select { |l| l['platform'] == 'minskestate.by' && l['status'] == 'active' }.flat_map(&sig).reject(&:empty?)
+  db.delete_if do |k, l|
+    next false unless l['platform'] == 'mgcn.by' && l['section'] == 'nedvizhimost' && l['status'] == 'active' && (sig.(l) & me).any?
+    File.delete(Store.det_path(k)) if File.exist?(Store.det_path(k))
+    stat['МГЦН: есть на minskestate.by'] += 1
+  end
+  Bav.run(bav_mg)
+end
 
 # ── архив ──
 active_by_src = Hash.new(0)
@@ -331,6 +374,9 @@ def fetch_result(l)
   when 'belauction.by'
     sleep 2
     (html = Src.get(l['url'])) ? [Res.ba_result(html), {}] : [nil, {}]
+  when 'minskestate.by'
+    sleep 1
+    (html = Src.get(l['url'])) ? [Res.me_result(html), {}] : [nil, {}]
   else [nil, {}]
   end
 rescue StandardError => e
@@ -342,6 +388,7 @@ end
 # Площадки публикуют итог обычно в день торгов — раньше мы смотрели только в часы обхода, итог появлялся у нас с опозданием на часы.
 due = db.values.select do |l|
   next false unless l['status'] == 'archive' && l['why'] == 'deadline'
+  next false if l['platform'] == 'mgcn.by'   # очные аукционы: итоги онлайн не публикуются
   r = l['result'] || {}
   next false if Res::FINAL.include?(r['st']) && r['v'].to_i >= 2
   age = now - (l['torg'] || l['req_to'].to_i + 86_400)
