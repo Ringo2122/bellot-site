@@ -319,7 +319,7 @@ def fetch_result(l)
     eid ? [Res.ea_result(Res.ea_info(eid)), { 'eid' => eid }] : [nil, {}]
   when 'ipmtorgi.by'
     html = Src.get(l['url']) or return [nil, {}]
-    all = (u = Res.ipm_all_bids_url(html)) && Src.get(u)   # все ставки, а не последние
+    all = Res.ipm_all_bids(html)   # все ставки, а не последние (если ставки были)
     [Res.ipm_result(html, all), {}]
   when 'beltorgi.by'
     (html = Src.get(l['url'])) ? [Res.bt_result(html), {}] : [nil, {}]
@@ -351,7 +351,9 @@ due = db.values.select do |l|
   now - r['checked'].to_i >= gap
 end.sort_by { |l| -(l['torg'] || l['req_to']).to_i }.first(RES_CAP)
 STDERR.puts "итоги торгов: проверяю #{due.size}" unless due.empty?
-due.group_by { |l| l['platform'] }.map do |plat, ls|
+# площадки — параллельно; ИПМ отвечает медленно (~5 с на страницу) — её лоты в три потока, e-auction — в два
+RES_THREADS = { 'ipmtorgi.by' => 3, 'e-auction.by' => 2 }.freeze
+due.group_by { |l| l['platform'] }.flat_map { |plat, ls| ls.each_slice((ls.size / (RES_THREADS[plat] || 1).to_f).ceil).map { |part| [plat, part] } }.map do |plat, ls|
   Thread.new do
     ls.each do |l|
       r, extra = fetch_result(l)

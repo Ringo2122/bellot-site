@@ -74,7 +74,12 @@ module Res
   end
 
   # ── ИПМ-Торги ──
-  # ссылка «Посмотреть все ставки» (на странице лота — только последние)
+  # ссылка «Посмотреть все ставки» (на странице лота — только последние); ставок нет — окно не нужно (у ИПМ каждый запрос ~5 с)
+  def ipm_all_bids(html)
+    u = ipm_all_bids_url(html) or return nil
+    html.to_s.include?('Пользователь с ID') ? Src.get(u, min: 1, tries: 1) : nil
+  end
+
   def ipm_all_bids_url(html, host = Src::IPM)
     id = html.to_s[/show-all-bids\.php\?lotId=(\d+)/, 1]
     id && "#{host}/local/ajax/popup/show-all-bids.php?lotId=#{id}"

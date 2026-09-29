@@ -34,12 +34,13 @@ module Src
 
   module_function
 
-  def get(url)
-    2.times do
+  # короче min — сбой, пробуем ещё раз; для маленьких служебных ответов (окно «все ставки») — get(url, min: 1, tries: 1)
+  def get(url, min: 1500, tries: 2)
+    tries.times do |i|
       out = IO.popen(['curl', '-sS', '-L', '-m', '40', '-A', UA, url], err: File::NULL, &:read)
       out = out.to_s.force_encoding('UTF-8')
-      return out if out.size > 1500
-      sleep 2
+      return out if out.size >= min
+      sleep 2 if i < tries - 1
     end
     nil
   end

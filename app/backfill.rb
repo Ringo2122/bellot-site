@@ -81,7 +81,7 @@ def backfill(db, stat, pstat, now)
           next if known.(c['key']) || skipped.(c['key'])
           sec = sec0 || ipm_kind(c['name'])
           html = Src.get(c['url']) or next
-          all = (u = Res.ipm_all_bids_url(html)) && Src.get(u)
+          all = Res.ipm_all_bids(html)
           r = Res.ipm_result(html, all)
           next drop.(c['key'], 'min') unless back_min_ok?(sec, r['start'] || c['price'])
           d = Src.ipm_detail(html)
