@@ -221,6 +221,7 @@ module Mg
                 'name' => name_of(sec, land, v, area_m2, "#{hdr.join(' ')} #{title}", lterm, title =~ /строительств/i), 'price' => price,
                 'req_to' => req, 'torg' => torg }
         rec['d'] = { 'details' => secs, 'location' => addr, 'req_to' => req, 'torg' => torg, 'debtor' => lessor.to_s.empty? ? nil : lessor,
+                     'photos' => [],   # фото МГЦН не публикует: пустой список — pics.rb не будет искать галерею
                      'area_num' => land ? (num(v['area']) * 10_000).round : area_m2,
                      'terms' => dep ? { 'deposit' => dep, 'v' => 2 } : { 'v' => 2 },
                      'rent' => sec == 'arenda' && v['rate'] ? rent(v['rate'], hdr[cols['rate']], area_m2) : nil }
