@@ -29,7 +29,8 @@ try {
     let where = 'главная';
     const errs = [];
     page.on('pageerror', e => errs.push([where, 'Ошибка JavaScript', e.message]));
-    page.on('console', m => { if (m.type() === 'error' && !NOISE.test(m.text())) errs.push([where, 'Ошибка в консоли', m.text()]); });
+    // «Failed to load resource» — это про файлы: свои ловим по ответам ниже (с адресом), чужие (фото площадок) — не наша поломка
+    page.on('console', m => { if (m.type() === 'error' && !NOISE.test(m.text()) && !/Failed to load resource/.test(m.text())) errs.push([where, 'Ошибка в консоли', m.text()]); });
     page.on('response', r => { const u = r.url(); if (u.startsWith(BASE) && r.status() >= 400) errs.push([where, `Файл сайта не отдаётся (HTTP ${r.status()})`, short(u)]); });
     page.on('requestfailed', r => { const u = r.url(); if (u.startsWith(BASE) && !NOISE.test(u)) errs.push([where, 'Файл сайта не загрузился', `${short(u)} — ${r.failure() && r.failure().errorText}`]); });
 
