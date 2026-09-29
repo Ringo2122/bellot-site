@@ -30,6 +30,8 @@
     --sh:0 1px 3px rgba(0,0,0,.4); --sh-2:0 8px 26px rgba(0,0,0,.6);
   }
   *{box-sizing:border-box}
+  /* страховка: ничто не делает страницу шире экрана (clip, а не hidden — липкая панель фильтров продолжает работать) */
+  html,body{overflow-x:clip}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:"PT Sans",system-ui,sans-serif;
     font-size:15px;line-height:1.5}
   a{color:var(--brand);text-decoration:none}
@@ -56,6 +58,9 @@
   .logo .sub{font-size:11px;color:var(--ink-3);line-height:1.2}
   /* поиск: лупа, по нажатию — поле с подсказками поверх шапки */
   .hsearch{margin-left:auto}
+  /* свёрнутое поле поиска — ширина 0, но значок и крестик внутри торчали за край: на iPhone страница становилась шире экрана
+     и Safari её уменьшал — «половина экрана пустая» (29.09) */
+  .hsearch:not(.open) .hs-form{overflow:hidden}
   .hs-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--hair-2);background:var(--card);color:var(--ink);
     display:grid;place-items:center;cursor:pointer;transition:border-color .15s,color .15s}
   .hs-btn:hover{border-color:var(--brand);color:var(--brand)}
@@ -301,6 +306,7 @@
   .banner{margin-top:16px;padding:12px 16px;border-radius:8px;background:var(--accent-l);
     border:1px solid var(--accent);font-size:14px}
   .lotpage{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,1fr);gap:22px;align-items:start;margin-top:18px}
+  .lotpage>*{min-width:0}
   .gal .big{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--hair);
     background:var(--brand-l);display:block}
   .gal .noph{aspect-ratio:4/3;display:grid;place-items:center;color:var(--ink-3)}
@@ -516,14 +522,15 @@
     font-size:28px;margin:0 auto 12px}
 
   @media (max-width:980px){
-    .lotpage{grid-template-columns:1fr}
+    /* minmax(0,…): колонка не растягивается под ленту миниатюр (иначе на телефоне страница лота шире экрана) */
+    .lotpage{grid-template-columns:minmax(0,1fr)}
     .buy{position:static}
   }
   @media (max-width:900px){
     .calc{grid-template-columns:1fr}
   }
   @media (max-width:760px){
-    .layout{grid-template-columns:1fr}
+    .layout{grid-template-columns:minmax(0,1fr)}
     .filters{position:fixed;top:0 !important;bottom:0;left:0;width:min(86vw,330px);max-height:none;z-index:70;overflow:auto;
       border-radius:0 10px 10px 0;border-top-width:1px;transform:translateX(-104%);transition:transform .26s cubic-bezier(.2,.7,.3,1)}
     .filters.open{transform:none}
