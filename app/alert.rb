@@ -18,7 +18,8 @@ RUN_URL = ENV['GITHUB_RUN_ID'] ? "https://github.com/#{ENV['GITHUB_REPOSITORY']}
 
 def tg(method, params)
   return nil if TOKEN.empty?
-  out = IO.popen(['curl', '-sS', '-m', '30', "https://api.telegram.org/bot#{TOKEN}/#{method}", '--data-urlencode', "json=#{JSON.generate(params)}"], err: File::NULL, &:read)
+  out = IO.popen(['curl', '-sS', '-m', '30', '-H', 'Content-Type: application/json', '-d', JSON.generate(params),
+                  "https://api.telegram.org/bot#{TOKEN}/#{method}"], err: File::NULL, &:read)
   JSON.parse(out.to_s) rescue nil
 end
 
