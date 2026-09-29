@@ -123,3 +123,11 @@ jobs:
         env:
           JOB_OK: ${{ job.status == 'success' }}
         run: ruby app/sync.rb
+
+      - name: Сигнал о сбое — в Telegram
+        if: failure()
+        continue-on-error: true
+        env:
+          ALERT_TG_TOKEN: ${{ secrets.ALERT_TG_TOKEN }}
+          ALERT_TG_CHAT: ${{ secrets.ALERT_TG_CHAT }}
+        run: ruby app/alert.rb --event "прогон робота упал (${{ needs.gate.outputs.collect == 'true' && 'обход площадок' || needs.gate.outputs.results == 'true' && 'проверка итогов' || 'сборка сайта' }})"

@@ -185,6 +185,25 @@
 <script src="../stats.js?v=__BUILD__"></script>
 <script>
 const SB = '__SB_URL__', KEY = '__SB_KEY__';
+/* ошибки у посетителей — в базу (rpc report_error), монитор пересылает новые в Telegram. Одна и та же — один раз за визит,
+   не больше 5 за визит; чужие скрипты (расширения браузера, «Script error.» без подробностей) и чужие картинки — не в счёт */
+(()=>{
+  const sent = new Set();
+  const send = (msg, src) => { try{
+    const m = String(msg || '').slice(0, 500), k = m.slice(0, 160);
+    if(!m || sent.has(k) || sent.size >= 5 || !SB || /^Script error\.?$/.test(m) || /extension:\/\//.test(src || '')) return;
+    sent.add(k);
+    fetch(SB + '/rest/v1/rpc/report_error', { method:'POST', keepalive:true,
+      headers:{ apikey:KEY, Authorization:'Bearer ' + KEY, 'Content-Type':'application/json' },
+      body:JSON.stringify({ p_msg:m, p_src:'админка ' + String(src || '').slice(0, 280), p_url:location.href.slice(0, 300), p_ua:navigator.userAgent.slice(0, 200) }) }).catch(()=>{});
+  }catch(e){} };
+  addEventListener('error', e => {
+    const t = e.target;
+    if(t && t !== window && t.tagName){ const u = t.src || t.href || ''; if(u.startsWith(location.origin)) send('Не загрузился файл: ' + u.replace(location.origin, ''), 'файл'); return; }
+    send(e.message, (e.filename || '').replace(location.origin, '') + ':' + (e.lineno || '') + ':' + (e.colno || ''));
+  }, true);
+  addEventListener('unhandledrejection', e => { const r = e.reason; send('Необработанная ошибка: ' + (r && (r.message || r)), r && r.stack ? String(r.stack).split('\n')[1] : ''); });
+})();
 const RAW = 'https://raw.githubusercontent.com/Ringo2122/bellot-site/main/data/';
 const GH_RUNS = 'https://github.com/Ringo2122/bellot-site/actions';
 const PLATS = ['e-auction.by','ipmtorgi.by','beltorgi.by','konfiskat.by','belauction.by'];

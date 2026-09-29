@@ -247,7 +247,7 @@ begin
     'leads_new', (select count(*) from leads where status = 'new'),
     'by_platform', (select json_object_agg(platform, n) from (select platform, count(*) n from lots where status = 'active' and published group by 1) x),
     'merged_by_platform', (select json_object_agg(platform, n) from (select platform, count(*) n from lots where status = 'active' and dup_of is not null group by 1) x),
-    'changed_at', (select max(t) from (select max(updated_at) t from overrides union all select max(updated_at) from settings where k not in ('publish_req', 'bot', 'hours', 'min_price', 'cab_stats')
+    'changed_at', (select max(t) from (select max(updated_at) t from overrides union all select max(updated_at) from settings where k not in ('publish_req', 'bot', 'hours', 'min_price', 'cab_stats', 'monitor', 'alert_chat')
                      union all select max(created_at) from dup_rules union all select max(updated_at) from lot_photos) x),
     'last_build', (select max(at) from runs),
     'github', exists (select 1 from vault.secrets where name = 'github_token')
@@ -612,3 +612,41 @@ begin
   delete from notifications where created_at < now() - interval '180 days';
   return n;
 end $$;
+
+-- ── мониторинг (29.09): сигналы в Telegram и ошибки у посетителей ──
+-- alerts — что сейчас не так (fp — отпечаток проблемы): отправлено ли, когда напомнить, когда исправилось. Пишет app/alert.rb
+create table if not exists alerts (
+  fp text primary key,
+  title text not null,
+  detail text,
+  open boolean not null default true,
+  first_at timestamptz not null default now(),
+  last_at timestamptz not null default now(),
+  sent_at timestamptz,
+  resolved_at timestamptz,
+  seen int not null default 1
+);
+-- client_errors — ошибки JavaScript у посетителей сайта и админки (report_error), монитор пересылает новые в Telegram
+create table if not exists client_errors (
+  id bigserial primary key,
+  at timestamptz not null default now(),
+  msg text, src text, url text, ua text
+);
+create index if not exists client_errors_at on client_errors (at);
+do $$ declare t text; begin
+  foreach t in array array['alerts','client_errors'] loop
+    execute format('alter table %I enable row level security', t);
+    execute format('drop policy if exists admin_all on %I', t);
+    execute format('create policy admin_all on %I for all to anon, authenticated using ((select is_admin())) with check ((select is_admin()))', t);
+  end loop;
+end $$;
+-- Посетитель пишет ошибку только через функцию: обрезка длины, не больше 300 записей в час на весь сайт, чистка старше 30 дней
+create or replace function report_error(p_msg text, p_src text default null, p_url text default null, p_ua text default null) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if coalesce(trim(p_msg), '') = '' then return; end if;
+  if (select count(*) from client_errors where at > now() - interval '1 hour') >= 300 then return; end if;
+  insert into client_errors (msg, src, url, ua) values (left(p_msg, 500), left(p_src, 300), left(p_url, 300), left(p_ua, 200));
+  delete from client_errors where at < now() - interval '30 days';
+end $$;
+grant execute on function report_error(text, text, text, text) to anon, authenticated;

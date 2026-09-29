@@ -1,0 +1,55 @@
+name: Мониторинг сайта
+
+# Каждые 30 минут: монитор сайта (tools/monitor.mjs — настоящий Chrome, компьютер и iPhone) и состояние робота
+# и Telegram-бота лотов → сигнал в личку Telegram отдельным ботом (app/alert.rb). Одна и та же проблема —
+# один раз, напоминание раз в 6 часов, «исправлено», когда пропала.
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monitor
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      TZ: Europe/Minsk
+      SB_URL: ${{ secrets.SB_URL }}
+      SB_KEY: ${{ secrets.SB_KEY }}
+      SB_TOKEN: ${{ secrets.SB_TOKEN }}
+      ALERT_TG_TOKEN: ${{ secrets.ALERT_TG_TOKEN }}
+      ALERT_TG_CHAT: ${{ secrets.ALERT_TG_CHAT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            app
+            tools
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Управление Chrome для проверки
+        run: npm install --no-save --no-audit --no-fund puppeteer-core@23 > /dev/null
+
+      - name: Проверить сайт
+        continue-on-error: true
+        run: |
+          mkdir -p tmp
+          CHROME=$(command -v google-chrome || command -v chromium-browser || command -v chromium) node tools/monitor.mjs > tmp/monitor.json
+          cat tmp/monitor.json
+
+      - name: Сигнал в Telegram
+        run: ruby app/alert.rb tmp/monitor.json

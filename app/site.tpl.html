@@ -784,6 +784,25 @@ const DATA = __DATA__;
 const SNAP = __SNAP__;
 const ARCHN = __ARCHN__;          // размер архива по разделам, сам архив — в arch.js
 const CFG = __CFG__;              // из админки: тексты, правила калькулятора, часы обновления, выключенные разделы
+/* ошибки у посетителей — в базу (rpc report_error), монитор пересылает новые в Telegram. Одна и та же — один раз за визит,
+   не больше 5 за визит; чужие скрипты (расширения браузера, «Script error.» без подробностей) и чужие картинки — не в счёт */
+(()=>{
+  const sent = new Set();
+  const send = (msg, src) => { try{
+    const m = String(msg || '').slice(0, 500), k = m.slice(0, 160);
+    if(!m || sent.has(k) || sent.size >= 5 || !(CFG.sb && CFG.sb.url) || /^Script error\.?$/.test(m) || /extension:\/\//.test(src || '')) return;
+    sent.add(k);
+    fetch((CFG.sb && CFG.sb.url) + '/rest/v1/rpc/report_error', { method:'POST', keepalive:true,
+      headers:{ apikey:CFG.sb.key, Authorization:'Bearer ' + CFG.sb.key, 'Content-Type':'application/json' },
+      body:JSON.stringify({ p_msg:m, p_src:'сайт ' + String(src || '').slice(0, 280), p_url:location.href.slice(0, 300), p_ua:navigator.userAgent.slice(0, 200) }) }).catch(()=>{});
+  }catch(e){} };
+  addEventListener('error', e => {
+    const t = e.target;
+    if(t && t !== window && t.tagName){ const u = t.src || t.href || ''; if(u.startsWith(location.origin)) send('Не загрузился файл: ' + u.replace(location.origin, ''), 'файл'); return; }
+    send(e.message, (e.filename || '').replace(location.origin, '') + ':' + (e.lineno || '') + ':' + (e.colno || ''));
+  }, true);
+  addEventListener('unhandledrejection', e => { const r = e.reason; send('Необработанная ошибка: ' + (r && (r.message || r)), r && r.stack ? String(r.stack).split('\n')[1] : ''); });
+})();
 const SECTIONS = [
   ['nedvizhimost','Недвижимость'],
   ['avto','Легковые авто'],
