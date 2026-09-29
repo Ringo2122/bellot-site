@@ -5,6 +5,8 @@
 #   collect — обойти площадки и пересобрать сайт: наступил час из настройки «hours» (по умолчанию 11 и 18)
 #             и после него обхода ещё не было, либо в админке нажали «Обновить с площадок»
 #   build   — только пересобрать сайт: в админке нажали «Опубликовать изменения»
+#   results — проверить итоги завершившихся торгов и пересобрать сайт: каждый час с 8 до 22 между обходами
+#             (без обхода площадок, 2–3 минуты) — итог появляется у нас в течение часа после публикации на площадке
 # Ручной запуск и правка кода — всегда сборка. Решение и номер запуска уходят в $GITHUB_OUTPUT,
 # а в базе появляется строка отчёта, которую потом дополнит sync.rb.
 require 'time'
@@ -14,6 +16,7 @@ ev = ENV['EVENT'].to_s
 now = Time.now
 collect = false
 build = false
+results = false
 trigger = ev
 
 def last_slot(hours, now)
@@ -47,7 +50,12 @@ if Sb.on?
         collect ||= req['collect'] == true
         trigger = 'admin' unless collect && lc < last_slot(hours, now)
       end
-      build = collect || asked
+      unless collect || asked
+        last_r = Sb.get('runs?kind=in.(collect,results)&select=at&order=at.desc&limit=1').first
+        lr = last_r ? Time.parse(last_r['at']) : Time.at(0)
+        results = now.hour.between?(8, 22) && now - lr > 55 * 60
+      end
+      build = collect || asked || results
     else
       collect = ev == 'workflow_dispatch' && ENV['INPUT_COLLECT'] == 'true'
       build = true
@@ -68,15 +76,16 @@ end
 run_id = ''
 if build && Sb.on?
   begin
-    run_id = Sb.insert('runs', { 'kind' => collect ? 'collect' : 'build', 'trigger' => trigger })['id'].to_s
+    run_id = Sb.insert('runs', { 'kind' => collect ? 'collect' : results ? 'results' : 'build', 'trigger' => trigger })['id'].to_s
   rescue StandardError => e
     warn "отчёт о запуске не записан: #{e.message}"
   end
 end
 
-puts "событие #{ev}: обход #{collect ? 'да' : 'нет'}, сборка #{build ? 'да' : 'нет'}#{run_id.empty? ? '' : ", запуск №#{run_id}"}"
+puts "событие #{ev}: обход #{collect ? 'да' : 'нет'}, итоги #{results ? 'да' : 'нет'}, сборка #{build ? 'да' : 'нет'}#{run_id.empty? ? '' : ", запуск №#{run_id}"}"
 File.open(ENV['GITHUB_OUTPUT'] || '/dev/stdout', 'a') do |f|
   f.puts "collect=#{collect}"
+  f.puts "results=#{results && !collect}"
   f.puts "build=#{build}"
   f.puts "run_id=#{run_id}"
 end

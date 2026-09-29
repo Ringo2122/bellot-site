@@ -3,6 +3,7 @@ name: Обновление сайта
 # Раз в 10 минут робот заглядывает в админку (gate.rb) и решает, что делать:
 #   • наступил час обхода (по умолчанию 11:00 и 18:00 по Минску, меняется в админке) — обойти площадки и собрать сайт;
 #   • в админке нажали «Опубликовать» или «Обновить с площадок» — собрать сайт (и обойти площадки);
+#   • каждый час с 8 до 22 между обходами — проверить итоги завершившихся торгов и собрать сайт (2–3 минуты);
 #   • иначе — ничего, проверка занимает полминуты.
 on:
   schedule:
@@ -28,6 +29,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       collect: ${{ steps.g.outputs.collect }}
+      results: ${{ steps.g.outputs.results }}
       build: ${{ steps.g.outputs.build }}
       run_id: ${{ steps.g.outputs.run_id }}
     steps:
@@ -64,6 +66,7 @@ jobs:
     env:
       TZ: Europe/Minsk
       COLLECT: ${{ needs.gate.outputs.collect }}
+      RESULTS: ${{ needs.gate.outputs.results }}
       RUN_ID: ${{ needs.gate.outputs.run_id }}
       SB_URL: ${{ secrets.SB_URL }}
       SB_KEY: ${{ secrets.SB_KEY }}
@@ -79,10 +82,12 @@ jobs:
         run: command -v convert || (sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick)
 
       - name: Обход площадок
-        if: env.COLLECT == 'true'
+        if: env.COLLECT == 'true' || env.RESULTS == 'true'
         shell: bash
         run: |
           mkdir -p tmp
+          # проверка итогов — тот же робот без обхода площадок
+          if [ "$COLLECT" != 'true' ]; then export RESULTS_ONLY=1; fi
           ruby app/update.rb 2>&1 | tee tmp/update.log
           exit ${PIPESTATUS[0]}
 
@@ -92,7 +97,7 @@ jobs:
         run: ruby app/market.rb && ruby app/market_realty.rb
 
       - name: Сохранить память
-        if: env.COLLECT == 'true'
+        if: env.COLLECT == 'true' || env.RESULTS == 'true'
         run: |
           git config user.name "bellot-bot"
           git config user.email "bellot-bot@users.noreply.github.com"

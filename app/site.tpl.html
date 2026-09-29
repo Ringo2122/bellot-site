@@ -975,7 +975,8 @@ function resShort(l){
 function resultBlock(l){
   const r = resOf(l), at = (r && r.at) || l.torg || l.req_to + 86400;
   if(!r) return `<aside class="panel rres"><div class="lbl">Итоги торгов</div><div class="rst">Итоги ещё не опубликованы</div>
-    <p class="note">Торги ${at*1000 > Date.now() ? 'пройдут ' + dtm(at) : 'прошли ' + dt(at)}. Мы проверяем площадку несколько раз в день — итог появится здесь${UB ? ' и придёт уведомлением тем, кто следит за лотом' : ''}.</p></aside>`;
+    <p class="note">Торги ${at*1000 > Date.now() ? 'пройдут ' + dtm(at) : 'прошли ' + dt(at)}. Площадку проверяем каждый час${l.result && l.result.checked ? `, последняя проверка — ${dtm(l.result.checked)}` : ''}: итог появится здесь${UB ? ' и придёт уведомлением тем, кто следит за лотом' : ''}.
+      <a href="${esc(l.url)}" target="_blank" rel="noopener">Посмотреть на площадке ↗</a></p></aside>`;
   const [t, c] = RES[r.st], p = prem(r);
   return `<aside class="panel rres ${c}"><div class="lbl">Итоги торгов</div><div class="rst">${t}</div>
     <dl class="facts">
@@ -1592,6 +1593,9 @@ function pageLot(id){
   bindLotUser(l);
   loadDet(l).then(det=>{
     if(CUR!=='/lot/'+encodeURIComponent(id)) return;
+    // лота нет в пачке подробностей — страница устарела (сайт пересобрали, браузер держит старую): перезагружаемся один раз
+    try{ if(!DET[l.id]){ if(!sessionStorage.getItem('det-reload')){ sessionStorage.setItem('det-reload', '1'); location.reload(); return; } }
+         else sessionStorage.removeItem('det-reload'); }catch(e){}
     if(!arch) calcBlock(l, det);
     // все фото карточки площадки
     if(det.p && det.p.length){ const pics = det.p.slice(); $('.gal').innerHTML = galleryBlock(l, pics); bindGallery(l, pics); }

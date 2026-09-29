@@ -4,7 +4,7 @@
 # Сборка сайта из памяти (data/) в _site/:
 #   index.html  шаблон + короткие записи активных лотов
 #   arch.js     архив — грузится, только когда посетитель его открыл
-#   det/pN.js   подробности и условия покупки (для калькулятора) пачками по 40 — грузятся на странице лота;
+#   det/pN.js   подробности и условия покупки (для калькулятора) — 200 пачек, у лота пачка постоянная; грузятся на странице лота;
 #               там же похожие завершённые торги, история объекта и точка на карте (similar.rb, geo.rb)
 #   srch.js     поиск по описанию: VIN, кадастровый и инвентарный номера, адрес, должник — грузится при поиске
 #   ph/<id>.jpg фото, по файлу на лот — браузер грузит только те, что на экране
@@ -23,6 +23,7 @@ require 'base64'
 require 'fileutils'
 require 'digest'
 require 'uri'
+require 'zlib'
 require_relative 'store'
 require_relative 'regions'
 require_relative 'sb'
@@ -30,7 +31,9 @@ require_relative 'similar'
 
 OUT  = ENV['OUT'] || File.join(Store::ROOT, '_site')
 TMP  = File.join(Store::ROOT, 'tmp')
-PACK = 40
+# Пачки подробностей: номер пачки лота постоянный — crc32(id) % PACKS. Раньше пачки шли по порядку лотов и сдвигались
+# при каждой сборке: браузер с закэшированной страницей (до 10 минут) искал лот не в той пачке — «подробных сведений нет»
+PACKS = 200
 KEEP = %w[id art name price req_to torg url location region debtor area_num platform section
           photo pk market prices status closed why first_seen alt pin result].freeze
 SECS = %w[nedvizhimost avto gruz spec oborud].freeze
@@ -253,14 +256,14 @@ shown = (active + arch).map { |l| [l['key'], l['id']] }.to_h
 sim = Similar.run(lots, shown, ADM['sales'], ->(k) { Store.details(k) })
 puts "похожие торги: у #{sim.count { |_, v| v['c'] }} лотов, история объекта: у #{sim.count { |_, v| v['h'] }}"
 
-# подробности — пачками: активные по разделам в порядке показа, затем архив от свежих к старым.
+# подробности — пачками с постоянным номером (PACKS): порядок лотов на номер пачки не влияет.
 # Фото — каждое отдельным файлом ph/<id>.jpg: странице лота нужно одно фото, а не пачка из 40 (0,6–0,9 МБ)
 order = active.group_by { |l| l['section'] }.values.flatten + arch
 packs = 0
-order.each_slice(PACK) do |chunk|
+order.group_by { |l| Zlib.crc32(l['id']) % PACKS }.each do |pk, chunk|
   det = {}
   chunk.each do |l|
-    l['pk'] = packs
+    l['pk'] = pk
     secs = Store.details(l['key'])
     if (d = descr[l['key']])
       row = secs.flat_map { |s| s['rows'] }.find { |k, _| k.to_s =~ /\AОписание/i }
@@ -280,7 +283,7 @@ order.each_slice(PACK) do |chunk|
     det[l['id']] = x
     FileUtils.cp(ph_src[l['key']] || Store.ph_path(l['key']), File.join(OUT, 'ph', "#{l['id']}.jpg")) if l['photo']
   end
-  File.write(File.join(OUT, 'det', "p#{packs}.js"), "__det(#{packs},#{JSON.generate(det)});")
+  File.write(File.join(OUT, 'det', "p#{pk}.js"), "__det(#{pk},#{JSON.generate(det)});")
   packs += 1
 end
 

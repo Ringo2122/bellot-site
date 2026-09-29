@@ -88,13 +88,18 @@ module Res
     shown = t[/количество участников\s*(\d+)/, 1].to_i
     price = blk[/Цена продажи:\s*([\d\s.,]+?)\s*BYN/, 1]
     users = shown.positive? ? shown : rows.map { |r| r[1] }.uniq.size
+    at = Src.ts(blk[/(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})/, 1])
+    # ИПМ не пишет итог, если заявок не было: в «Результатах торгов» только дата и цены. Неделя после торгов
+    # без цены продажи, победителя и ставок — торги не состоялись
+    silent = !price && rows.empty? && blk !~ /Победитель/ && at && at < Time.now.to_i - 7 * 86_400
     st = if price then users == 1 ? 'single' : 'sold'
-         elsif blk =~ /Победитель:\s*Не выявлен/ then 'failed'
+         elsif blk =~ /Победитель:\s*Не выявлен/ || silent then 'failed'
          else 'pending'
          end
-    r = { 'v' => V, 'st' => st, 'start' => Src.num(blk[/Начальная цена:\s*([\d\s.,]+?)\s*BYN/, 1]), 'at' => Src.ts(blk[/(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})/, 1]),
+    r = { 'v' => V, 'st' => st, 'start' => Src.num(blk[/Начальная цена:\s*([\d\s.,]+?)\s*BYN/, 1]), 'at' => at,
           'bids' => [rows.size, rows.map { |r| r[0].to_i }.max.to_i].max, 'users' => users }
     r['price'] = Src.num(price) if price
+    r['note'] = 'ставок не было; итог площадка не опубликовала' if silent
     r
   end
 
@@ -104,7 +109,7 @@ module Res
     seg = t[/Допущено участников.{0,1800}/].to_s
     st = if seg =~ /Торги состоялись/ then 'sold'
          elsif seg =~ /приобретен единственным участником/i then 'single'
-         elsif seg =~ /Торги не состоялись/ then 'failed'
+         elsif seg =~ /Торги не состоялись|не подтвердил приобретение/i then 'failed'   # «Ед. участник не подтвердил приобретение»
          elsif seg =~ /Торги отменены|снят с торгов|Торги приостановлены/i then 'cancelled'
          elsif seg =~ /Прием заявок на участие/ then return nil   # перевыставлен — это уже новые торги
          else 'pending'
@@ -120,6 +125,7 @@ module Res
     at = Src.ts(seg[/Окончание торгов\s*(\d{2}\.\d{2}\.\d{4})/, 1].to_s + ' ' + seg[/Окончание торгов\s*\d{2}\.\d{2}\.\d{4}\S*\s*(\d{1,2}:\d{2})/, 1].to_s)
     r['at'] = at if at
     r['note'] = 'ожидаются повторные торги' if seg =~ /ожидаются повторные торги/
+    r['note'] = 'единственный участник не подтвердил покупку' if seg =~ /не подтвердил приобретение/i
     r
   end
 

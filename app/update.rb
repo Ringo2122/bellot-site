@@ -41,8 +41,13 @@ MINP = MIN_PRICE.merge((CFG['min_price'] || {}).map { |k, v| [k, v.to_f] }.to_h)
 TERMS_CAP = (ENV['TERMS_CAP'] || 800).to_i
 # e-auction: дата онлайн-торгов есть только в служебном запросе площадки — у известных лотов добираем постепенно
 EA_TORG_CAP = (ENV['EA_TORG_CAP'] || 700).to_i
-# Итоги торгов: после даты торгов заглядываем на площадку, пока итоги не опубликуют — до 12 раз за 3 недели
+# Итоги торгов: после даты торгов заглядываем на площадку, пока итоги не опубликуют (расписание — у прохода «итоги торгов»)
 RES_CAP = (ENV['RES_CAP'] || 300).to_i
+# RESULTS_ONLY=1 — прогон «проверка итогов» (каждый час между обходами, gate.rb): площадки не обходим,
+# архив площадок, карту и фото не трогаем — только сроки и итоги завершившихся торгов
+RESULTS_ONLY = !ENV['RESULTS_ONLY'].to_s.empty?
+# разовая перепроверка «зависших» итогов старше 3 недель после смены правил (29.09: ИПМ без итога и без ставок)
+SWEEP = 1
 
 SEC_RU = { 'nedvizhimost' => 'Недвижимость', 'avto' => 'Легковые авто', 'gruz' => 'Грузовые и автобусы',
            'spec' => 'Спецтехника', 'oborud' => 'Оборудование' }.freeze
@@ -148,7 +153,7 @@ terms_left = TERMS_CAP
 ea_torg_left = EA_TORG_CAP
 stat['удалено: площадка исключена'] = dropped if dropped.positive?
 
-PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }.map do |plat, secs|
+(RESULTS_ONLY ? {} : PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }).map do |plat, secs|
   Thread.new do
     todo = Queue.new
     secs.each do |path, sec|
@@ -319,12 +324,17 @@ rescue StandardError => e
   [nil, {}]
 end
 
+# Первые двое суток после торгов — каждый час (прогоны «проверка итогов»), до недели — раз в 6 часов, до 3 недель — раз в сутки.
+# Площадки публикуют итог обычно в день торгов — раньше мы смотрели только в часы обхода, итог появлялся у нас с опозданием на часы.
 due = db.values.select do |l|
   next false unless l['status'] == 'archive' && l['why'] == 'deadline'
   r = l['result'] || {}
-  next false if (Res::FINAL.include?(r['st']) && r['v'].to_i >= Res::V) || r['tries'].to_i >= 12   # итоги старой версии разбора — перепроверить
-  t = l['torg'] || l['req_to'].to_i + 86_400
-  t < now - 1800 && t > now - 21 * 86_400
+  next false if Res::FINAL.include?(r['st']) && r['v'].to_i >= 2
+  age = now - (l['torg'] || l['req_to'].to_i + 86_400)
+  next false if age < 1800
+  next r['sweep'].to_i < SWEEP if age > 21 * 86_400
+  gap = age < 2 * 86_400 ? 50 * 60 : age < 7 * 86_400 ? 6 * 3600 : 20 * 3600
+  now - r['checked'].to_i >= gap
 end.sort_by { |l| -(l['torg'] || l['req_to']).to_i }.first(RES_CAP)
 STDERR.puts "итоги торгов: проверяю #{due.size}" unless due.empty?
 due.group_by { |l| l['platform'] }.map do |plat, ls|
@@ -334,7 +344,7 @@ due.group_by { |l| l['platform'] }.map do |plat, ls|
       mx.synchronize do
         l.merge!(extra)
         tries = (l['result'] || {})['tries'].to_i + 1
-        l['result'] = (r || l['result'] || { 'st' => 'pending' }).merge('checked' => now, 'tries' => tries)
+        l['result'] = (r || l['result'] || { 'st' => 'pending' }).merge('checked' => now, 'tries' => tries, 'sweep' => SWEEP)
         if Res::FINAL.include?(l['result']['st'])
           stat["итоги: #{{ 'sold' => 'продан', 'single' => 'продан единственному', 'failed' => 'не состоялись', 'cancelled' => 'отменены' }[l['result']['st']]}"] += 1
           pstat[plat]['results'] += 1
@@ -347,16 +357,18 @@ end.each(&:join)
 
 # ── архив площадок: завершённые за месяц торги, которых у нас нет (после итогов — у лотов konfiskat уже есть ссылка на торги) ──
 # карта активных лотов — параллельно (другой сервис, свой темп: запрос в секунду)
-geo_t = Thread.new do
-  Geo.run(db, stat, Time.now + BACK_MIN * 60)
-rescue StandardError => e
-  STDERR.puts "карта: ошибка #{e.message}"
-end
-backfill(db, stat, pstat, now)
-geo_t.join
+unless RESULTS_ONLY
+  geo_t = Thread.new do
+    Geo.run(db, stat, Time.now + BACK_MIN * 60)
+  rescue StandardError => e
+    STDERR.puts "карта: ошибка #{e.message}"
+  end
+  backfill(db, stat, pstat, now)
+  geo_t.join
 
-# ── все фото карточки у лотов, собранных раньше (у новых — сразу) ──
-fill_pics(db, stat)
+  # ── все фото карточки у лотов, собранных раньше (у новых — сразу) ──
+  fill_pics(db, stat)
+end
 
 cut = now - RETAIN_DAYS * 86_400
 db.delete_if do |k, l|

@@ -279,7 +279,7 @@ function drawPubbar(){
   const changed = STATS.changed_at && (!STATS.last_build || new Date(STATS.changed_at) > new Date(STATS.last_build));
   if(running){
     b.className = 'run';
-    b.innerHTML = `<div class="t">⏳ Робот работает с ${dt(LASTRUN.at)}: ${LASTRUN.kind==='collect'?'обходит площадки и собирает сайт (10–25 минут)':'собирает сайт (2–4 минуты)'}.
+    b.innerHTML = `<div class="t">⏳ Робот работает с ${dt(LASTRUN.at)}: ${LASTRUN.kind==='collect'?'обходит площадки и собирает сайт (10–25 минут)':LASTRUN.kind==='results'?'проверяет итоги торгов и собирает сайт (2–4 минуты)':'собирает сайт (2–4 минуты)'}.
       ${changed && new Date(STATS.changed_at) > new Date(LASTRUN.at) ? 'Правки, сделанные после начала, попадут в следующую публикацию.' : ''}</div>
       <a class="btn sm" href="${GH_RUNS}" target="_blank" rel="noopener">Ход работы ↗</a>`;
   } else if(waiting){
@@ -421,7 +421,7 @@ async function pDash(){
       ${runs.map(r=>{ const u = (r.stats||{}).update, b = (r.stats||{}).build;
         const res = !r.finished_at ? ((Date.now()-new Date(r.at))<90*60000?'<span class="muted">идёт…</span>':'<span class="badc">не завершился</span>')
           : r.ok ? `<span class="okc">✓</span> ${Math.round((new Date(r.finished_at)-new Date(r.at))/60000)} мин` : '<span class="badc">✗ ошибка</span>';
-        return `<tr class="click" data-run="${r.id}"><td>${dt(r.at)}</td><td>${r.kind==='collect'?'обход и сборка':'сборка'}</td><td>${esc(TRIG[r.trigger]||r.trigger||'')}</td>
+        return `<tr class="click" data-run="${r.id}"><td>${dt(r.at)}</td><td>${r.kind==='collect'?'обход и сборка':r.kind==='results'?'итоги торгов':'сборка'}</td><td>${esc(TRIG[r.trigger]||r.trigger||'')}</td>
           <td>${res}</td><td>${u?nf(sum(u.platforms,'new')):'—'}</td><td>${u?nf(sum(u.platforms,'archived')):'—'}</td><td>${b?nf(b.published):'—'}</td><td>${b?nf(b.queue):'—'}</td></tr>
           <tr hidden id="run-${r.id}"><td colspan="8">${runDetails(r)}</td></tr>`; }).join('')}</table></div>
       <p class="muted">Нажмите на строку — подробности по площадкам и журнал.</p></div>
