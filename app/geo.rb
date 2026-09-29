@@ -47,11 +47,14 @@ module Geo
 
   def ask(q)
     u = 'https://nominatim.openstreetmap.org/search?' +
-        URI.encode_www_form(format: 'jsonv2', limit: 1, countrycodes: 'by', 'accept-language' => 'ru', q: q)
+        URI.encode_www_form(format: 'jsonv2', limit: 1, addressdetails: 1, countrycodes: 'by', 'accept-language' => 'ru', q: q)
     out = IO.popen(['curl', '-sS', '-m', '20', '-A', UA, u], err: File::NULL, &:read)
     r = JSON.parse(out.to_s.force_encoding('UTF-8')).first
     return 0 unless r   # 0 — сервис ответил «не нашёл»: запоминаем, чтобы не спрашивать снова
-    prec = %w[building house].include?(r['addresstype']) || r['category'] == 'building' ? 'a' : r['addresstype'] == 'road' ? 's' : 'p'
+    # дом часто находится как организация в нём («Типография, ул. Урицкого, 19В») — это тоже точный адрес, если номер дома тот же
+    num = q[/[\s,](\d+)[а-яa-z]?(?:\/\d+)?\z/i, 1]
+    same = num && r.dig('address', 'house_number').to_s[/\A\d+/] == num
+    prec = %w[building house].include?(r['addresstype']) || r['category'] == 'building' || same ? 'a' : r['addresstype'] == 'road' ? 's' : 'p'
     [r['lat'].to_f.round(5), r['lon'].to_f.round(5), prec]
   rescue JSON::ParserError
     nil   # сбой — не запоминаем
@@ -60,6 +63,13 @@ module Geo
   # активные лоты без координат; stop — когда остановиться (общий бюджет прогона)
   def run(db, stat, stop)
     cache = File.exist?(CACHE) ? (JSON.parse(File.read(CACHE, encoding: 'UTF-8')) rescue {}) : {}
+    # 29.09: дом, найденный как организация, считался «по населённому пункту» (круг вместо точки) — переспросить один раз
+    fix = File.join(Store::DATA, 'geo_fix')
+    unless File.exist?(fix)
+      cache.reject! { |q, v| v != 0 && v[2] == 'p' && q =~ /[\s,]\d+[а-яa-z]?(?:\/\d+)?\z/i }
+      db.each_value { |l| l.delete('geo') if l['status'] == 'active' && l['geo'] && l['geo'][2] == 'p' }
+      File.write(fix, '1')
+    end
     asked = 0
     todo = db.values.select { |l| l['status'] == 'active' && !l.key?('geo') && l['geo_try'].to_i < 2 }
     todo.each do |l|
