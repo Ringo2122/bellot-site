@@ -238,13 +238,18 @@ end
               upd['rent'] = c['d']['rent'] if c['d']['rent']
               upd['torg'] = c['torg'] if c['torg']
             end
-            # фото не скачалось — пробуем ещё, не больше трёх прогонов подряд (у части лотов фото нет вовсе);
-            # у minskestate фото — ссылкой, у МГЦН фото нет
-            if !old['photo'] && old['ph_try'].to_i < 3 && !File.exist?(Store.ph_path(c['key'])) && !%w[minskestate.by mgcn.by].include?(c['platform'])
+            # фото не скачалось — пробуем ещё: три прогона подряд, потом раз в сутки, пока лот активен
+            # (30.09: у bt-149041 организатор выложил 12 фото через несколько дней после публикации, а робот
+            # после трёх попыток больше не смотрел — лот висел на проверке «нет фото»); галерею — заново тогда же.
+            # У minskestate фото — ссылкой, у МГЦН фото нет
+            if !old['photo'] && (old['ph_try'].to_i < 3 || now - old['ph_at'].to_i > 86_400) &&
+               !File.exist?(Store.ph_path(c['key'])) && !%w[minskestate.by mgcn.by].include?(c['platform'])
               d3 = fetch_detail(c)
-              ok = Store.save_photo([d3 && d3['photo_url'], c['thumb']], c['key'], Src::UA)
+              ok = Store.save_photo([d3 && (d3['photo_url'] || (d3['photos'] || [])[0]), c['thumb']], c['key'], Src::UA)
               upd['photo'] = ok
               upd['ph_try'] = old['ph_try'].to_i + 1 unless ok
+              upd['ph_at'] = now
+              upd['pics'] = d3['photos'] if d3 && (d3['photos'] || []).any?
               mx.synchronize { stat[ok ? 'фото докачано' : 'фото не нашлось'] += 1 }
             end
             # konfiskat: извещение не разобралось (нет города и точного срока) — перечитываем, до трёх раз
