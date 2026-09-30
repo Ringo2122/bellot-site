@@ -8,7 +8,7 @@
 
 PICS_CAP = (ENV['PICS_CAP'] || 1500).to_i
 PICS_MIN = (ENV['PICS_MIN'] || 15).to_f
-PICS_PAUSE = { 'konfiskat.by' => 1.5, 'belauction.by' => 2 }.freeze
+PICS_PAUSE = { 'konfiskat.by' => 1.5, 'belauction.by' => 2, 'auction24.by' => 1 }.freeze
 
 def fill_pics(db, stat)
   stop = Time.now + PICS_MIN * 60

@@ -3,7 +3,7 @@
 Сайт: https://ringo2122.github.io/bellot-site/
 Админка: https://ringo2122.github.io/bellot-site/admin/
 
-Каталог торгов по имуществу должников с семи площадок: e-auction.by (БелЮрОбеспечение),
+Каталог торгов по имуществу должников с восьми площадок: auction24.by (Госторги), e-auction.by (БелЮрОбеспечение),
 ipmtorgi.by (ИПМ-Торги), beltorgi.by (Белреализация), konfiskat.by (ТД «Восточный», торги — на torgikonfiskat.by),
 belauction.by (БелАукцион; по robots.txt — только первые страницы списков), minskestate.by (электронные торги МГЦН),
 mgcn.by (очные аукционы МГЦН: строка таблицы в посте — карточка, итогов онлайн нет; `app/mgcn.rb`).

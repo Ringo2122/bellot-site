@@ -22,6 +22,7 @@
 #   konfiskat.by  торги идут на torgikonfiskat.by — ссылка на них есть на странице лота konfiskat.by
 #   belauction.by страница лота после закрытия: «Аукцион закрыт по цене», таблица ставок с победителем
 #   minskestate.by статус на странице лота («Продано», «Торги не состоялись») и «Хронология торгов»
+#   auction24.by  «Статус» на странице лота и вкладка «Ход торгов»
 #   mgcn.by       очные аукционы — итоги онлайн не публикуются, не проверяем
 require 'json'
 require_relative 'sources'
@@ -159,6 +160,28 @@ module Res
     r['first'] = bids.map(&:last).min if bids.any?
     r['price'] = price if won
     r
+  end
+
+  # ── auction24.by ──
+  # «Статус»: продано / не состоялись / отменены; «Количество участников, допущенных к торгам»; вкладка «Ход торгов» (#hod) —
+  # строки «время — событие — цена»: «Участник №3858 изъявил желание приобрести лот за …», ставки; последняя — цена продажи
+  def a24_result(html)
+    f = html.to_s.scan(%r{<tr><td>(.*?)</td><td>(.*?)</td>}m).map { |k, v| [Src.txt(k), Src.txt(v)] }.to_h
+    st = f['Статус'].to_s
+    return { 'st' => 'pending' } unless st =~ /продан|не состоял|отмен/i
+    hod = html.to_s[%r{id="hod" role="tabpanel"[^>]*>(.*?)(?:<div class="tab-pane|\z)}m, 1].to_s
+    rows = hod.scan(%r{<tr[^>]*>(.*?)</tr>}m).map { |(r)| r.scan(%r{<td[^>]*>(.*?)</td>}m).flatten.map { |c| Src.txt(c) } }.select { |r| r.size >= 3 }
+    bids = rows.select { |r| r[1] =~ /Участник №\s*\d+/ }
+    users = [f['Количество участников, допущенных к торгам'].to_i, bids.map { |r| r[1][/Участник №\s*(\d+)/, 1] }.uniq.size].max
+    r = { 'v' => V, 'start' => Src.num(f['Начальная цена'].to_s[/[\d\s.]+/]), 'bids' => bids.size, 'users' => users,
+          'at' => Src.ts(f['Дата и время завершения торгов']) }
+    if st =~ /продан/i
+      r['st'] = users == 1 ? 'single' : 'sold'
+      r['price'] = bids.empty? ? r['start'] : Src.num(bids.last[2][/[\d\s.]+/])
+    else
+      r['st'] = st =~ /отмен/i ? 'cancelled' : 'failed'
+    end
+    r.reject { |_, v| v.nil? || v == 0 }
   end
 
   # ── minskestate.by ──

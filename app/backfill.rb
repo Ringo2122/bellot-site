@@ -8,6 +8,7 @@
 #   konfiskat.by  каталог торгов torgikonfiskat.by («Завершены» и «Архив»)
 #   belauction.by первые страницы «Проданные лоты» (≈ месяц) и «Завершённые аукционы» (≈ 10 дней) — дальше robots.txt не пускает
 #   minskestate.by список раздела — в нём и завершённые торги со статусом («Продано», «Торги не состоялись»)
+#   auction24.by  список аукционов /auction (от поздних к ранним) → страницы аукционов за месяц → завершённые лоты
 # mgcn.by (очные аукционы МГЦН) — итогов онлайн нет, архив площадки не собираем
 # Правила те же, что для новых лотов: разделы площадок, минимальная цена по разделу, выключенные площадки.
 # За прогон — не больше BACK_CAP лотов с площадки и не дольше BACK_MIN минут: первый месяц загрузится
@@ -157,6 +158,21 @@ def backfill(db, stat, pstat, now)
         next drop.(c['key'], 'min') unless back_min_ok?(sec, r['start'] || c['price'])
         d = Src.me_detail(html)
         add.(back_rec(c, sec, d, r, 'minskestate.by архив', now), d, [])   # фото — ссылками: robots.txt площадки закрывает их для роботов
+        left -= 1
+      end
+    end,
+    'auction24.by' => lambda do |left|
+      # аукционы за месяц по списку /auction, их завершённые лоты; раздел — по названию (a24_sec)
+      Src.a24_done(since).each do |c|
+        break if left.zero? || Time.now > stop
+        next if known.(c['key']) || skipped.(c['key'])
+        sleep 1
+        html = Src.get(c['url']) or next
+        r = Res.a24_result(html)
+        next if r['st'] == 'pending'
+        next drop.(c['key'], 'min') unless back_min_ok?(c['sec'], r['start'] || c['price'])
+        d = Src.a24_detail(html)
+        add.(back_rec(c, c['sec'], d, r, 'auction24.by архив', now), d, [d['photo_url'], c['thumb']])
         left -= 1
       end
     end,

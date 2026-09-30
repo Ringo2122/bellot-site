@@ -27,7 +27,7 @@ require 'fileutils'
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
 WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfiskat.by' => 1, 'belauction.by' => 1,
-            'minskestate.by' => 1, 'mgcn.by' => 1 }.freeze   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
+            'minskestate.by' => 1, 'mgcn.by' => 1, 'auction24.by' => 1 }.freeze   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
 MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
 # Настройки из админки: выключенные площадки не обходим, минимальная цена по разделам — своя.
 # База недоступна — работаем по умолчаниям.
@@ -72,7 +72,9 @@ PLAN = {
   # minskestate.by: все разделы — одной страницей каждый, раздел сайта — по разделу площадки (me_list)
   'minskestate.by' => [['commerce', nil]],
   # mgcn.by: очные аукционы МГЦН; земельные участки — в аренду или в собственность по тексту поста (mgcn.rb)
-  'mgcn.by' => [['rent', 'arenda'], ['place', nil], ['sale', 'nedvizhimost']]
+  'mgcn.by' => [['rent', 'arenda'], ['place', nil], ['sale', 'nedvizhimost']],
+  # auction24.by: каталог «приём заявок» по разделам площадки, раздел сайта — по разделу и названию (a24_sec)
+  'auction24.by' => [['catalog', nil]]
 }.freeze
 # Площадки, которые больше не собираем: их лоты удаляются из памяти вместе с подробностями и фото.
 # cpo.by (ЦПО) — рекламная витрина торгов ИПМ-Торгов, те же лоты (решение Артёма 25.09.2026)
@@ -100,6 +102,7 @@ def list(plat, path)
   when 'belauction.by' then Src.ba_list(:active)
   when 'minskestate.by' then Src.me_list
   when 'mgcn.by' then Mg.list(path)   # nil — список не прочитан, [] — предстоящих аукционов нет
+  when 'auction24.by' then Src.a24_list
   else Src.bt_list(path)
   end
 end
@@ -113,9 +116,10 @@ def fetch_detail(c)
       when 'konfiskat.by' then Src.kf_detail(html, c)
       when 'belauction.by' then Src.ba_detail(html)
       when 'minskestate.by' then Src.me_detail(html)
+      when 'auction24.by' then Src.a24_detail(html)
       else Src.bt_detail(html)
       end
-  sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2, 'minskestate.by' => 1 }[c['platform']] || 0.4)
+  sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2, 'minskestate.by' => 1, 'auction24.by' => 1 }[c['platform']] || 0.4)
   d
 end
 
@@ -382,6 +386,9 @@ def fetch_result(l)
   when 'minskestate.by'
     sleep 1
     (html = Src.get(l['url'])) ? [Res.me_result(html), {}] : [nil, {}]
+  when 'auction24.by'
+    sleep 1
+    (html = Src.get(l['url'])) ? [Res.a24_result(html), {}] : [nil, {}]
   else [nil, {}]
   end
 rescue StandardError => e

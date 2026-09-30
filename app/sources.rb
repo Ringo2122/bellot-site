@@ -1,6 +1,7 @@
 # encoding: utf-8
 #
-# Разбор площадок: e-auction.by, ipmtorgi.by, beltorgi.by, konfiskat.by (торги — на torgikonfiskat.by), belauction.by.
+# Разбор площадок: e-auction.by, ipmtorgi.by, beltorgi.by, konfiskat.by (торги — на torgikonfiskat.by), belauction.by,
+# auction24.by, minskestate.by (очные аукционы МГЦН — mgcn.rb).
 # Для каждой — список активных карточек раздела, разбор страницы лота и список завершённых торгов (архив).
 # cpo.by (ЦПО) с 25.09.2026 не собираем: это рекламная витрина торгов ИПМ.
 # Карточка списка: key, platform, art, name, price, req_to, url, thumb (+ служебные поля).
@@ -114,6 +115,8 @@ module Src
              h.scan(%r{(?:src|href|data-src)="(/upload/avto/[^"]+\.(?:jpe?g|png))"}i).flatten.map { |u| (base || KF) + u }
            when 'belauction.by'
              h.scan(%r{href=["']?(https://belauction\.by/wp-content/uploads/[^\s"'>]+?\.(?:jpe?g|png|webp))["']?\s+data-fancybox=["']?images}i).flatten
+           when 'auction24.by'
+             h.scan(%r{class="gallery-link" href="(/file/[^"]+)"}).flatten.map { |u| A24 + u }
            else []
            end
     list.uniq   # все фото карточки, без ограничения
@@ -604,6 +607,99 @@ module Src
       'tk' => tk && tk.sub('http://', 'https://'),
       'terms' => { 'deposit' => card['price'].to_f * (n['deposit_pct'] || 10) / 100, 'fee_later' => true,
                    'pay_term' => n['pay'], 'v' => 2 }.reject { |_, v| v.nil? || v == 0.0 } }
+  end
+
+  # ---------------- auction24.by (ЭТП ООО «Госторги») ----------------
+  # Имущество райпо и потребкооперации по всем областям: магазины, кафе, торговые объекты, оборудование; есть торги
+  # на право аренды (торгуются за ежемесячную арендную плату) и торги на понижение. robots.txt закрывает только кабинет.
+  # Каталог по статусу: /catalog/<раздел>/accept — приём заявок; страницы ?page=0,1… (с нуля), до 100 лотов (&limit=100).
+  # Архив — по списку аукционов /auction (от поздних к ранним): страница аукциона — лоты со статусом.
+  A24 = 'https://auction24.by'
+  # раздел площадки → наш; 3 «Транспорт и запчасти» — легковой или грузовой по названию; 8 «Дебиторская задолженность» не берём
+  A24_SEC = { 2 => 'nedvizhimost', 3 => 'auto', 10 => 'spec', 7 => 'oborud', 9 => 'oborud' }.freeze
+
+  # раздел по названию: право аренды → «Право аренды»; транспорт — легковой или грузовой; для архива (раздела нет) — недвижимость по признакам
+  def a24_sec(name, cat_sec = nil)
+    n = name.to_s.downcase
+    return 'arenda' if n =~ /права на заключение договора аренды|право аренды/
+    sec = cat_sec || (n =~ /капитальн|строени|здани|помещени|магазин|кафе|склад|незаверш|квартир|жилой дом|земельн|гараж/ ? 'nedvizhimost'
+                     : n =~ /автомоб|автобус|прицеп|тягач|самосвал|фургон/ ? 'auto' : n =~ /трактор|погрузчик|экскаватор|комбайн|кран/ ? 'spec' : 'oborud')
+    sec == 'auto' ? (n =~ /груз|тягач|самосвал|автобус|прицеп|фургон|цистерн|бортов/ ? 'gruz' : 'avto') : sec
+  end
+
+  # карточки каталога или страницы аукциона: «Лот 9867 <название> начальная цена 190 000.00 BYN … Прием заявок до …»
+  def a24_cards(html, csec = nil)
+    html.split('class="product-card-wrap"').drop(1).map do |ch|
+      id = ch[%r{/auction/lot/(\d+)}, 1] or next
+      t = txt(ch[0, 6000])
+      name = txt(ch[/<img[^>]+alt="([^"]+)"/, 1].to_s)
+      name = t[/Лот \d+\s+(.+?)\s+начальная цена/, 1].to_s if name.empty?
+      { 'key' => "a24-#{id}", 'platform' => 'auction24.by', 'art' => id, 'name' => name, 'sec' => a24_sec(name, csec),
+        'url' => "#{A24}/auction/lot/#{id}", 'price' => num(t[/начальная цена\s+([\d\s.]+)\s*BYN/, 1]),
+        'status' => txt(ch[%r{class="sticker[^"]*">(.*?)</span>}m, 1]),
+        'req_to' => ts(t[/Прием заявок до\s+(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})/, 1]),
+        'thumb' => (u = ch[%r{src="(/file/[^"]+)"}, 1]) && A24 + u }
+    end.compact
+  end
+
+  def a24_list
+    A24_SEC.flat_map do |cat, csec|
+      out = []
+      (0..20).each do |p|
+        html = get("#{A24}/catalog/#{cat}/accept?page=#{p}&limit=100") or break
+        sleep 1
+        cards = a24_cards(html, csec)
+        out.concat(cards)
+        break if cards.size < 100
+      end
+      out
+    end.uniq { |c| c['key'] }
+  end
+
+  # архив: аукционы с датой после since (список /auction — от поздних к ранним), их завершённые лоты
+  def a24_done(since)
+    html = get("#{A24}/auction") or return []
+    aucs = html.split(%r{href="/auction/(?=\d+")}).drop(1).map do |ch|
+      d = ch[/Аукцион (\d{2}\.\d{2}\.\d{4})/, 1] or next
+      [ch[/\A\d+/], ts("#{d} 12:00")]
+    end.compact.uniq(&:first)
+    aucs.select { |_, d| d && d >= since && d < Time.now.to_i }.flat_map do |id, _|
+      sleep 1
+      (h = get("#{A24}/auction/#{id}")) ? a24_cards(h).select { |c| c['status'] =~ /продан|не состоял|отмен/i } : []
+    end.uniq { |c| c['key'] }
+  end
+
+  def a24_detail(html)
+    f = html.scan(%r{<tr><td>(.*?)</td><td>(.*?)</td>}m).map { |k, v| [txt(k), txt(v)] }.to_h
+    tab = ->(id) { html[%r{id="#{id}" role="tabpanel"[^>]*>(.*?)(?:<div class="tab-pane|\z)}m, 1].to_s }
+    des = txt(tab.('des'))
+    desc = des[/Описание\s+(.+?)(?:\s+Расположение имущества|\s*\*{5}|\z)/, 1].to_s.strip
+    place = des[/Расположение имущества\s+(.+?)(?:\s+-->|\s+Продавец|\s+Прикрепленные|\s+Фото документов|\s*\*{5}|\z)/, 1].to_s.strip
+    osm = txt(tab.('osm'))
+    seller = osm[/Наименование:\s*(.+?)\s+Адрес:/, 1]
+    cond = ['Лот №', 'Метод аукциона', 'Очередность', 'Снижение начальной цены', 'Начальная цена', 'Минимальная цена', 'Шаг торгов',
+            'Сумма задатка', 'Дата и время окончания приема заявок', 'Дата и время начала торгов', 'Дата и время завершения торгов',
+            'Сумма затрат на организацию и проведение торгов', 'Вознаграждение организатору торгов (аукционный сбор)',
+            'Срок для возмещения затрат и вознаграждения оператору ЭТП', 'Срок заключения договора', 'Срок оплаты по договору']
+    secs = [{ 'h' => 'Условия торгов', 'rows' => cond.map { |k| [k, f[k]] }.select { |_, v| v && !v.empty? } }]
+    secs << { 'h' => 'Сведения о лоте', 'rows' => [['Описание', desc], ['Расположение имущества', place]].reject { |_, v| v.empty? } }
+    secs << { 'h' => 'Продавец и осмотр', 'rows' => [['Осмотр и продавец', osm[0, 800]]] } unless osm.empty?
+    pics = photos('auction24.by', html)
+    price = num(f['Начальная цена'].to_s[/[\d\s.]+/])
+    min = num(f['Минимальная цена'].to_s[/[\d\s.]+/])
+    # «Начальная цена (размер ежемесячной арендной платы) …» и «Начальная цена (размер) ежемесячной арендной платы …»
+    rent = desc[/Начальная цена[^.]{0,40}ежемесячной арендной платы.*?НДС\s*\d+\s*%/]
+    { 'details' => secs.reject { |s| s['rows'].empty? }, 'location' => place.empty? ? nil : place, 'debtor' => seller,
+      'req_to' => ts(f['Дата и время окончания приема заявок']), 'torg' => ts(f['Дата и время начала торгов']),
+      'price_byn' => price, 'area_num' => (a = desc[/пл(?:ощадью|\.)\s*([\d\s]+[.,]?\d*)\s*кв\.?\s*м/, 1]) && num(a),
+      'photo_url' => pics.first, 'photos' => pics, 'status' => f['Статус'],
+      'rent' => rent && { 'k' => 'month', 'v' => price, 'raw' => rent.strip },
+      'terms' => { 'deposit' => num(f['Сумма задатка'].to_s[/[\d\s.]+/]), 'step_abs' => num(f['Шаг торгов'].to_s[/[\d\s.]+/]),
+                   'fee_abs' => num(f['Сумма затрат на организацию и проведение торгов'].to_s[/[\d\s.]+/]),
+                   'fee_pct' => f['Вознаграждение организатору торгов (аукционный сбор)'].to_s[/[\d.,]+/]&.tr(',', '.')&.to_f,
+                   'min_price' => min.positive? && min < price ? min : nil,
+                   'vat' => f['Начальная цена'].to_s =~ /НДС 20/ ? 'Начальная цена — с НДС 20%' : nil, 'v' => 2 }
+                 .reject { |_, v| v.nil? || v == 0.0 } }
   end
 
   # ---------------- minskestate.by (ЭТП «Минск-Недвижимость» государственного предприятия «МГЦН») ----------------
