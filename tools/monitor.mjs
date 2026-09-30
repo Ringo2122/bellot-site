@@ -49,8 +49,12 @@ try {
     });
     if (v.name === 'компьютер') {
       if (info.n < 500) add('few-lots', 'На сайте подозрительно мало лотов', `${info.n} активных (обычно 1 400–1 600)`);
+      // днём сайт пересобирается каждый час (итоги торгов 8–22), ночью — нет. 30.09 прогон застрял в очереди GitHub
+      // на 4 часа и держал за собой все сборки — при прежнем пороге 26 ч сигнала не было
       const age = Date.now() / 1000 - info.snap;
-      if (age > 26 * 3600) add('stale', 'Сайт давно не обновлялся', `последняя сборка ${Math.round(age / 3600)} ч назад`);
+      const hour = Number(new Date().toLocaleString('en-US', { timeZone: 'Europe/Minsk', hour: 'numeric', hour12: false }));
+      const limit = hour >= 10 && hour <= 23 ? 3 : 12;
+      if (age > limit * 3600) add('stale', 'Сайт давно не обновлялся', `последняя сборка ${Math.round(age / 3600)} ч назад — прогоны робота могли застрять в очереди GitHub (Actions)`);
     }
 
     const routes = [['главная', '#/'], ['каталог', '#/catalog'], ['раздел «Легковые»', '#/s/avto'], ['архив', '#/catalog?st=arch'],
