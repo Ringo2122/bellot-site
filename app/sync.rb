@@ -50,6 +50,12 @@ stats = { 'update' => read.('run.json'), 'build' => read.('build.json') }.reject
 row = { 'finished_at' => Time.now.utc.iso8601, 'ok' => ENV['JOB_OK'] != 'false', 'stats' => stats, 'log' => tail[0, 20_000] }
 if ENV['RUN_ID'].to_s =~ /\A\d+\z/
   Sb.patch('runs', "id=eq.#{ENV['RUN_ID']}", row)
+  # Запуски идут строго по одному (concurrency «site»); ожидающий в очереди GitHub отменяет, когда встаёт следующий, —
+  # до отчёта он не доходит, и запись «начат» висела бы вечно: сигнализация — «прогон завис», gate.rb — «умер, повторить».
+  # Всё более раннее без отметки об окончании уже не выполнится — закрываем как отменённое (29.09: ручной запуск 16:24)
+  Sb.patch('runs', "finished_at=is.null&id=lt.#{ENV['RUN_ID']}",
+           { 'kind' => 'cancelled', 'finished_at' => Time.now.utc.iso8601, 'ok' => nil,
+             'log' => 'Не выполнялся: ждал в очереди, и GitHub отменил его, когда встал следующий запуск' })
 else
   Sb.insert('runs', row.merge('kind' => stats['update'] ? 'collect' : 'build', 'trigger' => 'manual'))
 end
