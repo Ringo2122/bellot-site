@@ -20,7 +20,8 @@
 #
 # Архив за год (YEAR_ARCH=1 — ночной прогон .github/workflows/archive.yml, решение Артёма 02.10.2026): те же задания
 # на 365 дней назад, до 4,5 часа за ночь, без ограничения числа лотов. Глубина площадок (02.10): e-auction, ИПМ,
-# beltorgi, torgikonfiskat — год и больше (konfiskat ≈ 9 тыс. машин за год, 1 200 страниц списка по 8);
+# beltorgi, torgikonfiskat — год и больше; konfiskat берём только за YEAR_KF_DAYS = 3 месяца (решение Артёма 02.10:
+# за год ≈ 9 тыс. машин, 1 200 страниц списка по 8, у старых площадка удалила фото);
 # auction24 хранит торги только с 03.04.2026; minskestate — всё на одной странице раздела. Не берём: «Оборудование»
 # (архив раздела — только за месяц), belauction.by (robots.txt — только первые страницы, ≈ месяц), mgcn.by (итогов нет).
 # Фото: главное — 320 px (≈ 12 КБ, только для карточки; 400 px — ≈ 22 КБ), в галерее — до 5 фото ссылками на площадку:
@@ -31,6 +32,7 @@ YEAR_DONE = File.join(Store::DATA, 'backfill_year.json')
 YEAR_PLATS = %w[e-auction.by ipmtorgi.by beltorgi.by konfiskat.by minskestate.by auction24.by].freeze
 YEAR_PH = [320, 40].freeze   # ширина и качество главного фото
 YEAR_PICS = 5
+YEAR_KF_DAYS = 90
 
 BACK_DAYS = (ENV['BACK_DAYS'] || (YEAR_ARCH ? 365 : 30)).to_i
 BACK_CAP = (ENV['BACK_CAP'] || (YEAR_ARCH ? 1_000_000 : 350)).to_i
@@ -211,7 +213,7 @@ def backfill(db, stat, pstat, now)
       # тот же лот мы могли знать по konfiskat.by: «Лот №» совпадает с номером лота там
       arts = mx.synchronize { db.values.select { |l| l['platform'] == 'konfiskat.by' }.to_h { |l| [l['art'].to_s, l] } }
       tks = mx.synchronize { db.values.map { |l| l['tk'].to_s[%r{/(\d+)/?\z}, 1] }.compact.to_h { |a| [a, true] } }
-      Src.tk_archive(since, stop).each do |c|
+      Src.tk_archive(YEAR_ARCH ? [since, now - YEAR_KF_DAYS * 86_400].max : since, stop).each do |c|
         break if left.zero? || Time.now > stop
         key = "kf-tk#{c['tk_id']}"
         next if tks[c['tk_id']] || known.(key) || skipped.(key)

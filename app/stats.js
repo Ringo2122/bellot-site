@@ -270,7 +270,7 @@
     const byKindRows = (xs, g) => Object.entries(xs.reduce((m,x)=>{ (m[kOf(x)] ||= []).push(x); return m; }, {}))
       .sort((a,b)=>b[1].filter(g.sold).length - a[1].filter(g.sold).length || b[1].length - a[1].length).slice(0,30)
       .map(([k,a])=>statRow(esc(k.split('|')[1]) + (sec ? '' : ` <small class="mut">${esc(SEC_RU[k.split('|')[0]]||'')}</small>`), a, g));
-    const BF = '<p class="mut">Торги с октября 2025 года загружены из архивов площадок (auction24.by хранит их только с апреля 2026, belauction.by открыт роботам примерно на месяц назад, «Оборудование» — за месяц); с 25.09.2026 робот собирает итоги сам после даты торгов.</p>';
+    const BF = '<p class="mut">Торги с октября 2025 года загружены из архивов площадок (konfiskat.by — с июля 2026, auction24.by хранит их только с апреля 2026, belauction.by открыт роботам примерно на месяц назад, «Оборудование» — за месяц); с 25.09.2026 робот собирает итоги сам после даты торгов.</p>';
     if(on.has('results')){
       // итоги торгов по лотам, торги которых закончились в выбранный период
       const ST = { sold:['Продан','#1d7a4d'], single:['Продан единственному участнику','#4cae7d'], failed:['Не состоялись','#d9761f'], cancelled:['Отменены','#9aa3ad'] };
