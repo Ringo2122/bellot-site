@@ -17,11 +17,34 @@
 # Отброшенные после проверки (дешевле порога, старше месяца, уже известны по konfiskat.by) — в data/backfill_skip.json:
 # второй раз их страницы не открываем (25.09: без этого прогон тратил всё время на 400 уже известных машин konfiskat).
 # Вызывается из update.rb после итогов торгов: там же определены new_lot, trim, ipm_kind, kf_kind.
+#
+# Архив за год (YEAR_ARCH=1 — ночной прогон .github/workflows/archive.yml, решение Артёма 02.10.2026): те же задания
+# на 365 дней назад, до 4,5 часа за ночь, без ограничения числа лотов. Глубина площадок (02.10): e-auction, ИПМ,
+# beltorgi, torgikonfiskat — год и больше (konfiskat ≈ 9 тыс. машин за год, 1 200 страниц списка по 8);
+# auction24 хранит торги только с 03.04.2026; minskestate — всё на одной странице раздела. Не берём: «Оборудование»
+# (архив раздела — только за месяц), belauction.by (robots.txt — только первые страницы, ≈ месяц), mgcn.by (итогов нет).
+# Фото: главное — 320 px (≈ 12 КБ, только для карточки; 400 px — ≈ 22 КБ), в галерее — до 5 фото ссылками на площадку:
+# 5 фото × 20 тыс. лотов своими файлами — 2–5 ГБ, больше лимита GitHub Pages (1 ГБ). Скачать их — после переезда на свой сервер.
+# Площадка, чей список пройден до конца за отведённое время, отмечается в data/backfill_year.json и больше не обходится.
+YEAR_ARCH = !ENV['YEAR_ARCH'].to_s.empty?
+YEAR_DONE = File.join(Store::DATA, 'backfill_year.json')
+YEAR_PLATS = %w[e-auction.by ipmtorgi.by beltorgi.by konfiskat.by minskestate.by auction24.by].freeze
+YEAR_PH = [320, 40].freeze   # ширина и качество главного фото
+YEAR_PICS = 5
 
-BACK_DAYS = (ENV['BACK_DAYS'] || 30).to_i
-BACK_CAP = (ENV['BACK_CAP'] || 350).to_i
-BACK_MIN = (ENV['BACK_MIN'] || 25).to_f
+BACK_DAYS = (ENV['BACK_DAYS'] || (YEAR_ARCH ? 365 : 30)).to_i
+BACK_CAP = (ENV['BACK_CAP'] || (YEAR_ARCH ? 1_000_000 : 350)).to_i
+BACK_MIN = (ENV['BACK_MIN'] || (YEAR_ARCH ? 270 : 25)).to_f
 BACK_SKIP = File.join(Store::DATA, 'backfill_skip.json')
+
+def year_done
+  File.exist?(YEAR_DONE) ? (JSON.parse(File.read(YEAR_DONE, encoding: 'UTF-8')) rescue {}) : {}
+end
+
+# площадки, чей архив за год ещё не загружен
+def year_left
+  YEAR_PLATS - year_done.keys - PLAT_OFF
+end
 
 def back_min_ok?(sec, price)
   min = MINP[sec].to_f
@@ -44,11 +67,15 @@ def backfill(db, stat, pstat, now)
   known = ->(k) { mx.synchronize { db.key?(k) } }
   skip = File.exist?(BACK_SKIP) ? (JSON.parse(File.read(BACK_SKIP, encoding: 'UTF-8')) rescue {}) : {}
   skip.reject! { |_, (t, _)| t.to_i < since - 10 * 86_400 }
-  skipped = ->(k) { mx.synchronize { skip[k] && skip[k][1] } }   # причина или nil
+  # «old» — старше месяца: для архива за год такие лоты не отброшены (02.10: из-за них beltorgi останавливался на 37-м дне);
+  # старше года — «old-y»
+  old_tag = YEAR_ARCH ? 'old-y' : 'old'
+  skipped = ->(k) { mx.synchronize { (w = skip[k] && skip[k][1]) == 'old' && YEAR_ARCH ? nil : w } }   # причина или nil
   drop = ->(k, why) { mx.synchronize { skip[k] = [now, why] } }
   add = lambda do |rec, d, photo|
     Store.save_details(rec['key'], trim(d['details'] || []))
-    rec['photo'] = Store.save_photo(photo, rec['key'], Src::UA)
+    rec['photo'] = Store.save_photo(photo, rec['key'], Src::UA, *(YEAR_ARCH ? YEAR_PH : []))
+    rec['pics'] = rec['pics'].first(YEAR_PICS) if YEAR_ARCH && rec['pics']
     mx.synchronize do
       db[rec['key']] = rec
       stat['архив площадок: добавлено'] += 1
@@ -59,6 +86,7 @@ def backfill(db, stat, pstat, now)
     'e-auction.by' => lambda do |left|
       PLAN['e-auction.by'].each do |path, sec|
         break if left.zero? || Time.now > stop
+        next if YEAR_ARCH && sec == 'oborud'
         Src.ea_list(path, since: since).each do |c|
           break if left.zero? || Time.now > stop
           next if known.(c['key']) || skipped.(c['key']) || !c['eid']
@@ -79,6 +107,7 @@ def backfill(db, stat, pstat, now)
     'ipmtorgi.by' => lambda do |left|
       PLAN['ipmtorgi.by'].each do |path, sec0|
         break if left.zero? || Time.now > stop
+        next if YEAR_ARCH && sec0 == 'oborud'
         Src.ipm_list(path, since: since).each do |c|
           break if left.zero? || Time.now > stop
           next if known.(c['key']) || skipped.(c['key'])
@@ -97,6 +126,7 @@ def backfill(db, stat, pstat, now)
     'beltorgi.by' => lambda do |left|
       PLAN['beltorgi.by'].each do |slug, sec|
         break if left.zero? || Time.now > stop
+        next if YEAR_ARCH && sec == 'oborud'
         Src::BT_DONE.each_value do |status|
           old = 0   # каталог — по дате аукциона от поздних к ранним: пять старых подряд — дальше только старше
           (1..30).each do |p|
@@ -105,7 +135,7 @@ def backfill(db, stat, pstat, now)
               break if left.zero? || Time.now > stop || old >= 5
               next if known.(c['key'])
               case skipped.(c['key'])
-              when 'old' then old += 1; next
+              when 'old', 'old-y' then old += 1; next
               when 'min' then next
               end
               html = Src.get(c['url']) or next
@@ -114,7 +144,7 @@ def backfill(db, stat, pstat, now)
               when_ = r['at'] || d['torg'] || d['req_to']
               if when_.to_i < since
                 old += 1
-                drop.(c['key'], 'old')
+                drop.(c['key'], old_tag)
                 next
               end
               old = 0
@@ -134,7 +164,7 @@ def backfill(db, stat, pstat, now)
       Src.ba_list(:done).each do |c|
         break if left.zero? || Time.now > stop
         next if known.(c['key']) || skipped.(c['key'])
-        next drop.(c['key'], 'old') if c['closed_day'].to_i < since
+        next drop.(c['key'], old_tag) if c['closed_day'].to_i < since
         sleep 2
         html = Src.get(c['url']) or next
         r = Res.ba_result(html)
@@ -149,12 +179,13 @@ def backfill(db, stat, pstat, now)
       Src.me_list.each do |c|
         break if left.zero? || Time.now > stop
         next if c['status'] !~ /Продан|не состоял|Отмен/i || known.(c['key']) || skipped.(c['key'])
-        next drop.(c['key'], 'old') if c['day'].to_i < since
+        next drop.(c['key'], old_tag) if c['day'].to_i < since
         sleep 1
         html = Src.get(c['url']) or next
         r = Res.me_result(html)
         next if r['st'] == 'pending'
         sec = c['sec'] || ipm_kind(c['name'])
+        next if YEAR_ARCH && sec == 'oborud'
         next drop.(c['key'], 'min') unless back_min_ok?(sec, r['start'] || c['price'])
         d = Src.me_detail(html)
         add.(back_rec(c, sec, d, r, 'minskestate.by архив', now), d, [])   # фото — ссылками: robots.txt площадки закрывает их для роботов
@@ -165,7 +196,7 @@ def backfill(db, stat, pstat, now)
       # аукционы за месяц по списку /auction, их завершённые лоты; раздел — по названию (a24_sec)
       Src.a24_done(since).each do |c|
         break if left.zero? || Time.now > stop
-        next if known.(c['key']) || skipped.(c['key'])
+        next if known.(c['key']) || skipped.(c['key']) || (YEAR_ARCH && c['sec'] == 'oborud')
         sleep 1
         html = Src.get(c['url']) or next
         r = Res.a24_result(html)
@@ -180,7 +211,7 @@ def backfill(db, stat, pstat, now)
       # тот же лот мы могли знать по konfiskat.by: «Лот №» совпадает с номером лота там
       arts = mx.synchronize { db.values.select { |l| l['platform'] == 'konfiskat.by' }.to_h { |l| [l['art'].to_s, l] } }
       tks = mx.synchronize { db.values.map { |l| l['tk'].to_s[%r{/(\d+)/?\z}, 1] }.compact.to_h { |a| [a, true] } }
-      Src.tk_archive(since).each do |c|
+      Src.tk_archive(since, stop).each do |c|
         break if left.zero? || Time.now > stop
         key = "kf-tk#{c['tk_id']}"
         next if tks[c['tk_id']] || known.(key) || skipped.(key)
@@ -214,14 +245,21 @@ def backfill(db, stat, pstat, now)
       end
     end
   }
+  done = year_done
+  jobs.select! { |plat, _| year_left.include?(plat) } if YEAR_ARCH
   jobs.reject { |plat, _| PLAT_OFF.include?(plat) }.map do |plat, job|
     Thread.new do
       job.call(BACK_CAP)
+      if YEAR_ARCH && Time.now < stop && pstat[plat]['backfill'] < BACK_CAP   # список пройден до конца, а не упёрся в лимит
+        mx.synchronize { done[plat] = now }
+        STDERR.puts "архив площадки #{plat} за год загружен"
+      end
     rescue StandardError => e
       STDERR.puts "архив площадки #{plat}: ошибка #{e.message}"
     end
   end.each(&:join)
   File.write(BACK_SKIP, JSON.generate(skip))
+  File.write(YEAR_DONE, JSON.generate(done)) if YEAR_ARCH
   STDERR.puts "архив площадок за #{BACK_DAYS} дн.: добавлено #{stat['архив площадок: добавлено']}" \
               "#{Time.now > stop ? ' (время прогона вышло — остальное в следующий раз)' : ''}"
 end

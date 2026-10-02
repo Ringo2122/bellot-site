@@ -3,7 +3,7 @@
 # Память сайта. Живёт в репозитории, её дописывает каждый прогон обновления.
 #   data/lots.json     короткие записи всех лотов — активных и архивных, по строке на лот
 #   data/det/<key>.json подробности лота (секции «ключ — значение»), пишутся один раз
-#   data/ph/<key>.jpg   фото, 400 px
+#   data/ph/<key>.jpg   фото, 400 px (у лотов архива за год — 320 px: только для карточки, backfill.rb)
 # Строка на лот — чтобы в истории репозитория было видно, что изменилось за прогон.
 require 'json'
 require 'fileutils'
@@ -64,26 +64,26 @@ module Store
     nil
   end
 
-  def shrink(src, dst)
+  def shrink(src, dst, w = W, q = Q)
     if system('which sips >/dev/null 2>&1')
-      system('sips', '-s', 'format', 'jpeg', '-s', 'formatOptions', Q.to_s, '-Z', W.to_s,
+      system('sips', '-s', 'format', 'jpeg', '-s', 'formatOptions', q.to_s, '-Z', w.to_s,
              src, '--out', dst, out: File::NULL, err: File::NULL)
     else
       fmt = sniff(src) or return false
-      system('convert', "#{fmt}:#{src}[0]", '-auto-orient', '-resize', "#{W}x#{W}>", '-strip',
-             '-quality', Q.to_s, dst, out: File::NULL, err: File::NULL)
+      system('convert', "#{fmt}:#{src}[0]", '-auto-orient', '-resize', "#{w}x#{w}>", '-strip',
+             '-quality', q.to_s, dst, out: File::NULL, err: File::NULL)
     end
     File.exist?(dst) && File.size(dst) > 700
   end
 
-  def save_photo(urls, key, ua)
+  def save_photo(urls, key, ua, w = W, q = Q)
     dst = ph_path(key)
     return true if File.exist?(dst)
     raw = dst + '.raw'
     urls.compact.uniq.each do |u|
       system('curl', '-sS', '-L', '-m', '40', '-A', ua, '-o', raw, u, out: File::NULL, err: File::NULL)
       next unless File.exist?(raw) && File.size(raw) > 1000
-      ok = shrink(raw, dst)
+      ok = shrink(raw, dst, w, q)
       File.delete(raw) if File.exist?(raw)
       return true if ok
     end

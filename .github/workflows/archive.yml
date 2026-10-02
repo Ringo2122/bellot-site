@@ -1,0 +1,97 @@
+name: Архив площадок за год
+
+# Ночью, пока робот сайта отдыхает (обходы — днём, итоги — с 8 до 22): завершённые за год торги площадок, которых у нас нет, —
+# в архив сайта с итогами (app/backfill.rb, YEAR_ARCH=1). До 4,5 часа за ночь; площадка, чей список пройден до конца,
+# отмечается в data/backfill_year.json. Когда загружены все — прогон заканчивается за минуту, ничего не делая.
+# Очередь общая с «Обновлением сайта» (concurrency site): пока идёт архив, сборки сайта ждут.
+on:
+  schedule:
+    - cron: '30 20 * * *'    # 23:30 по Минску
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: 'Сколько минут собирать архив'
+        type: number
+        default: 270
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  year:
+    concurrency:
+      group: site
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      TZ: Europe/Minsk
+      YEAR_ARCH: '1'
+      BACK_MIN: ${{ inputs.minutes || 270 }}
+      RUN_KIND: year
+      SB_URL: ${{ secrets.SB_URL }}
+      SB_KEY: ${{ secrets.SB_KEY }}
+      SB_TOKEN: ${{ secrets.SB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: ImageMagick для фото
+        run: command -v convert || (sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick)
+
+      - id: y
+        name: Архив площадок за год
+        shell: bash
+        run: |
+          mkdir -p tmp
+          echo "RUN_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          ruby app/update.rb 2>&1 | tee tmp/update.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Сохранить память
+        if: steps.y.outputs.work != 'false'
+        run: |
+          git config user.name "bellot-bot"
+          git config user.email "bellot-bot@users.noreply.github.com"
+          git add -A data
+          git commit -q -m "данные: архив площадок за год, $(date '+%d.%m.%Y %H:%M')" || echo "без изменений"
+          git push || (git pull --rebase -q && git push)
+
+      - name: Сборка сайта
+        if: steps.y.outputs.work != 'false'
+        run: ruby app/build.rb
+
+      - uses: actions/configure-pages@v5
+        if: steps.y.outputs.work != 'false'
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.y.outputs.work != 'false'
+        with:
+          path: _site
+
+      - id: deploy
+        if: steps.y.outputs.work != 'false'
+        uses: actions/deploy-pages@v4
+
+      - name: Отчёт и копия каталога — в админку
+        if: always() && steps.y.outputs.work != 'false'
+        continue-on-error: true
+        env:
+          JOB_OK: ${{ job.status == 'success' }}
+        run: ruby app/sync.rb
+
+      - name: Сигнал о сбое — в Telegram
+        if: failure()
+        continue-on-error: true
+        env:
+          ALERT_TG_TOKEN: ${{ secrets.ALERT_TG_TOKEN }}
+          ALERT_TG_CHAT: ${{ secrets.ALERT_TG_CHAT }}
+        run: ruby app/alert.rb --event "прогон «архив площадок за год» упал"

@@ -442,7 +442,7 @@ async function pDash(){
         const res = !r.finished_at ? ((Date.now()-new Date(r.at))<90*60000?'<span class="muted">идёт…</span>':'<span class="badc">не завершился</span>')
           : r.kind==='cancelled' ? '<span class="muted">не выполнялся</span>'
           : r.ok ? `<span class="okc">✓</span> ${Math.round((new Date(r.finished_at)-new Date(r.at))/60000)} мин` : '<span class="badc">✗ ошибка</span>';
-        return `<tr class="click" data-run="${r.id}"><td>${dt(r.at)}</td><td>${r.kind==='collect'?'обход и сборка':r.kind==='results'?'итоги торгов':r.kind==='cancelled'?'отменён в очереди':'сборка'}</td><td>${esc(TRIG[r.trigger]||r.trigger||'')}</td>
+        return `<tr class="click" data-run="${r.id}"><td>${dt(r.at)}</td><td>${r.kind==='collect'?'обход и сборка':r.kind==='results'?'итоги торгов':r.kind==='year'?'архив площадок за год':r.kind==='cancelled'?'отменён в очереди':'сборка'}</td><td>${esc(TRIG[r.trigger]||r.trigger||'')}</td>
           <td>${res}</td><td>${u?nf(sum(u.platforms,'new')):'—'}</td><td>${u?nf(sum(u.platforms,'archived')):'—'}</td><td>${b?nf(b.published):'—'}</td><td>${b?nf(b.queue):'—'}</td></tr>
           <tr hidden id="run-${r.id}"><td colspan="8">${runDetails(r)}</td></tr>`; }).join('')}</table></div>
       <p class="muted">Нажмите на строку — подробности по площадкам и журнал.</p></div>

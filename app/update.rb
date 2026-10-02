@@ -11,7 +11,9 @@
 #     (только если список раздела прочитан целиком и не «похудел» подозрительно —
 #      иначе сбой площадки отправил бы в архив полкаталога)
 # Если лот снова появился в списке (повторные торги) — возвращается из архива.
-# Архив хранится RETAIN_DAYS дней, потом лот удаляется вместе с фото.
+# Архив хранится RETAIN_DAYS дней (год — 02.10.2026, было полгода), потом лот удаляется вместе с фото;
+# итог торгов остаётся в таблице sales.
+# YEAR_ARCH=1 — ночной прогон «архив площадок за год» (backfill.rb): площадки не обходим, итоги не проверяем.
 require_relative 'sources'
 require_relative 'regions'
 require_relative 'store'
@@ -24,7 +26,7 @@ require_relative 'mgcn'
 require_relative 'bav'
 require 'fileutils'
 
-RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 180).to_i
+RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 365).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
 WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfiskat.by' => 1, 'belauction.by' => 1,
             'minskestate.by' => 1, 'mgcn.by' => 1, 'auction24.by' => 1 }.freeze   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
@@ -49,6 +51,11 @@ RES_CAP = (ENV['RES_CAP'] || 300).to_i
 # RESULTS_ONLY=1 — прогон «проверка итогов» (каждый час между обходами, gate.rb): площадки не обходим,
 # архив площадок, карту и фото не трогаем — только сроки и итоги завершившихся торгов
 RESULTS_ONLY = !ENV['RESULTS_ONLY'].to_s.empty?
+if YEAR_ARCH && year_left.empty?
+  puts 'архив площадок за год уже загружен — делать нечего'
+  File.write(ENV['GITHUB_OUTPUT'], "work=false\n", mode: 'a') if ENV['GITHUB_OUTPUT']
+  exit
+end
 # разовая перепроверка «зависших» итогов старше 3 недель после смены правил (29.09: ИПМ без итога и без ставок)
 SWEEP = 1
 
@@ -187,7 +194,7 @@ unless File.exist?(clean_mark) && File.read(clean_mark).to_i >= 1
   File.write(clean_mark, '1')
 end
 
-(RESULTS_ONLY ? {} : PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }).map do |plat, secs|
+(RESULTS_ONLY || YEAR_ARCH ? {} : PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }).map do |plat, secs|
   Thread.new do
     todo = Queue.new
     secs.each do |path, sec|
@@ -330,7 +337,7 @@ end.each(&:join)
 
 # МГЦН продаёт объект и очно, и на своей электронной площадке minskestate.by — тогда главная онлайн-площадка
 # (решение Артёма 29.09): очную карточку того же объекта (инвентарный номер или адрес совпали) не держим
-unless RESULTS_ONLY
+unless RESULTS_ONLY || YEAR_ARCH
   sig = lambda do |l|
     rows = Obj.rows_of(Store.details(l['key']))
     Obj.ids(l['name'], rows).select { |x| x.start_with?('inv:') } + [l['location'].to_s.downcase.gsub(/г\.\s*минск|[^а-яa-z0-9]/, '')]
@@ -408,7 +415,7 @@ due = db.values.select do |l|
   next r['sweep'].to_i < SWEEP if age > 21 * 86_400
   gap = age < 2 * 86_400 ? 50 * 60 : age < 7 * 86_400 ? 6 * 3600 : 20 * 3600
   now - r['checked'].to_i >= gap
-end.sort_by { |l| -(l['torg'] || l['req_to']).to_i }.first(RES_CAP)
+end.sort_by { |l| -(l['torg'] || l['req_to']).to_i }.first(YEAR_ARCH ? 0 : RES_CAP)
 STDERR.puts "итоги торгов: проверяю #{due.size}" unless due.empty?
 # площадки — параллельно; ИПМ отвечает медленно (~5 с на страницу) — её лоты в три потока, e-auction — в два
 RES_THREADS = { 'ipmtorgi.by' => 3, 'e-auction.by' => 2 }.freeze
@@ -432,7 +439,9 @@ end.each(&:join)
 
 # ── архив площадок: завершённые за месяц торги, которых у нас нет (после итогов — у лотов konfiskat уже есть ссылка на торги) ──
 # карта активных лотов — параллельно (другой сервис, свой темп: запрос в секунду)
-unless RESULTS_ONLY
+if YEAR_ARCH
+  backfill(db, stat, pstat, now)   # ночью — только архив площадок за год
+elsif !RESULTS_ONLY
   geo_t = Thread.new do
     Geo.run(db, stat, Time.now + BACK_MIN * 60)
   rescue StandardError => e

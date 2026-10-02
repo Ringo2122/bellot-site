@@ -4,6 +4,7 @@
 # После сборки: копия каталога — в базу админки, отчёт о запуске — туда же.
 #   RUN_ID   строка отчёта, которую создал gate.rb
 #   JOB_OK   true/false — как прошли предыдущие шаги
+#   RUN_KIND, RUN_AT — запуск без gate.rb (ночной «архив площадок за год», archive.yml): вид и время начала
 # Запускается всегда, даже если сборка упала, — чтобы в админке было видно, что пошло не так.
 require 'json'
 require 'time'
@@ -57,7 +58,9 @@ if ENV['RUN_ID'].to_s =~ /\A\d+\z/
            { 'kind' => 'cancelled', 'finished_at' => Time.now.utc.iso8601, 'ok' => nil,
              'log' => 'Не выполнялся: ждал в очереди, и GitHub отменил его, когда встал следующий запуск' })
 else
-  Sb.insert('runs', row.merge('kind' => stats['update'] ? 'collect' : 'build', 'trigger' => 'manual'))
+  Sb.insert('runs', row.merge('kind' => ENV['RUN_KIND'] || (stats['update'] ? 'collect' : 'build'),
+                              'trigger' => ENV['GITHUB_EVENT_NAME'] == 'schedule' ? 'schedule' : 'manual')
+                       .merge(ENV['RUN_AT'] ? { 'at' => ENV['RUN_AT'] } : {}))
 end
 
 # старые отчёты не копим

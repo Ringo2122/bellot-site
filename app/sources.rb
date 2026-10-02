@@ -128,7 +128,7 @@ module Src
   def ea_list(path, since: nil)
     out = []
     seen = {}
-    (1..(since ? 80 : MAX_PAGES)).each do |p|
+    (1..(since ? 400 : MAX_PAGES)).each do |p|
       q = [since && 'type=f', p > 1 && "PAGEN_1=#{p}"].select { |x| x }.join('&')
       html = get("#{EA}#{path}" + (q.empty? ? '' : "?#{q}")) or break
       got = html.split('class="product-item column').drop(1).map do |ch|
@@ -207,7 +207,7 @@ module Src
     seen = {}
     now = Time.now.to_i
     lo = since || now
-    (1..(since ? 80 : MAX_PAGES)).each do |p|
+    (1..(since ? 300 : MAX_PAGES)).each do |p|
       html = get(p == 1 ? "#{IPM}#{path}" : "#{IPM}#{path}?PAGEN_1=#{p}") or break
       got = html.split('class="c-list__item"').drop(1).map do |ch|
         ch = ch[0, 4000]
@@ -399,12 +399,14 @@ module Src
   # Аукционы konfiskat.by проходят на torgikonfiskat.by. Для архива берём оттуда каталог автотранспорта
   # с фильтром статуса: «Завершены» (80|81) — последние дни, «Архив» — всё прошлое. По дате аукциона
   # от поздних к ранним, по 8 на странице. «Лот №» на странице торгов — тот же номер, что у лота на konfiskat.by.
-  def tk_archive(since)
+  # stop — время, после которого не листаем (за год — ~1 200 страниц, 40 минут)
+  def tk_archive(since, stop = nil)
     out = []
     seen = {}
     now = Time.now.to_i
     %w[80%7C81 ARCHIVE].each do |st|
-      (1..250).each do |p|
+      (1..2000).each do |p|
+        break if stop && Time.now > stop
         html = get("#{TK}/auto-auction/?arrFilter_pf%5BPROPERTY_UF_AUC_STATUS%5D=#{st}&set_filter=Apply" + (p > 1 ? "&PAGEN_1=#{p}" : '')) or break
         got = html.scan(/product-card mini-card" id="bx_\d+_(\d+)".*?class="date">\s*([^<]+?)\s*<\/span>.*?<img src="([^"]+)".*?class="product-title"\s*>\s*([^<]+?)\s*<\/a>.*?class="price">(.*?)<\/p>/m)
                   .map do |id, d, img, name, pr|

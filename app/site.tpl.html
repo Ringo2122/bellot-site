@@ -842,7 +842,7 @@
 <script>
 const DATA = __DATA__;
 const SNAP = __SNAP__;
-const ARCHN = __ARCHN__;          // размер архива по разделам, сам архив — в arch.js
+const ARCHN = __ARCHN__;          // размер архива по разделам (cut — граница свежего архива), сам архив — в arch.js и arch2.js
 const CFG = __CFG__;              // из админки: тексты, правила калькулятора, часы обновления, выключенные разделы
 /* ошибки у посетителей — в базу (rpc report_error), монитор пересылает новые в Telegram. Одна и та же — один раз за визит,
    не больше 5 за визит; чужие скрипты (расширения браузера, «Script error.» без подробностей) и чужие картинки — не в счёт */
@@ -915,16 +915,27 @@ function loadDet(l){
   });
 }
 
-let ARCH = null; const ARCHW = [];
-window.__arch = a => { ARCH = a; ARCHW.splice(0).forEach(f=>f()); };
+// Архив — два файла (build.rb): arch.js — закрытые за 45 дней (ARCHN.cut), arch2.js — старше (архив площадок за год,
+// ≈ 2 МБ) вместе со строками поиска по описанию этих лотов. ARCH1 — только свежий: его хватает календарю на главной
+// и недавним лотам; ARCH — весь архив (каталог архива, старый лот, прошлые месяцы календаря, кабинет).
+let ARCH = null, ARCH1 = null; const ARCHW = [], ARCH1W = [], SRCH2 = {};
+window.__arch = a => { ARCH1 = a; ARCH1W.splice(0).forEach(f=>f()); };
+window.__arch2 = (a, s) => { Object.assign(SRCH2, s); ARCH = ARCH1.concat(a); ARCHW.splice(0).forEach(f=>f()); };
+function loadArch1(){
+  return new Promise(res=>{
+    if(ARCH1) return res(ARCH1);
+    ARCH1W.push(()=>res(ARCH1));
+    if(ARCH1W.length===1) addScript('arch.js');
+  });
+}
 function loadArch(){
   return new Promise(res=>{
     if(ARCH) return res(ARCH);
     ARCHW.push(()=>res(ARCH));
-    if(ARCHW.length===1) addScript('arch.js');
+    if(ARCHW.length===1) loadArch1().then(()=>addScript('arch2.js'));
   });
 }
-const byId = id => DATA.find(l=>l.id===id) || (ARCH||[]).find(l=>l.id===id);
+const byId = id => DATA.find(l=>l.id===id) || (ARCH||ARCH1||[]).find(l=>l.id===id);
 
 /* ───────── шапка и меню ───────── */
 $('#tb-upd').textContent = dtm(SNAP);
@@ -954,7 +965,7 @@ window.__srch = m => { SRCH = m; SRCHW.splice(0).forEach(f=>f()); };
 function loadSrch(){ return new Promise(res=>{ if(SRCH) return res(SRCH); SRCHW.push(()=>res(SRCH)); if(SRCHW.length===1) addScript('srch.js'); }); }
 /* «500/С-37246» набрали русской «С» — в индексе номера латиницей */
 const LATW = {а:'a',в:'b',е:'e',к:'k',м:'m',н:'h',о:'o',р:'p',с:'c',т:'t',у:'y',х:'x'};
-const hayOf = l => norm(l.name)+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor)+' '+((SRCH && SRCH[l.id]) || '');
+const hayOf = l => norm(l.name)+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor)+' '+((SRCH && SRCH[l.id]) || SRCH2[l.id] || '');
 const hasW = (hay, w) => hay.includes(w) || (/\d/.test(w) && hay.includes(w.replace(/[авекмнорстух]/g, c=>LATW[c])));
 function findLots(q, n){
   const words = qwords(q);
@@ -1262,7 +1273,7 @@ function pageCatalog(section, params){
     if(more!==true) show = STEP;
     const arch = FSTATE.st==='arch';
     $('#c-lede').textContent = arch
-      ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним полгода — для истории цен и поиска.'
+      ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним год — для истории цен, похожих торгов и аналитики.'
       : 'Лоты с открытым приёмом заявок. Каталог обновляется автоматически.';
     if(arch && !ARCH){ $('#tb').innerHTML=''; $('#res').innerHTML = '<div class="skel"></div><div class="skel" style="margin-top:10px"></div>'; return; }
     const base = baseOf(), list = applyFilters(base, FSTATE), nf_ = nFilters(FSTATE);
@@ -1277,9 +1288,11 @@ function pageCatalog(section, params){
     let hint = '';
     if(FSTATE.q && !SRCH) loadSrch().then(()=>{ if($('#res')) render(true); });
     if(!arch && FSTATE.q){
-      if(ARCH){ const n = applyFilters(section?ARCH.filter(l=>l.section===section):ARCH, {...FSTATE, st:'arch'}).length;
+      // по свежему архиву, если весь ещё не загружен: ради подсказки 2 МБ не грузим
+      const ar = ARCH || ARCH1;
+      if(ar){ const n = applyFilters(section?ar.filter(l=>l.section===section):ar, {...FSTATE, st:'arch'}).length;
         if(n) hint = `<div class="hint">В архиве ещё <b>${n}</b> ${plural(n,'совпадение','совпадения','совпадений')} — <a href="#" id="to-arch">показать архив</a></div>`; }
-      else loadArch().then(()=>{ if($('#res')) render(); });
+      else loadArch1().then(()=>{ if($('#res')) render(); });
     }
     $('#res').innerHTML = hint + (list.length
       ? `<div class="grid">${list.slice(0,show).map(lotCard).join('')}</div>`
@@ -1707,9 +1720,9 @@ function lightbox(pics, start){
 
 function pageLot(id){
   let l = byId(id);
-  if(!l && !ARCH){
+  if(!l && !ARCH){   // сначала свежий архив, не нашёлся — весь
     $('#app').innerHTML = '<div class="wrap"><div class="skel" style="height:320px"></div></div>';
-    loadArch().then(()=>{ if(CUR==='/lot/'+encodeURIComponent(id)){ pageLot(id); paint(); } });
+    (ARCH1 ? loadArch() : loadArch1()).then(()=>{ if(CUR==='/lot/'+encodeURIComponent(id)){ pageLot(id); paint(); } });
     return;
   }
   if(!l){ $('#app').innerHTML = `<div class="wrap">${crumbs([['Лот не найден']])}<div class="panel empty">Лот не найден — возможно, он уже удалён из архива.</div></div>`; return; }
@@ -1941,7 +1954,7 @@ function pageAbout(){
         <tr><th>Функция</th><th>Состояние</th></tr>
         <tr><td>Сбор лотов с площадок</td><td>Работает: e-auction.by, ipmtorgi.by, beltorgi.by, konfiskat.by — ${DATA.length} активных лотов</td></tr>
         <tr><td>Обновление каталога</td><td>Работает: несколько раз в день</td></tr>
-        <tr><td>Архив завершённых торгов</td><td>Работает: ${ARCHN._||0} лотов с итогами торгов, хранятся полгода</td></tr>
+        <tr><td>Архив завершённых торгов</td><td>Работает: ${ARCHN._||0} лотов с итогами торгов, хранятся год</td></tr>
         <tr><td>Фильтры, поиск, рыночный ориентир</td><td>Работает</td></tr>
         <tr><td>Калькулятор торгов</td><td>Работает</td></tr>
         <tr><td>Уведомления в Telegram</td><td>Работает отдельным ботом</td></tr>
@@ -2095,11 +2108,11 @@ function pageHome(){
   attachSuggest($('#ls-q'), $('#ls-sugg'));
   bindCarousels();
   drawCal();
-  // прошедшие и уже закрывшие приём заявок торги — в архиве (1,7 МБ): грузим, когда календарь близко к экрану
-  if(!ARCH && 'IntersectionObserver' in window){
-    const io = new IntersectionObserver(es=>{ if(es.some(e=>e.isIntersecting)){ io.disconnect(); loadArch().then(()=>{ if($('#cal')) drawCal(); }); } }, { rootMargin:'600px' });
+  // прошедшие и уже закрывшие приём заявок торги — в свежем архиве (arch.js, ≈ 2 МБ): грузим, когда календарь близко к экрану
+  if(!ARCH1 && 'IntersectionObserver' in window){
+    const io = new IntersectionObserver(es=>{ if(es.some(e=>e.isIntersecting)){ io.disconnect(); loadArch1().then(()=>{ if($('#cal')) drawCal(); }); } }, { rootMargin:'600px' });
     io.observe($('#cal'));
-  } else if(!ARCH) loadArch().then(()=>{ if($('#cal')) drawCal(); });
+  } else if(!ARCH1) loadArch1().then(()=>{ if($('#cal')) drawCal(); });
 }
 
 /* ───────── календарь торгов (главная, внизу) ─────────
@@ -2114,7 +2127,7 @@ const dkey = t => { const d = new Date(t); return d.getFullYear() + '-' + p2(d.g
 let CAL_M = null, CAL_TODAY = '', CAL_USER = false;   // CAL_USER — месяц листали стрелками: не перескакивать на текущий
 function calBy(){
   const by = {}, seen = new Set();
-  for(const l of [...DATA, ...(ARCH||[])]){
+  for(const l of [...DATA, ...(ARCH||ARCH1||[])]){
     if(seen.has(l.id) || l.why==='removed') continue;   // снятые до торгов — торгов не было
     seen.add(l.id);
     (by[dkey(torgAt(l)*1000)] = by[dkey(torgAt(l)*1000)] || []).push(l);
@@ -2126,6 +2139,9 @@ function drawCal(){
   const now = new Date(); CAL_TODAY = dkey(now);
   if(!CAL_M || !CAL_USER) CAL_M = new Date(now.getFullYear(), now.getMonth(), 1);
   const y = CAL_M.getFullYear(), m = CAL_M.getMonth(), by = calBy();
+  // месяц раньше свежего архива — нужен весь (arch2.js)
+  const full = new Date(y, m, 1).getTime() < ARCHN.cut * 1000, got = full ? ARCH : ARCH1 || ARCH;
+  if(full && !ARCH) loadArch().then(()=>{ if($('#cal')) drawCal(); });
   const lead = (new Date(y, m, 1).getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
   let cells = '<div class="cal-d out"></div>'.repeat(lead);
   for(let d = 1; d <= days; d++){
@@ -2140,7 +2156,7 @@ function drawCal(){
       <h3>${MON1[m]} ${y}</h3><button class="btn" id="cal-next" type="button" aria-label="Следующий месяц">›</button></div>
     <div class="cal-g">${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(w=>`<div class="cal-wd">${w}</div>`).join('')}${cells}</div>
     <div class="cal-leg">${Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]).map(p=>`<span><i class="pdot ${pslug(p)}"></i>${esc(p)}</span>`).join('')}</div>
-    ${ARCH ? '' : '<p class="note">Подгружаем прошедшие торги и лоты с закрытым приёмом заявок…</p>'}`;
+    ${got ? '' : '<p class="note">Подгружаем прошедшие торги и лоты с закрытым приёмом заявок…</p>'}`;
   $('#cal-prev').onclick = () => { CAL_M = new Date(y, m - 1, 1); CAL_USER = true; drawCal(); };
   $('#cal-next').onclick = () => { CAL_M = new Date(y, m + 1, 1); CAL_USER = true; drawCal(); };
   box.querySelectorAll('.cal-d[data-k]').forEach(b=>b.onclick = e => { e.stopPropagation(); calPop(b.dataset.k, b, by[b.dataset.k] || []); });

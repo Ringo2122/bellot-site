@@ -3,8 +3,9 @@
 #
 # Сборка сайта из памяти (data/) в _site/:
 #   index.html  шаблон + короткие записи активных лотов
-#   arch.js     архив — грузится, только когда посетитель его открыл
-#   det/pN.js   подробности и условия покупки (для калькулятора) — 200 пачек, у лота пачка постоянная; грузятся на странице лота;
+#   arch.js     свежий архив (закрыт за ARCH_NEW дней) — грузится, только когда посетитель его открыл (календарь, архив)
+#   arch2.js    архив старше (архив площадок за год) и строки поиска по нему — когда нужен весь архив
+#   det/pN.js   подробности и условия покупки (для калькулятора) — PACKS пачек, у лота пачка постоянная; грузятся на странице лота;
 #               там же похожие завершённые торги, история объекта и точка на карте (similar.rb, geo.rb)
 #   srch.js     поиск по описанию: VIN, кадастровый и инвентарный номера, адрес, должник — грузится при поиске
 #   ph/<id>.jpg фото, по файлу на лот — браузер грузит только те, что на экране
@@ -34,8 +35,11 @@ require_relative 'bav'
 OUT  = ENV['OUT'] || File.join(Store::ROOT, '_site')
 TMP  = File.join(Store::ROOT, 'tmp')
 # Пачки подробностей: номер пачки лота постоянный — crc32(id) % PACKS. Раньше пачки шли по порядку лотов и сдвигались
-# при каждой сборке: браузер с закэшированной страницей (до 10 минут) искал лот не в той пачке — «подробных сведений нет»
-PACKS = 200
+# при каждой сборке: браузер с закэшированной страницей (до 10 минут) искал лот не в той пачке — «подробных сведений нет».
+# 02.10: 200 → 1000 — с архивом за год (≈ 28 тыс. лотов) пачка из 200 весила бы 0,7 МБ; в 1000 — ≈ 30 лотов, как было
+PACKS = 1000
+# свежий архив — arch.js (календарь на главной, недавние лоты), старше — arch2.js
+ARCH_NEW = 45
 KEEP = %w[id art name price req_to torg url location region debtor area_num platform section
           photo pk market prices status closed why first_seen alt pin result phx land].freeze
 SECS = %w[nedvizhimost avto gruz spec oborud arenda].freeze
@@ -299,14 +303,16 @@ pub = { 'texts' => CFG['texts'] || {}, 'calc' => CFG['calc'] || {}, 'sec_off' =>
         'bav' => Bav.load.slice('v', 'from', 'src', 'url') }   # действующая БАВ — для расчёта аренды
 pub['sb'] = { 'url' => ENV['SB_URL'], 'key' => ENV['SB_KEY'] } if Sb.on?
 
-archn = arch.group_by { |l| l['section'] }.map { |k, v| [k, v.size] }.to_h.merge('_' => arch.size)
+arch_cut = now - ARCH_NEW * 86_400
+arch1, arch2 = arch.partition { |l| l['closed'].to_i >= arch_cut }
+archn = arch.group_by { |l| l['section'] }.map { |k, v| [k, v.size] }.to_h.merge('_' => arch.size, 'cut' => arch_cut)
 slim = ->(l) { KEEP.each_with_object({}) { |k, h| h[k] = l[k] unless l[k].nil? }.tap { |h| h['np'] = l['pics'].size if (l['pics'] || []).size > 1 } }
 tpl = File.read(File.join(__dir__, 'site.tpl.html'), encoding: 'UTF-8')
 html = tpl.sub('__DATA__') { JSON.generate(active.map(&slim)) }
           .sub('__SNAP__', now.to_s).sub('__ARCHN__') { JSON.generate(archn) }
           .sub('__CFG__') { JSON.generate(pub) }
 File.write(File.join(OUT, 'index.html'), html)
-File.write(File.join(OUT, 'arch.js'), "__arch(#{JSON.generate(arch.map(&slim))});")
+File.write(File.join(OUT, 'arch.js'), "__arch(#{JSON.generate(arch1.map(&slim))});")
 # поиск по описанию: то, чего нет в карточке, — номера объекта, адрес, марка и модель, начало описания
 SRCH_ROWS = /\A(?:Адрес \(местонахождение\)|Местоположение имущества|Местонахождение имущества|Местонахождение|Местоположение|Марка|Модель|Марка \(модель\)|Идентификационный номер|Регистрационный номер|Кадастровый номер|Инвентарный номер.*|Инв\. номер|Год выпуска|Год)\z/
 DESC_ROWS = /\A(?:Описание(?: имущества)?|Дополнительная информация(?: по всему лоту)?)\z/
@@ -319,7 +325,12 @@ srch = order.map do |l|
   t = t.gsub(/&#(\d+);/) { $1.to_i.chr('UTF-8') }.downcase.tr('ё', 'е').gsub(/\s+/, ' ').split(' ').uniq.join(' ')
   [l['id'], t] unless t.empty?
 end.compact.to_h
+# строки поиска старого архива — в arch2.js: srch.js грузится при первом же поиске и должен оставаться лёгким
+old = arch2.map { |l| [l['id'], true] }.to_h
+srch2 = srch.select { |id, _| old[id] }
+srch.reject! { |id, _| old[id] }
 File.write(File.join(OUT, 'srch.js'), "__srch(#{JSON.generate(srch)});")
+File.write(File.join(OUT, 'arch2.js'), "__arch2(#{JSON.generate(arch2.map(&slim))},#{JSON.generate(srch2)});")
 File.write(File.join(OUT, '.nojekyll'), '')
 adm = File.read(File.join(__dir__, 'admin.html'), encoding: 'UTF-8')
 FileUtils.cp(File.join(__dir__, 'stats.js'), File.join(OUT, 'stats.js'))   # аналитика: общая для админки и кабинета
@@ -362,5 +373,5 @@ by = Hash.new(0)
 active.each { |l| by[l['section']] += 1 }
 kb = ->(f) { (File.size(File.join(OUT, f)) / 1024.0).round }
 puts "активных #{active.size} (#{by.map { |k, v| "#{k} #{v}" }.join(', ')}), в архиве #{arch.size}"
-puts "index.html #{kb.('index.html')} КБ, arch.js #{kb.('arch.js')} КБ, srch.js #{kb.('srch.js')} КБ, пачек #{packs}, " \
+puts "index.html #{kb.('index.html')} КБ, arch.js #{kb.('arch.js')} КБ, arch2.js #{kb.('arch2.js')} КБ, srch.js #{kb.('srch.js')} КБ, пачек #{packs}, " \
      "фото #{order.count { |l| l['photo'] }}, ориентиров #{active.count { |l| l['market'] }}"
