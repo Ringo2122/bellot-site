@@ -73,6 +73,10 @@ jobs:
       SB_TOKEN: ${{ secrets.SB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # память — свежая, а не на момент запуска: 04.10 обход 9:00 час ждал в очереди за ночным архивом,
+          # взял память до архива и не смог сохраниться (конфликт data/lots.json)
+          ref: main
 
       - uses: ruby/setup-ruby@v1
         with:

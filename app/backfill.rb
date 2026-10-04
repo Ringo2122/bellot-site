@@ -33,6 +33,15 @@ YEAR_PLATS = %w[e-auction.by ipmtorgi.by beltorgi.by konfiskat.by minskestate.by
 YEAR_PH = [320, 40].freeze   # ширина и качество главного фото
 YEAR_PICS = 5
 YEAR_KF_DAYS = 90
+# По расписанию — только ночью: GitHub запускает расписание с опозданием (04.10 — в 05:43 вместо 23:30; архив шёл до 10:15,
+# обход 9:00 час ждал в очереди). Ночной прогон работает до 6:30 по Минску (TZ в workflow), запуск вручную — без ограничения.
+YEAR_UNTIL = if YEAR_ARCH && ENV['GITHUB_EVENT_NAME'] == 'schedule'
+               t = Time.now
+               if t.hour >= 22 then Time.local(t.year, t.month, t.day, 6, 30) + 86_400
+               elsif t.hour < 7 then Time.local(t.year, t.month, t.day, 6, 30)
+               else t   # днём не работаем
+               end
+             end
 
 BACK_DAYS = (ENV['BACK_DAYS'] || (YEAR_ARCH ? 365 : 30)).to_i
 BACK_CAP = (ENV['BACK_CAP'] || (YEAR_ARCH ? 1_000_000 : 350)).to_i
@@ -64,7 +73,7 @@ end
 
 def backfill(db, stat, pstat, now)
   since = now - BACK_DAYS * 86_400
-  stop = Time.now + BACK_MIN * 60
+  stop = [Time.now + BACK_MIN * 60, YEAR_UNTIL].compact.min
   mx = Mutex.new
   known = ->(k) { mx.synchronize { db.key?(k) } }
   skip = File.exist?(BACK_SKIP) ? (JSON.parse(File.read(BACK_SKIP, encoding: 'UTF-8')) rescue {}) : {}

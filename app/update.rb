@@ -51,8 +51,8 @@ RES_CAP = (ENV['RES_CAP'] || 300).to_i
 # RESULTS_ONLY=1 — прогон «проверка итогов» (каждый час между обходами, gate.rb): площадки не обходим,
 # архив площадок, карту и фото не трогаем — только сроки и итоги завершившихся торгов
 RESULTS_ONLY = !ENV['RESULTS_ONLY'].to_s.empty?
-if YEAR_ARCH && year_left.empty?
-  puts 'архив площадок за год уже загружен — делать нечего'
+if YEAR_ARCH && (year_left.empty? || (YEAR_UNTIL && YEAR_UNTIL - Time.now < 30 * 60))
+  puts year_left.empty? ? 'архив площадок за год уже загружен — делать нечего' : 'ночной архив запущен GitHub слишком поздно — до утра не успеть, ждём следующей ночи'
   File.write(ENV['GITHUB_OUTPUT'], "work=false\n", mode: 'a') if ENV['GITHUB_OUTPUT']
   exit
 end
