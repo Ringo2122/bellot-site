@@ -12,7 +12,7 @@
     --ink:#18181b; --ink-2:#52525b; --ink-3:#71717a;
     --bg:#fafafa; --card:#fff; --hair:#e4e4e7; --hair-2:#d4d4d8;
     --sh:0 1px 2px rgba(0,0,0,.04); --sh-2:0 4px 24px rgba(0,0,0,.1);
-    --navy:#041c33; --hero:linear-gradient(180deg,#fff5ee 0%,#ffe8d6 100%); --sky:#f4511e;
+    --accent-h:#ff6a3c; --navy:#041c33; --hero:linear-gradient(180deg,#fff5ee 0%,#ffe8d6 100%); --sky:#f4511e;
     --head:"Onest","Inter",system-ui,sans-serif;
   }
   @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
@@ -22,7 +22,7 @@
     --ink:#fafafa; --ink-2:#c4c4cc; --ink-3:#8f8f98;
     --bg:#141416; --card:#202024; --hair:#313137; --hair-2:#45454e;
     --sh:0 1px 2px rgba(0,0,0,.4); --sh-2:0 4px 28px rgba(0,0,0,.5);
-    --navy:#0b1622; --hero:linear-gradient(180deg,#221914 0%,#141416 100%); --sky:#ffab91;
+    --accent-h:#ff6a3c; --navy:#0b1622; --hero:linear-gradient(180deg,#221914 0%,#141416 100%); --sky:#ffab91;
   }}
   :root[data-theme="dark"]{
     --brand:#f4511e; --brand-d:#ff8a65; --brand-l:#2a1c16;
@@ -31,7 +31,7 @@
     --ink:#fafafa; --ink-2:#c4c4cc; --ink-3:#8f8f98;
     --bg:#141416; --card:#202024; --hair:#313137; --hair-2:#45454e;
     --sh:0 1px 2px rgba(0,0,0,.4); --sh-2:0 4px 28px rgba(0,0,0,.5);
-    --navy:#0b1622; --hero:linear-gradient(180deg,#221914 0%,#141416 100%); --sky:#ffab91;
+    --accent-h:#ff6a3c; --navy:#0b1622; --hero:linear-gradient(180deg,#221914 0%,#141416 100%); --sky:#ffab91;
   }
   *{box-sizing:border-box}
   /* страховка: ничто не делает страницу шире экрана (clip, а не hidden — липкая панель фильтров продолжает работать) */
@@ -70,10 +70,10 @@
     display:grid;place-items:center;cursor:pointer;transition:border-color .15s,color .15s}
   .hs-btn:hover{border-color:var(--brand);color:var(--brand)}
   .hs-btn svg,.hs-ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-  .hs-form{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:0;opacity:0;pointer-events:none;
+  .hs-form{position:absolute;right:var(--hs-r,16px);top:50%;z-index:2;transform:translateY(-50%);width:0;opacity:0;pointer-events:none;
     display:flex;align-items:center;background:var(--card);border:1.5px solid var(--brand);border-radius:23px;
     box-shadow:var(--sh-2);transition:width .3s cubic-bezier(.2,.7,.3,1),opacity .18s}
-  .hsearch.open .hs-form{width:min(580px,calc(100% - 32px));opacity:1;pointer-events:auto}
+  .hsearch.open .hs-form{width:min(580px,calc(100% - var(--hs-r,16px) - 16px));opacity:1;pointer-events:auto}
   .hs-ico{padding:0 4px 0 14px;color:var(--ink-3);display:grid;place-items:center}
   .hs-form input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);padding:11px 6px;font-size:15px;outline:none}
     .hs-form input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}   /* свой крестик уже есть */
@@ -97,17 +97,23 @@
   .hacts{display:flex;gap:9px;flex:none}
   .more{display:block;margin:22px auto 0;min-width:260px}
   .btn{padding:9px 16px;border-radius:8px;border:1px solid var(--hair-2);background:var(--card);
-    color:var(--ink);cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap}
-  .btn:hover{border-color:var(--brand);color:var(--brand)}
+    color:var(--ink);cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap;
+    transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s}
+  .btn:hover{border-color:var(--brand);color:var(--brand);text-decoration:none;transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.08)}
+  .btn:active{transform:translateY(0);box-shadow:none}
   .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
-  .btn.pri:hover{filter:brightness(.93);color:#fff}
+  .btn.pri:hover{background:var(--accent-h);border-color:var(--accent-h);color:#fff;box-shadow:0 8px 20px rgba(244,81,30,.35)}
 
   nav.main{background:var(--card);border-bottom:1px solid var(--hair);overflow-x:auto;position:sticky;top:0;z-index:40;box-shadow:0 2px 10px rgba(0,0,0,.05)}
-  nav.main ul{display:flex;list-style:none;margin:0;padding:0;gap:0;min-width:max-content}
-  nav.main a{display:block;padding:11px 16px;color:var(--ink);font-size:14.5px;font-weight:600;white-space:nowrap;
+  nav.main ul{display:flex;justify-content:space-between;list-style:none;margin:0;padding:0;gap:0;min-width:max-content}
+  nav.main a{display:block;padding:11px 9px;color:var(--ink);font-size:13.5px;font-weight:600;white-space:nowrap;
     border-bottom:3px solid transparent}
   nav.main a:hover{color:var(--brand);text-decoration:none}
   nav.main a.on{color:var(--brand);border-bottom-color:var(--brand)}
+  nav.main li:first-child a{padding-left:0}
+  /* ноутбуки: сайт уже 1 220 px — пункты плотнее; на планшете и телефоне меню листается */
+  @media (max-width:1200px){ nav.main a{font-size:13px;padding-inline:7px} }
+  @media (max-width:1100px){ nav.main a{font-size:12.5px;padding-inline:6px} }
 
   /* ── общее ── */
   main{padding-block:22px 56px;min-height:60vh}
@@ -393,7 +399,9 @@
   .land p{font-size:17px;line-height:1.55;color:var(--ink-2);max-width:58ch;margin:0 0 26px}
   .land-search{position:relative;display:flex;max-width:620px;background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:5px;box-shadow:var(--sh-2)}
   .land-search input{flex:1;min-width:0;border:0;padding:12px 14px;font-size:16px;color:var(--ink);background:transparent;outline:none}
-  .land-search button{border:0;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;padding:0 22px;cursor:pointer;font-size:15px}
+  .land-search button{border:0;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;padding:0 22px;cursor:pointer;font-size:15px;
+    transition:background-color .2s,box-shadow .2s}
+  .land-search button:hover{background:var(--accent-h);box-shadow:0 6px 16px rgba(244,81,30,.35)}
   .land-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}
   .btn.big{padding:13px 22px;font-size:15.5px;border-radius:10px}
   .btn.ghost{background:var(--card);border-color:#a1a1aa;color:var(--ink)}
@@ -1027,7 +1035,9 @@ document.addEventListener('click', e=>{
   if($('#hs').classList.contains('open') && !$('#hs').contains(e.target)) hsClose();
 });
 const hsClose = () => { $('#hs').classList.remove('open'); $('#hs-q').value = ''; $('#hs-sugg').classList.remove('on'); };
-$('#hs-open').onclick = () => { $('#hs').classList.add('open'); setTimeout(()=>$('#hs-q').focus(), 80); };
+$('#hs-open').onclick = () => {
+  $('#hs').style.setProperty('--hs-r', ($('.hacts').offsetWidth + 16 + 10) + 'px');   // отступ справа (16) + кнопки + зазор
+  $('#hs').classList.add('open'); setTimeout(()=>$('#hs-q').focus(), 80); };
 $('#hs-close').onclick = hsClose;
 attachSuggest($('#hs-q'), $('#hs-sugg'), hsClose);
 

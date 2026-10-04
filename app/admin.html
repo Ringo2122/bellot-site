@@ -5,41 +5,45 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Админка БелЛот</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Onest:wght@600;700;800&display=swap">
 <style>
   :root{
-    --brand:#12508f; --brand-d:#0d3c6e; --brand-l:#e8f0f8;
-    --accent:#d9761f; --accent-l:#fdf1e4;
-    --ok:#1d7a4d; --ok-l:#e6f3ec; --bad:#b3261e; --bad-l:#fbeaea;
-    --ink:#1a2330; --ink-2:#4a5563; --ink-3:#77818d;
-    --bg:#f2f4f7; --card:#fff; --hair:#dde2e8; --hair-2:#c6cdd6;
-    --sh:0 1px 3px rgba(20,30,45,.08); --sh-2:0 10px 40px rgba(20,30,45,.22);
+    /* цвета — как у сайта (стиль smartleiloes.app, 04.10.2026): серая гамма, оранжевый акцент, тёмно-синее меню */
+    --brand:#f4511e; --brand-d:#c73a12; --brand-l:#fff1ea;
+    --accent:#f4511e; --accent-l:#ffede4;
+    --ok:#16794c; --ok-l:#e7f6ee; --bad:#dc2626; --bad-l:#fef2f2;
+    --ink:#18181b; --ink-2:#52525b; --ink-3:#71717a;
+    --bg:#fafafa; --card:#fff; --hair:#e4e4e7; --hair-2:#d4d4d8;
+    --sh:0 1px 2px rgba(0,0,0,.04); --sh-2:0 10px 40px rgba(0,0,0,.18);
+    --navy:#041c33; --info-l:#eff6ff; --info-b:#bfdbfe;
   }
   *{box-sizing:border-box}
   [hidden]{display:none !important}
   html,body{margin:0}
-  body{font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
-  a{color:var(--brand)}
+  body{font:14px/1.45 "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  a{color:var(--brand-d)}
+  h1,h2,.brand{font-family:"Onest","Inter",sans-serif}
   h1{font-size:22px;margin:0 0 4px}
   h2{font-size:16px;margin:0 0 10px}
   .lede{color:var(--ink-2);margin:0 0 18px;max-width:760px}
   button,input,select,textarea{font:inherit;color:inherit}
-  input,select,textarea{border:1px solid var(--hair-2);border-radius:6px;padding:7px 9px;background:#fff;min-width:0}
+  input,select,textarea{border:1px solid var(--hair-2);border-radius:8px;padding:7px 9px;background:#fff;min-width:0}
   textarea{width:100%;resize:vertical}
   input:focus,select:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
-  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hair-2);background:#fff;border-radius:6px;padding:7px 12px;cursor:pointer;white-space:nowrap;text-decoration:none;color:var(--ink)}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hair-2);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;white-space:nowrap;text-decoration:none;color:var(--ink)}
   .btn:hover{border-color:var(--brand)}
   .btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
   .btn.acc{background:var(--accent);border-color:var(--accent);color:#fff}
   .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
-  .btn.bad{color:var(--bad);border-color:#e5b4b0}
+  .btn.bad{color:var(--bad);border-color:#fecaca}
   .btn.sm{padding:4px 9px;font-size:13px}
   .btn:disabled{opacity:.55;cursor:default}
   .muted{color:var(--ink-3)}
-  .panel{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:16px;box-shadow:var(--sh);margin-bottom:16px}
+  .panel{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:16px;box-shadow:var(--sh);margin-bottom:16px}
 
   /* вход */
   #login{min-height:100vh;display:grid;place-items:center;padding:16px}
-  #login form{width:100%;max-width:340px;background:#fff;border-radius:12px;padding:26px;box-shadow:var(--sh-2)}
+  #login form{width:100%;max-width:340px;background:#fff;border-radius:16px;padding:26px;box-shadow:var(--sh-2)}
   #login h1{margin-bottom:16px}
   #login label{display:block;margin:10px 0 4px;color:var(--ink-2);font-size:13px}
   #login input{width:100%}
@@ -48,24 +52,24 @@
 
   /* каркас */
   #shell{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
-  .side{background:var(--brand-d);color:#dbe6f1;padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+  .side{background:var(--navy);color:#d4d4d8;padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
   .brand{font-weight:800;font-size:18px;color:#fff;padding:0 8px 16px}
   .brand small{font-weight:400;opacity:.7;font-size:12px;margin-left:4px}
-  #nav a{display:flex;justify-content:space-between;align-items:center;color:#dbe6f1;text-decoration:none;padding:8px 10px;border-radius:6px;margin-bottom:2px}
+  #nav a{display:flex;justify-content:space-between;align-items:center;color:#d4d4d8;text-decoration:none;padding:8px 10px;border-radius:8px;margin-bottom:2px}
   #nav a:hover{background:rgba(255,255,255,.08)}
-  #nav a.on{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
-  #nav .n{background:var(--accent);color:#fff;border-radius:10px;padding:0 7px;font-size:12px;font-weight:700}
+  #nav a.on{background:rgba(244,81,30,.2);color:#fff;font-weight:600;box-shadow:inset 3px 0 0 var(--brand)}
+  #nav .n{background:var(--accent);color:#fff;border-radius:12px;padding:0 7px;font-size:12px;font-weight:700}
   .side-f{margin-top:18px;padding:12px 10px;border-top:1px solid rgba(255,255,255,.15)}
   .side-f a{color:#fff;display:block;margin-bottom:6px}
   .main{padding:22px 26px 60px;min-width:0}
   #pubbar:empty{display:none}
-  #pubbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--accent-l);border:1px solid #f0c9a0;border-radius:10px;padding:10px 14px;margin-bottom:18px}
-  #pubbar.run{background:var(--brand-l);border-color:#b9d0e8}
+  #pubbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--accent-l);border:1px solid #fdc8b0;border-radius:12px;padding:10px 14px;margin-bottom:18px}
+  #pubbar.run{background:var(--info-l);border-color:var(--info-b)}
   #pubbar .t{flex:1;min-width:200px}
 
   /* сводка */
   .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:16px}
-  .kpi{background:#fff;border:1px solid var(--hair);border-radius:10px;padding:12px 14px;text-decoration:none;color:inherit;box-shadow:var(--sh)}
+  .kpi{background:#fff;border:1px solid var(--hair);border-radius:12px;padding:12px 14px;text-decoration:none;color:inherit;box-shadow:var(--sh)}
   .kpi b{display:block;font-size:24px}
   .kpi span{color:var(--ink-2);font-size:13px}
   .kpi.warn b{color:var(--accent)}
@@ -73,9 +77,9 @@
   th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--hair);vertical-align:top}
   th{font-weight:600;color:var(--ink-2);font-size:12px;text-transform:uppercase;letter-spacing:.02em}
   tr.click{cursor:pointer}
-  tr.click:hover td{background:#f7f9fb}
+  tr.click:hover td{background:#fafafa}
   .tw{overflow-x:auto}
-  pre.log{white-space:pre-wrap;background:#f6f7f9;border:1px solid var(--hair);border-radius:6px;padding:10px;font-size:12px;max-height:340px;overflow:auto;margin:8px 0 0}
+  pre.log{white-space:pre-wrap;background:#f4f4f5;border:1px solid var(--hair);border-radius:8px;padding:10px;font-size:12px;max-height:340px;overflow:auto;margin:8px 0 0}
   .okc{color:var(--ok);font-weight:700}.badc{color:var(--bad);font-weight:700}
 
   /* списки лотов */
@@ -84,8 +88,8 @@
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .tabs a{padding:6px 12px;border-radius:16px;border:1px solid var(--hair-2);text-decoration:none;color:var(--ink);background:#fff}
   .tabs a.on{background:var(--brand);border-color:var(--brand);color:#fff}
-  .lot{display:grid;grid-template-columns:24px 84px 1fr auto;gap:12px;align-items:start;background:#fff;border:1px solid var(--hair);border-radius:10px;padding:10px;margin-bottom:8px}
-  .lot .th{width:84px;height:62px;border-radius:6px;overflow:hidden;background:#eef1f4;display:grid;place-items:center;font-size:11px;color:var(--ink-3)}
+  .lot{display:grid;grid-template-columns:24px 84px 1fr auto;gap:12px;align-items:start;background:#fff;border:1px solid var(--hair);border-radius:12px;padding:10px;margin-bottom:8px}
+  .lot .th{width:84px;height:62px;border-radius:8px;overflow:hidden;background:#f4f4f5;display:grid;place-items:center;font-size:11px;color:var(--ink-3)}
   .lot .th img{width:100%;height:100%;object-fit:cover}
   .lot .nm{font-weight:600;text-decoration:none;color:var(--ink);display:block}
   .lot .nm:hover{color:var(--brand)}
@@ -93,14 +97,14 @@
   .lot .acts{display:flex;flex-direction:column;gap:5px;align-items:stretch}
   .lot .ck{padding-top:4px}
   .chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
-  .chip{font-size:12px;padding:1px 8px;border-radius:10px;background:#eef1f4;color:var(--ink-2)}
+  .chip{font-size:12px;padding:1px 8px;border-radius:12px;background:#f4f4f5;color:var(--ink-2)}
   .chip.r{background:var(--accent-l);color:#9a4f0e}
   .chip.g{background:var(--ok-l);color:var(--ok)}
   .chip.b{background:var(--bad-l);color:var(--bad)}
   .chip.bl{background:var(--brand-l);color:var(--brand)}
   .pager{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:14px}
-  .empty{padding:30px;text-align:center;color:var(--ink-3);background:#fff;border:1px dashed var(--hair-2);border-radius:10px}
-  .sim{margin-top:8px;padding:8px 10px;background:#f7f9fb;border-radius:6px;font-size:13px}
+  .empty{padding:30px;text-align:center;color:var(--ink-3);background:#fff;border:1px dashed var(--hair-2);border-radius:12px}
+  .sim{margin-top:8px;padding:8px 10px;background:#fafafa;border-radius:8px;font-size:13px}
 
   /* формы настроек */
   .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
@@ -114,12 +118,12 @@
   .tog small{display:block;color:var(--ink-3)}
   .sw{position:relative;width:40px;height:22px;flex:none}
   .sw input{opacity:0;width:0;height:0;position:absolute}
-  .sw i{position:absolute;inset:0;background:#c6cdd6;border-radius:12px;transition:.15s;cursor:pointer}
+  .sw i{position:absolute;inset:0;background:#d4d4d8;border-radius:16px;transition:.15s;cursor:pointer}
   .sw i:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}
   .sw input:checked+i{background:var(--ok)}
   .sw input:checked+i:before{transform:translateX(18px)}
   .hours{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;max-width:560px}
-  .hours label{border:1px solid var(--hair-2);border-radius:6px;text-align:center;padding:5px 0;cursor:pointer;font-size:13px;background:#fff}
+  .hours label{border:1px solid var(--hair-2);border-radius:8px;text-align:center;padding:5px 0;cursor:pointer;font-size:13px;background:#fff}
   .hours input{display:none}
   .hours label.on{background:var(--brand);border-color:var(--brand);color:#fff}
   .ctab td input,.ctab td textarea{width:100%}
@@ -134,7 +138,7 @@
   .dw-h h2{flex:1;font-size:18px;margin:0}
   .dw-foot{position:fixed;bottom:0;right:0;width:min(720px,100%);background:#fff;border-top:1px solid var(--hair);padding:12px 20px;display:flex;gap:10px;align-items:center}
   .ph-edit{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-  .ph-edit img{width:200px;height:140px;object-fit:cover;border-radius:8px;background:#eef1f4}
+  .ph-edit img{width:200px;height:140px;object-fit:cover;border-radius:8px;background:#f4f4f5}
   .orig{font-size:12px;color:var(--ink-3);margin-top:3px;max-height:90px;overflow:auto}
   .radios{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0}
   .radios label{display:flex;gap:5px;align-items:center}

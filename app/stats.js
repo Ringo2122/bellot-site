@@ -70,43 +70,43 @@
   // классы с приставкой bk-: у сайта свои .kpis/.kpi (на главной сдвинуты вверх) — не пересекаемся
   const CSS = `
   .bls .bk-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px}
-  .bls .bk-kpi{background:#fff;border:1px solid #dde2e8;border-radius:10px;padding:12px 14px;box-shadow:0 1px 3px rgba(20,30,45,.08)}
+  .bls .bk-kpi{background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px rgba(20,30,45,.08)}
   .bls .bk-kpi b{display:block;font-size:24px}
-  .bls .bk-kpi span{color:#4a5563;font-size:13px}
-  .bls .pnl{background:#fff;border:1px solid #dde2e8;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(20,30,45,.08);margin-bottom:16px}
+  .bls .bk-kpi span{color:#52525b;font-size:13px}
+  .bls .pnl{background:#fff;border:1px solid #e4e4e7;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(20,30,45,.08);margin-bottom:16px}
   .bls .pnl h2{font-size:16px;margin:0 0 10px}
-  .bls .mut{color:#77818d;font-size:13px}
+  .bls .mut{color:#71717a;font-size:13px}
   .bls .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-  .bls .tabs a{padding:6px 12px;border-radius:16px;border:1px solid #c6cdd6;text-decoration:none;color:#1a2330;background:#fff;font-size:14px}
-  .bls .tabs a.on{background:#12508f;border-color:#12508f;color:#fff}
+  .bls .tabs a{padding:6px 12px;border-radius:16px;border:1px solid #d4d4d8;text-decoration:none;color:#18181b;background:#fff;font-size:14px}
+  .bls .tabs a.on{background:#f4511e;border-color:#f4511e;color:#fff}
   .bls .g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
   .bls .cols{display:flex;align-items:flex-end;gap:3px;height:190px;padding-top:4px}
   .bls .col{flex:1;min-width:4px;max-width:56px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;text-align:center}
-  .bls .col b{font-size:10px;font-weight:600;color:#4a5563;min-height:13px;line-height:13px}
+  .bls .col b{font-size:10px;font-weight:600;color:#52525b;min-height:13px;line-height:13px}
   .bls .col .stk{display:flex;flex-direction:column-reverse;border-radius:3px 3px 0 0;overflow:hidden;min-height:0}
   .bls .col .stk i{display:block;min-height:1px}
-  .bls .col span{font-size:10px;color:#77818d;height:14px;line-height:14px;margin-top:3px;white-space:nowrap}
-  .bls .lg{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#4a5563}
+  .bls .col span{font-size:10px;color:#71717a;height:14px;line-height:14px;margin-top:3px;white-space:nowrap}
+  .bls .lg{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#52525b}
   .bls .lg i,.bls .dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
   .bls .hb-r{display:grid;grid-template-columns:minmax(110px,34%) 1fr auto;gap:10px;align-items:center;padding:4px 0}
-  .bls .hb-l{font-size:13px;color:#4a5563}
-  .bls .hb-t{background:#eef1f4;border-radius:4px;height:14px;overflow:hidden}
+  .bls .hb-l{font-size:13px;color:#52525b}
+  .bls .hb-t{background:#f4f4f5;border-radius:4px;height:14px;overflow:hidden}
   .bls .hb-t i{display:block;height:100%;border-radius:4px}
   .bls .hb-v{font-size:13px;font-weight:600;white-space:nowrap}
-  .bls .hb-v small{font-weight:400;color:#77818d}
+  .bls .hb-v small{font-weight:400;color:#71717a}
   .bls .tw{overflow-x:auto}
   .bls table{border-collapse:collapse;width:100%}
-  .bls th,.bls td{text-align:left;padding:7px 8px;border-bottom:1px solid #dde2e8;vertical-align:top;white-space:nowrap;font-size:14px}
-  .bls th{font-weight:600;color:#4a5563;font-size:12px;text-transform:uppercase;letter-spacing:.02em}
+  .bls th,.bls td{text-align:left;padding:7px 8px;border-bottom:1px solid #e4e4e7;vertical-align:top;white-space:nowrap;font-size:14px}
+  .bls th{font-weight:600;color:#52525b;font-size:12px;text-transform:uppercase;letter-spacing:.02em}
   .bls td:first-child{white-space:normal;min-width:160px}
   .bls .heat{display:inline-block;min-width:34px;text-align:center;border-radius:4px;padding:1px 6px;font-weight:600}
-  .bls .btn2{border:1px solid #c6cdd6;background:#fff;border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit}
+  .bls .btn2{border:1px solid #d4d4d8;background:#fff;border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit}
   .bls .fbar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin:-4px 0 16px}
-  .bls .fbar label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#4a5563}
-  .bls .fbar select{font:inherit;font-size:14px;padding:6px 8px;border:1px solid #c6cdd6;border-radius:6px;background:#fff;color:#1a2330;min-width:180px;max-width:280px}
+  .bls .fbar label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#52525b}
+  .bls .fbar select{font:inherit;font-size:14px;padding:6px 8px;border:1px solid #d4d4d8;border-radius:6px;background:#fff;color:#18181b;min-width:180px;max-width:280px}
   .bls .fbar .rst{font-size:13px;color:#b3261e;padding-bottom:8px}
-  .bls .fnote{background:#eef4fb;border:1px solid #cfe0f2;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:14px}
-  .bls .sub{display:inline-block;padding-left:18px;color:#4a5563}
+  .bls .fnote{background:#fff1ea;border:1px solid #fdc8b0;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:14px}
+  .bls .sub{display:inline-block;padding-left:18px;color:#52525b}
   @media (max-width:860px){ .bls .g2{grid-template-columns:1fr} }
   @media (max-width:600px){ .bls .fbar label{flex:1 1 100%} .bls .fbar select{max-width:none;width:100%} }`;
   function css(){ if(document.getElementById('bls-css')) return; const s = document.createElement('style'); s.id = 'bls-css'; s.textContent = CSS; document.head.appendChild(s); }
@@ -114,13 +114,13 @@
   function hbars(rows, unit=''){
     const max = Math.max(1, ...rows.map(r=>r[1]));
     return rows.map(([label, v, note, col])=>`<div class="hb-r"><span class="hb-l">${esc(label)}</span>
-      <span class="hb-t"><i style="width:${Math.max(v?2:0, v/max*100)}%;background:${col||'#12508f'}"></i></span>
+      <span class="hb-t"><i style="width:${Math.max(v?2:0, v/max*100)}%;background:${col||'#f4511e'}"></i></span>
       <span class="hb-v">${nf(v)}${unit}${note?` <small>${esc(note)}</small>`:''}</span></div>`).join('');
   }
   function cols(days){
     const max = Math.max(1, ...days.map(d=>d.total)), every = Math.ceil(days.length/15);
     return `<div class="cols">${days.map((d,i)=>`<div class="col" title="${dshort(d.key)}: ${d.total}">
-      <b>${d.total||''}</b><div class="stk" style="height:${d.total/max*100}%">${d.parts ? SECS.map(([s])=>d.parts[s]?`<i style="flex:${d.parts[s]};background:${COL[s]}"></i>`:'').join('') : '<i style="flex:1;background:#12508f"></i>'}</div>
+      <b>${d.total||''}</b><div class="stk" style="height:${d.total/max*100}%">${d.parts ? SECS.map(([s])=>d.parts[s]?`<i style="flex:${d.parts[s]};background:${COL[s]}"></i>`:'').join('') : '<i style="flex:1;background:#f4511e"></i>'}</div>
       <span>${i%every===0?dshort(d.key):''}</span></div>`).join('')}</div>`;
   }
   const legend = () => `<div class="lg">${SECS.map(([s,t])=>`<span><i style="background:${COL[s]}"></i>${t}</span>`).join('')}</div>`;
