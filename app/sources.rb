@@ -521,11 +521,15 @@ module Src
   # срок заявок и задаток — только в PDF-извещении (одно на аукцион, ссылка — на странице лота):
   # «состоится 20.10.26 в 12:00 г. Минск», «Не позднее 12.00 дня, предшествующего дню проведения
   # электронных торгов…», «Размер задатка – 10% от начальной цены продажи».
+  # nil — список не прочитан; [] — раздел пуст: площадка так и пишет «Ничего не найдено»
+  # (05.10: «Собственное имущество» пусто с 25.09 — сигнализация несколько дней считала это сбоем)
   def kf_list(path)
     out = []
     seen = {}
     (1..MAX_PAGES).each do |p|
-      html = get("#{KF}/#{path}/" + (p > 1 ? "?PAGEN_1=#{p}" : '')) or break
+      html = get("#{KF}/#{path}/" + (p > 1 ? "?PAGEN_1=#{p}" : ''))
+      return nil if !html && p == 1
+      break unless html
       got = html.split('class="product-card grid-card-style"').drop(1).map do |ch|
         href = ch[/class="product-name"[^>]*href="([^"]+)"|href="([^"]+)"[^>]*class="product-name"/, 1] ||
                ch[/href="([^"]+)"[^>]*class="product-name"/, 1]
@@ -537,6 +541,7 @@ module Src
           'day' => ts(txt(ch[/auction-date.*?<\/svg>(.*?)<\/span>/m, 1]).gsub('&nbsp;', ' ')[/\d{2}\.\d{2}\.\d{4}/].to_s + ' 00:00'),
           'url' => KF + href, 'thumb' => img && KF + img }
       end.compact
+      return nil if got.empty? && p == 1 && !html.include?('Ничего не найдено')
       break if got.empty?
       fresh = got.reject { |c| seen[c['key']] }
       break if fresh.empty?

@@ -201,8 +201,8 @@ end
       src = "#{plat} #{path}"
       cards = list(plat, path)
       mx.synchronize do
-        # у МГЦН раздел может быть без предстоящих аукционов — это не сбой
-        lists[src] = cards.nil? || (cards.empty? && plat != 'mgcn.by') ? nil : cards.size
+        # у МГЦН и konfiskat раздел может быть пуст — это не сбой (их списки отличают пустой раздел от непрочитанного: nil)
+        lists[src] = cards.nil? || (cards.empty? && !%w[mgcn.by konfiskat.by].include?(plat)) ? nil : cards.size
         (cards || []).each { |c| seen[c['key']] = true }
         (cards || []).each { |c| bav_mg << (c['bav'] + [c['url']]) if c['bav'] }
       end
