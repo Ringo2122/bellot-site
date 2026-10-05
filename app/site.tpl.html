@@ -114,6 +114,26 @@
   /* ноутбуки: сайт уже 1 220 px — пункты плотнее; на планшете и телефоне меню листается */
   @media (max-width:1200px){ nav.main a{font-size:13px;padding-inline:7px} }
   @media (max-width:1100px){ nav.main a{font-size:12.5px;padding-inline:6px} }
+  /* телефон: разделы — не полосой, которую листают вбок, а списком под круглой кнопкой в правом нижнем углу.
+     Кнопка остаётся на месте при прокрутке; список раскрывается над ней, закрывается выбором раздела, касанием мимо или Esc */
+  .mnav-btn,.mnav-ov{display:none}
+  @media (max-width:760px){
+    nav.main{position:fixed;top:auto;left:auto;right:16px;bottom:calc(80px + env(safe-area-inset-bottom));z-index:58;
+      width:min(290px,calc(100vw - 32px));max-height:min(68vh,560px);overflow:auto;border:1px solid var(--hair);border-radius:16px;
+      box-shadow:var(--sh-2);visibility:hidden;opacity:0;transform:translateY(10px) scale(.97);transform-origin:bottom right;
+      transition:opacity .18s,transform .18s,visibility 0s .18s}
+    body.mnav nav.main{visibility:visible;opacity:1;transform:none;transition:opacity .18s,transform .18s}
+    nav.main .wrap{padding:6px}
+    nav.main ul{flex-direction:column;min-width:0}
+    nav.main a,nav.main li:first-child a{padding:11px 14px;font-size:15px;border-bottom:0;border-radius:10px}
+    nav.main a.on{background:var(--brand-l);color:var(--brand-d)}
+    .mnav-btn{display:grid;place-items:center;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:59;
+      width:52px;height:52px;border:0;border-radius:50%;background:var(--accent);color:#fff;cursor:pointer;
+      box-shadow:0 8px 20px rgba(244,81,30,.35)}
+    .mnav-btn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+    .mnav-ov{display:block;position:fixed;inset:0;z-index:57;background:rgba(10,15,22,.32);opacity:0;pointer-events:none;transition:opacity .18s}
+    body.mnav .mnav-ov{opacity:1;pointer-events:auto}
+  }
 
   /* ── общее ── */
   main{padding-block:22px 56px;min-height:60vh}
@@ -775,7 +795,7 @@
   .cal-empty{padding:16px 6px;color:var(--ink-3)}
   @media (max-width:760px){
     .cal{padding:10px} .cal-g{gap:3px} .cal-d{min-height:58px;padding:5px;gap:3px} .cal-d .n{font-size:14px} .cal-d .c i{display:none}
-    .cal-pop{position:fixed;left:8px!important;right:8px;top:auto!important;bottom:8px;width:auto;max-height:72vh}
+    .cal-pop{position:fixed;left:8px!important;right:8px;top:auto!important;bottom:8px;width:auto;max-height:72vh;z-index:61}
   }
   .fres{font-size:13.5px;color:var(--ink-2);background:var(--bg);border-radius:8px;padding:7px 9px;margin:0 0 8px;line-height:1.7}
   .fres .ntag{margin-right:6px}
@@ -819,6 +839,8 @@
 </div></header>
 
 <nav class="main"><div class="wrap"><ul id="nav"></ul></div></nav>
+<button class="mnav-btn" id="mnav-btn" type="button" aria-label="Разделы сайта" aria-expanded="false" aria-controls="nav"></button>
+<div class="mnav-ov" id="mnav-ov"></div>
 
 <main id="app"></main>
 
@@ -1034,6 +1056,14 @@ document.addEventListener('click', e=>{
   document.querySelectorAll('.sugg.on').forEach(b=>{ if(!b.parentElement.contains(e.target)) b.classList.remove('on'); });
   if($('#hs').classList.contains('open') && !$('#hs').contains(e.target)) hsClose();
 });
+/* телефон: разделы под кнопкой в углу (на компьютере кнопки не видно — меню полосой, как было) */
+const MNAV_IC = ['<svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>', '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>'];
+const mnav = on => { document.body.classList.toggle('mnav', on); $('#mnav-btn').setAttribute('aria-expanded', on); $('#mnav-btn').innerHTML = MNAV_IC[on ? 1 : 0]; };
+mnav(false);
+$('#mnav-btn').onclick = () => mnav(!document.body.classList.contains('mnav'));
+$('#mnav-ov').onclick = () => mnav(false);
+$('#nav').addEventListener('click', e => { if(e.target.closest('a')) mnav(false); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && document.body.classList.contains('mnav')) mnav(false); });
 const hsClose = () => { $('#hs').classList.remove('open'); $('#hs-q').value = ''; $('#hs-sugg').classList.remove('on'); };
 $('#hs-open').onclick = () => {
   $('#hs').style.setProperty('--hs-r', ($('.hacts').offsetWidth + 16 + 10) + 'px');   // отступ справа (16) + кнопки + зазор
