@@ -107,6 +107,9 @@ update users set name = 'Гость', email = null, phone = null, telegram = nul
 -- ── 1. кто может вызывать функции базы ──
 revoke execute on all functions in schema public from public, anon, authenticated;
 alter default privileges in schema public revoke execute on functions from public, anon, authenticated;
+-- право «всем» на новые функции Postgres даёт глобально, по схеме его не отозвать: без этой строки новая функция снова
+-- доступна любому посетителю. Теперь каждую новую функцию для сайта нужно открывать явно (grant execute … to anon, authenticated).
+alter default privileges revoke execute on functions from public;
 do $$
 declare f text;
 begin

@@ -646,6 +646,9 @@ grant execute on function report_error(text, text, text, text) to anon, authenti
 -- новые функции, которые должен вызывать посетитель, — добавить в этот список.
 revoke execute on all functions in schema public from public, anon, authenticated;
 alter default privileges in schema public revoke execute on functions from public, anon, authenticated;
+-- право «всем» на новые функции Postgres даёт глобально, по схеме его не отозвать: без этой строки новая функция снова
+-- доступна любому посетителю. Теперь каждую новую функцию для сайта нужно открывать явно (grant execute … to anon, authenticated).
+alter default privileges revoke execute on functions from public;
 do $$
 declare f text;
 begin
