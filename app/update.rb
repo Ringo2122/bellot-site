@@ -179,6 +179,10 @@ pstat = Hash.new { |h, k| h[k] = Hash.new(0) }   # по площадкам — �
 terms_left = TERMS_CAP
 ea_torg_left = EA_TORG_CAP
 stat['удалено: площадка исключена'] = dropped if dropped.positive?
+# коды символов в названиях, записанных раньше, чем их стал понимать Src.decode (05.10: «Orenstein &#038; Koppel», «&lt;ГС-14.02&gt;»)
+db.each_value do |l|
+  %w[name location debtor].each { |k| l[k] = Src.decode(l[k]) if l[k].is_a?(String) && l[k] =~ /&#?\w+;/ }
+end
 # 29.09: описания konfiskat с кусками вёрстки и кода сайта, коды символов вместо скобок — подчистить сохранённое (один раз)
 clean_mark = File.join(Store::DATA, 'det_clean')
 unless File.exist?(clean_mark) && File.read(clean_mark).to_i >= 1

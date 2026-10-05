@@ -55,7 +55,7 @@ module Src
   end
 
   def decode(s)
-    s.to_s.gsub('&nbsp;', ' ').gsub('&quot;', '"').gsub('&laquo;', '«').gsub('&raquo;', '»').gsub('&mdash;', '—').gsub('&ndash;', '–')
+    s.to_s.gsub('&nbsp;', ' ').gsub('&quot;', '"').gsub('&laquo;', '«').gsub('&raquo;', '»').gsub('&mdash;', '—').gsub('&ndash;', '–').gsub('&lt;', '<').gsub('&gt;', '>').gsub('&apos;', "'")
      .gsub(/&#(\d{2,5});/) { $1.to_i.chr(Encoding::UTF_8) rescue ' ' }.gsub(/&#x([0-9a-f]{2,4});/i) { $1.hex.chr(Encoding::UTF_8) rescue ' ' }
      .gsub('&amp;', '&')
   end

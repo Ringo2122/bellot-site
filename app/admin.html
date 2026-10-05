@@ -721,9 +721,14 @@ async function pBot(){
 
 /* Тексты сайта */
 const TX_DEF = {
-  hero_eyebrow:'Агрегатор торгов по имуществу должников',
-  hero_title:'Имущество с торгов дешевле рынка — в одном окне и без риска',
-  hero_text:'Недвижимость, автомобили и техника со всех крупных площадок Беларуси. Показываем, сколько такой объект стоит на рынке, считаем полную цену покупки и помогаем пройти торги до сделки.',
+  hero_title:'Агрегатор торгов по имуществу со всех площадок Беларуси',
+  hero_text:'Недвижимость, автомобили, техника и право аренды в одном месте.',
+  how:[['Находите лот','Все площадки в одном каталоге: фильтры по региону, цене и сроку заявок. Не нужно обходить сайты по одному.'],
+    ['Сравниваете с рынком','Рядом с ценой лота — медиана похожих объявлений. Сразу видно, есть ли выгода.'],
+    ['Считаете покупку','Калькулятор в карточке знает правила площадки: задаток, шаг, сборы организатора, сроки оплаты.'],
+    ['Покупаете с нами','Проверим объект, съездим на осмотр, проведём через торги и сделку — если нужна помощь.']],
+  cookie_text:'Сайт использует файлы cookie: они нужны для работы сайта и личного кабинета. Продолжая пользоваться сайтом, вы соглашаетесь с этим.',
+  privacy_text:'Здесь будет политика обработки персональных данных БелЛот: какие данные мы получаем (контакты из заявок на помощь, данные личного кабинета, файлы cookie), зачем, сколько храним и как их удалить.\n\nТекст готовится. По вопросам обработки данных пишите по контактам из подвала сайта.',
   band_title:'Первый раз на торгах?',
   band_text:'Проверим объект до задатка, съездим на осмотр, подскажем разумный предел цены и проведём через аукцион.',
   help_title:'Помощь в покупке на торгах',
@@ -752,10 +757,13 @@ async function pTexts(){
       ${price?`<label class="fld"><span>Цена или срок (необязательно)</span><input data-l="${k}" data-i="${i}" data-f="p" value="${esc(x.p||'')}" placeholder="например: от 150 BYN"></label>`:''}</div>
       <label class="fld"><span>Текст</span><textarea rows="2" data-l="${k}" data-i="${i}" data-f="d">${esc(x.d||'')}</textarea></label></div>`; }).join(''); };
   V().innerHTML = `<h1>Тексты сайта</h1><p class="lede">Заголовки и описания на главной, на странице «Помощь в аукционе» и контакты в подвале. На сайте — после публикации.</p>
-    <div class="panel"><h2>Главная — первый экран</h2>${one('hero_eyebrow','Надзаголовок')}${one('hero_title','Заголовок',2)}${one('hero_text','Текст',3)}</div>
+    <div class="panel"><h2>Главная — первый экран</h2>${one('hero_title','Заголовок',2)}${one('hero_text','Текст',3)}</div>
     <div class="panel"><h2>Главная — плашка «Первый раз на торгах?»</h2>${one('band_title','Заголовок')}${one('band_text','Текст',2)}</div>
+    <div class="panel"><h2>Главная — «Как это работает»</h2><p class="muted" style="margin-top:0">Четыре шага. Пустой заголовок — шаг не показывается.</p>${list('how',4)}</div>
     <div class="panel"><h2>Главная — «Почему БелЛот»</h2><p class="muted" style="margin-top:0">Пустой заголовок — пункт не показывается.</p>${list('adv',6)}</div>
     <div class="panel"><h2>Помощь в аукционе</h2>${one('help_title','Заголовок')}${one('help_lede','Вступление',3)}<p class="muted">Список услуг — в разделе <a href="#services">«Услуги»</a>.</p></div>
+    <div class="panel"><h2>Плашка о файлах cookie</h2><p class="muted" style="margin-top:0">Показывается внизу сайта, пока посетитель не нажмёт «Понятно». Рядом — ссылка на политику.</p>${one('cookie_text','Текст',3)}</div>
+    <div class="panel"><h2>Политика конфиденциальности</h2><p class="muted" style="margin-top:0">Страница по ссылке в подвале и в плашке cookie. Абзацы — через пустую строку.</p>${one('privacy_text','Текст',14)}</div>
     <div class="panel"><h2>Контакты в подвале сайта</h2><div class="grid2">
       <label class="fld"><span>Телефон</span><input data-c="phone" value="${esc(c.phone||'')}" placeholder="+375 29 000-00-00"></label>
       <label class="fld"><span>Email</span><input data-c="email" value="${esc(c.email||'')}"></label>
@@ -765,7 +773,7 @@ async function pTexts(){
   $('#tsave').onclick = async ()=>{
     const out = { contacts:{} };
     V().querySelectorAll('[data-k]').forEach(i=>out[i.dataset.k] = i.value.trim());
-    ['adv'].forEach(k=>{ out[k] = []; V().querySelectorAll(`[data-l="${k}"]`).forEach(i=>{ (out[k][+i.dataset.i] ||= {})[i.dataset.f] = i.value.trim(); });
+    ['adv','how'].forEach(k=>{ out[k] = []; V().querySelectorAll(`[data-l="${k}"]`).forEach(i=>{ (out[k][+i.dataset.i] ||= {})[i.dataset.f] = i.value.trim(); });
       out[k] = out[k].filter(x=>x && x.t); });
     if((SET.texts||{}).services) out.services = SET.texts.services;   // услуги правятся в своём разделе
     V().querySelectorAll('[data-c]').forEach(i=>{ if(i.value.trim()) out.contacts[i.dataset.c] = i.value.trim(); });
