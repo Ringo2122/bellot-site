@@ -82,7 +82,7 @@
   .hs-x{border:0;background:none;color:var(--ink-3);font-size:17px;padding:0 15px;cursor:pointer}
   .hs-x:hover{color:var(--ink)}
   .sugg{position:absolute;left:0;right:0;top:calc(100% + 7px);background:var(--card);border:1px solid var(--hair);
-    border-radius:12px;box-shadow:var(--sh-2);overflow:hidden;display:none;z-index:60;text-align:left}
+    border-radius:12px;box-shadow:0 14px 40px rgba(24,24,27,.2),0 2px 8px rgba(24,24,27,.08);overflow:hidden;display:none;z-index:60;text-align:left}
   .sugg.on{display:block}
   .sugg a{display:flex;gap:11px;align-items:center;padding:9px 12px;color:var(--ink);border-bottom:1px solid var(--hair)}
   .sugg a:last-child{border-bottom:0}
@@ -94,7 +94,10 @@
   .sugg .sname{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .sugg .smeta{display:block;font-size:12px;color:var(--ink-3)}
   .sugg mark{background:var(--accent-l);color:inherit;border-radius:2px}
-  .sugg .all{justify-content:center;font-weight:700;color:var(--brand);font-size:13.5px}
+  .sugg a.all{justify-content:center;padding:10px 12px;background:var(--bg)}
+  .sugg .all span{font-weight:600;font-size:13.5px;color:var(--brand);border:1px solid var(--brand);border-radius:8px;padding:6px 16px;transition:background .15s,color .15s}
+  .sugg a.all:hover,.sugg a.all.cur{background:var(--bg)}
+  .sugg a.all:hover span,.sugg a.all.cur span{background:var(--brand);color:#fff}
   .sugg .none{padding:14px;color:var(--ink-3);font-size:14px}
   .hacts{display:flex;gap:9px;flex:none}
   .more{display:block;margin:22px auto 0;min-width:260px}
@@ -383,7 +386,7 @@
   .rows>.wide .k2{color:var(--ink-3);font-size:12.5px;margin-bottom:3px}
 
   /* ── главная: приветственный экран ── */
-  .land{margin-top:-22px;position:relative;overflow:hidden;color:var(--ink);background:var(--hero);
+  .land{margin-top:-22px;position:relative;color:var(--ink);background:var(--hero);
     padding:64px 0 120px}
   .land .sky{position:absolute;left:0;right:0;bottom:0;width:100%;height:62%;pointer-events:none;color:var(--sky)}
   .land .sky-m{display:none}
@@ -981,9 +984,18 @@ $('#fnav').innerHTML = SECTIONS.map(([s,n])=>`<li><a href="#/s/${s}">${n}</a></l
 
 /* ───────── поиск с подсказками ───────── */
 const norm = s => String(s||'').toLowerCase().replace(/ё/g,'е');
-/* отсекаем окончание: «квартиры в минске» находит «Квартира, г. Минск»; номера и VIN не трогаем */
-const stem = w => /\d/.test(w) ? w : w.length>=6 ? w.slice(0,-2) : w.length===5 ? w.slice(0,-1) : w;
-const qwords = q => norm(q).split(/[\s,]+/).filter(w=>w.length>1 || /\d/.test(w)).map(stem);
+/* слово запроса: окончание отсекаем («квартиры в минске» → «квартир», «минск» — находит «Квартира, г. Минск»),
+   ищем с начала слова. Номера, VIN и латиницу не трогаем: номер ищем в любом месте, латиницу — с начала слова */
+const ADJ_END = /(ая|яя|ий|ый|ой|ое|ее|ого|его|ому|ему|ую|юю|ые|ие|ых|их|ым|им|ыми|ими)$/;
+const WEND = /(иями|ями|ами|ого|его|ому|ему|ыми|ими|ая|яя|ий|ый|ой|ое|ее|ые|ие|ых|их|ым|им|ую|юю|ов|ев|ей|ам|ям|ах|ях|ом|ем|а|я|у|ю|е|и|ы|о|ь)$/;
+const qword = w => {
+  if(/\d/.test(w)) return { s:w, num:true };
+  if(/[a-z]/.test(w)) return { s:w, adj:true };
+  const m = w.match(WEND), st = m && w.length - m[0].length >= 3 ? w.slice(0, -m[0].length) : w;
+  // «в Минске» — существительное: прилагательные «Минская обл.», «Минский р-н» не подходят; «минская» в запросе — подходят
+  return { s:st, adj:ADJ_END.test(w) };
+};
+const qwords = q => norm(q).split(/[\s,]+/).filter(w=>w.length>1 || /\d/.test(w)).map(qword);
 /* поиск по описанию: VIN, кадастровый и инвентарный номера, адрес, марка, начало описания — srch.js, грузится при первом поиске */
 let SRCH = null; const SRCHW = [];
 window.__srch = m => { SRCH = m; SRCHW.splice(0).forEach(f=>f()); };
@@ -991,34 +1003,48 @@ function loadSrch(){ return new Promise(res=>{ if(SRCH) return res(SRCH); SRCHW.
 /* «500/С-37246» набрали русской «С» — в индексе номера латиницей */
 const LATW = {а:'a',в:'b',е:'e',к:'k',м:'m',н:'h',о:'o',р:'p',с:'c',т:'t',у:'y',х:'x'};
 const hayOf = l => norm(l.name)+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor)+' '+((SRCH && SRCH[l.id]) || SRCH2[l.id] || '');
-const hasW = (hay, w) => hay.includes(w) || (/\d/.test(w) && hay.includes(w.replace(/[авекмнорстух]/g, c=>LATW[c])));
-function findLots(q, n){
-  const words = qwords(q);
-  if(!words.length) return {total:0, top:[]};
-  const res = [];
-  for(const l of DATA){
-    const nm = norm(l.name), hay = hayOf(l);
-    if(!words.every(w=>hasW(hay, w))) continue;
-    // выше — совпадение в названии и в его начале
-    res.push([(nm.startsWith(words[0])?3:0) + words.filter(w=>nm.includes(w)).length*2 - nm.length/400, l]);
+const isL = c => !!c && /[a-zа-я0-9]/.test(c);
+function hasW(hay, w){
+  if(w.num) return hay.includes(w.s) || hay.includes(w.s.replace(/[авекмнорстух]/g, c=>LATW[c]));
+  for(let i = hay.indexOf(w.s); i >= 0; i = hay.indexOf(w.s, i + 1)){
+    if(isL(hay[i-1])) continue;                          // только с начала слова: «дом» не находит «Кодомо»
+    let j = i + w.s.length; while(isL(hay[j])) j++;
+    if(w.adj || !ADJ_END.test(hay.slice(i + w.s.length, j))) return true;
   }
-  res.sort((a,b)=>b[0]-a[0]);
-  return {total:res.length, top:res.slice(0,n).map(x=>x[1])};
+  return false;
+}
+/* поиск: сначала по названию, адресу, номеру и должнику; по описанию — только если там ничего нет
+   (иначе «квартира в Минске» находит дома, в описании которых встретилось «квартира»). Выше — совпадения в названии */
+function searchLots(list, q){
+  const words = qwords(q);
+  if(!words.length) return list;
+  let res = [];
+  for(const l of list){
+    const nm = norm(l.name);
+    if(words.every(w=>hasW(nm+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor), w)))
+      res.push([(nm.startsWith(words[0].s) ? 3 : 0) + words.filter(w=>hasW(nm, w)).length*2 - nm.length/400, l]);
+  }
+  if(!res.length) for(const l of list){ if(words.every(w=>hasW(hayOf(l), w))) res.push([-1, l]); }
+  return res.sort((a,b)=>b[0]-a[0]).map(x=>x[1]);
+}
+function findLots(q, n){
+  const r = searchLots(DATA, q);
+  return {total:r.length, top:r.slice(0,n)};
 }
 const hl = (text, q) => qwords(q).reduce((h,w)=>
-  h.replace(new RegExp('('+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'), '<mark>$1</mark>'), esc(text));
+  h.replace(new RegExp('('+w.s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'), '<mark>$1</mark>'), esc(text));
 function attachSuggest(input, box, done){
   let cur = -1, tm;
   const close = () => { box.classList.remove('on'); cur = -1; };
   const draw = () => {
     const q = input.value.trim();
     if(q.length < 2){ close(); return; }
-    const r = findLots(q, 7);
+    const r = findLots(q, 5);
     box.innerHTML = r.top.length
       ? r.top.map(l=>`<a href="#/lot/${encodeURIComponent(l.id)}"><span class="si s-${l.section}">${ICON[l.section]}</span>
           <span class="sb"><span class="sname">${hl(l.name,q)}</span>
           <span class="smeta"><i class="pdot ${pslug(l.platform)}"></i> ${nf(l.price)} BYN · ${esc(l.region||secName(l.section))} · заявки до ${dt(l.req_to)} · ${esc(l.platform)}</span></span></a>`).join('')
-        + `<a class="all" href="#/catalog?q=${encodeURIComponent(q)}">Все результаты: ${r.total} →</a>`
+        + `<a class="all" href="#/catalog?q=${encodeURIComponent(q)}"><span>Смотреть все${r.total > r.top.length ? ' · ' + nf(r.total) : ''}</span></a>`
       : `<div class="none">Среди активных лотов ничего не нашлось. <a href="#/catalog?q=${encodeURIComponent(q)}&st=arch">Поискать в архиве →</a></div>`;
     box.classList.add('on'); cur = -1;
   };
@@ -1150,10 +1176,11 @@ function applyFilters(list, f){
     if(f.soon && !isSoon(l)) return false;
     if(f.fresh && !isNew(l)) return false;
     if(f.pin && !l.pin) return false;
-    if(f.q){ const hay = hayOf(l); if(!qwords(f.q).every(w=>hasW(hay, w))) return false; }
     return true;
   });
-  const s = f.sort || (arch?'closed':'deadline');
+  if(f.q) out = searchLots(out, f.q);
+  const s = (f.sort !== 'rel' || f.q ? f.sort : '') || (f.q ? 'rel' : arch ? 'closed' : 'deadline');
+  if(s === 'rel') return out;          // по совпадению — порядок поиска
   out.sort((a,b)=> s==='price-asc'?a.price-b.price : s==='price-desc'?b.price-a.price
     : s==='name'?a.name.localeCompare(b.name,'ru') : s==='new'?(b.first_seen||0)-(a.first_seen||0)
     : s==='closed'?(b.closed||0)-(a.closed||0)
@@ -1312,7 +1339,7 @@ function pageCatalog(section, params){
       : 'Лоты с открытым приёмом заявок. Каталог обновляется автоматически.';
     if(arch && !ARCH){ $('#tb').innerHTML=''; $('#res').innerHTML = '<div class="skel"></div><div class="skel" style="margin-top:10px"></div>'; return; }
     const base = baseOf(), list = applyFilters(base, FSTATE), nf_ = nFilters(FSTATE);
-    const sorts = arch ? SORTS_ARCH : SORTS_ACTIVE, cur = FSTATE.sort || sorts[0][0];
+    const sorts = (FSTATE.q ? [['rel','Сначала точные совпадения']] : []).concat(arch ? SORTS_ARCH : SORTS_ACTIVE), cur = FSTATE.sort || sorts[0][0];
     $('#tb').innerHTML = `<button class="btn fbtn" id="f-open" type="button">Фильтры${nf_?' · '+nf_:''}</button>
       <span class="cnt">${arch?'В архиве':'Найдено'} <b>${nf(list.length)}</b> ${plural(list.length,'лот','лота','лотов')}${list.length!==base.length?` из ${nf(base.length)}`:''}</span>
       ${arch||!UB?'':`<button class="btn ssave" id="f-save" type="button" title="Новые лоты по этому поиску будут приходить в личный кабинет">${IC.save}<span>Сохранить поиск</span></button>`}
@@ -2117,10 +2144,13 @@ function bindCarousels(){
   document.querySelectorAll('.car').forEach(c=>{
     const t = c.querySelector('.car-track'), p = c.querySelector('.prev'), n = c.querySelector('.next');
     const upd = () => { p.disabled = t.scrollLeft < 5; n.disabled = t.scrollLeft + t.clientWidth >= t.scrollWidth - 5; };
-    // листаем ровно на целое число карточек: шаг = карточка + промежуток, начало — всегда край карточки
-    const go = d => { const k = t.children; if(k.length < 2) return;
-      const step = k[1].offsetLeft - k[0].offsetLeft, per = Math.max(1, Math.round((t.clientWidth - 4 + 14) / step));
-      t.scrollTo({ left: (Math.round(t.scrollLeft / step) + d * per) * step, behavior:'smooth' }); };
+    // листаем ровно на целое число карточек и встаём точно на край карточки. Safari после прокрутки из кода
+    // к карточкам не притягивает, поэтому положение берём точное, с долями пикселя (offsetLeft округляет)
+    const go = d => { const k = [...t.children]; if(k.length < 2) return;
+      const x = k.map(c => c.getBoundingClientRect().left), step = x[1] - x[0];
+      const per = Math.max(1, Math.round((t.clientWidth - 4 + 14) / step));
+      const i = Math.min(k.length - 1, Math.max(0, Math.round(t.scrollLeft / step) + d * per));
+      t.scrollTo({ left: x[i] - x[0], behavior:'smooth' }); };
     p.onclick = () => go(-1);
     n.onclick = () => go(1);
     t.addEventListener('scroll', upd, {passive:true});
