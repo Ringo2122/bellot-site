@@ -1002,7 +1002,10 @@ window.__srch = m => { SRCH = m; SRCHW.splice(0).forEach(f=>f()); };
 function loadSrch(){ return new Promise(res=>{ if(SRCH) return res(SRCH); SRCHW.push(()=>res(SRCH)); if(SRCHW.length===1) addScript('srch.js'); }); }
 /* «500/С-37246» набрали русской «С» — в индексе номера латиницей */
 const LATW = {а:'a',в:'b',е:'e',к:'k',м:'m',н:'h',о:'o',р:'p',с:'c',т:'t',у:'y',х:'x'};
-const hayOf = l => norm(l.name)+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor)+' '+((SRCH && SRCH[l.id]) || SRCH2[l.id] || '');
+// название и «название + адрес + номер + должник» в нижнем регистре — один раз на лот (в архиве их 15 тысяч)
+const PRIM = new WeakMap();
+const primOf = l => { let p = PRIM.get(l); if(!p){ const nm = norm(l.name); p = [nm, nm+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor)]; PRIM.set(l, p); } return p; };
+const descOf = l => (SRCH && SRCH[l.id]) || SRCH2[l.id] || '';
 const isL = c => !!c && /[a-zа-я0-9]/.test(c);
 function hasW(hay, w){
   if(w.num) return hay.includes(w.s) || hay.includes(w.s.replace(/[авекмнорстух]/g, c=>LATW[c]));
@@ -1020,11 +1023,11 @@ function searchLots(list, q){
   if(!words.length) return list;
   let res = [];
   for(const l of list){
-    const nm = norm(l.name);
-    if(words.every(w=>hasW(nm+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor), w)))
+    const [nm, prim] = primOf(l);
+    if(words.every(w=>hasW(prim, w)))
       res.push([(nm.startsWith(words[0].s) ? 3 : 0) + words.filter(w=>hasW(nm, w)).length*2 - nm.length/400, l]);
   }
-  if(!res.length) for(const l of list){ if(words.every(w=>hasW(hayOf(l), w))) res.push([-1, l]); }
+  if(!res.length) for(const l of list){ const d = descOf(l); if(d && words.every(w=>hasW(primOf(l)[1], w) || hasW(d, w))) res.push([-1, l]); }
   return res.sort((a,b)=>b[0]-a[0]).map(x=>x[1]);
 }
 function findLots(q, n){
@@ -1326,8 +1329,6 @@ function pageCatalog(section, params){
     document.querySelectorAll('#f-st button').forEach(b=>b.onclick = () => {
       if((FSTATE.st||'')===b.dataset.st) return;
       FSTATE = {st:b.dataset.st||undefined, q:FSTATE.q};
-      if(FSTATE.st==='arch' && !ARCH){ $('#res').innerHTML = '<div class="skel"></div>';
-        loadArch().then(()=>{ drawPanel(); render(); }); }
       drawPanel(); render();
     });
   };
@@ -1337,7 +1338,8 @@ function pageCatalog(section, params){
     $('#c-lede').textContent = arch
       ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним год — для истории цен, похожих торгов и аналитики.'
       : 'Лоты с открытым приёмом заявок. Каталог обновляется автоматически.';
-    if(arch && !ARCH){ $('#tb').innerHTML=''; $('#res').innerHTML = '<div class="skel"></div><div class="skel" style="margin-top:10px"></div>'; return; }
+    if(arch && !ARCH){ $('#tb').innerHTML=''; $('#res').innerHTML = '<div class="skel"></div><div class="skel" style="margin-top:10px"></div>';
+      loadArch().then(()=>{ if($('#fwrap') && FSTATE.st==='arch'){ drawPanel(); render(true); } }); return; }
     const base = baseOf(), list = applyFilters(base, FSTATE), nf_ = nFilters(FSTATE);
     const sorts = (FSTATE.q ? [['rel','Сначала точные совпадения']] : []).concat(arch ? SORTS_ARCH : SORTS_ACTIVE), cur = FSTATE.sort || sorts[0][0];
     $('#tb').innerHTML = `<button class="btn fbtn" id="f-open" type="button">Фильтры${nf_?' · '+nf_:''}</button>
@@ -1367,7 +1369,6 @@ function pageCatalog(section, params){
   };
   $('#ov').onclick = closeDrawer;
   // render(true) — не сбрасывать объём списка: при возврате с лота он восстановлен выше
-  if(FSTATE.st==='arch' && !ARCH) loadArch().then(()=>{ if($('#fwrap')){ drawPanel(); render(true); } });
   drawPanel(); render(true);
 }
 
