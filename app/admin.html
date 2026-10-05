@@ -780,11 +780,13 @@ async function pTexts(){
     ['adv','how'].forEach(k=>{ out[k] = []; V().querySelectorAll(`[data-l="${k}"]`).forEach(i=>{ (out[k][+i.dataset.i] ||= {})[i.dataset.f] = i.value.trim(); });
       out[k] = out[k].filter(x=>x && x.t); });
     if((SET.texts||{}).services) out.services = SET.texts.services;   // услуги правятся в своём разделе
+    if((SET.texts||{}).reg_purposes) out.reg_purposes = SET.texts.reg_purposes;   // варианты регистрации — в «Пользователях»
     V().querySelectorAll('[data-c]').forEach(i=>{ if(i.value.trim()) out.contacts[i.dataset.c] = i.value.trim(); });
     try{ await saveSetting('texts', out); toast('Сохранено'); refreshStats(); }catch(err){ toast(err.message, true); }
   };
   $('#treset').onclick = async ()=>{ if(!confirm('Вернуть все тексты по умолчанию? Контакты тоже очистятся.')) return;
-    try{ await saveSetting('texts', (SET.texts||{}).services ? { services:SET.texts.services } : {}); toast('Тексты по умолчанию'); refreshStats(); pTexts(); }catch(err){ toast(err.message, true); } };
+    const keep = {}; ['services','reg_purposes'].forEach(k=>{ if((SET.texts||{})[k]) keep[k] = SET.texts[k]; });
+    try{ await saveSetting('texts', keep); toast('Тексты по умолчанию'); refreshStats(); pTexts(); }catch(err){ toast(err.message, true); } };
 }
 
 /* Аналитика — общий модуль stats.js (тот же код в личном кабинете) */
@@ -819,29 +821,55 @@ async function pStats(params){
   };
 }
 
-/* Пользователи личного кабинета */
+/* Пользователи личного кабинета; варианты цели регистрации по умолчанию — те же, что на сайте (REG_PURPOSES) */
+const REG_DEF = ['Купить недвижимость для себя', 'Купить автомобиль или технику для себя', 'Инвестиции и перепродажа',
+  'Покупки для бизнеса: помещения, транспорт, оборудование', 'Аренда помещений и земли',
+  'Работаю с клиентами: риелтор, юрист, агент', 'Слежу за рынком и ценами'];
 const STAGE = { look:'Изучаю', visit:'Осмотр', apply:'Готовлю заявку', bid:'Участвую', won:'Выиграл', drop:'Отказался' };
 async function pUsers(params){
   const uid = params.get('id');
   if(uid) return pUser(+uid, params);
   const [users, ul, ss, ld, rp] = await Promise.all([
-    api('users?select=id,login,name,email,phone,telegram,created_at,last_seen&order=id'),
+    api('users?select=id,login,name,email,phone,telegram,created_at,last_seen,auth_id,purpose,purpose_note,confirmed_at,consent_at&order=id.desc'),
     api('user_lots?select=user_id,fav,watch&limit=100000'),
     api('saved_searches?select=user_id'),
     api('leads?select=user_id&user_id=not.is.null'),
     api('reports?select=user_id') ]);
   const c = (arr, id, f) => arr.filter(x=>x.user_id===id && (!f || f(x))).length;
-  V().innerHTML = `<h1>Пользователи</h1><p class="lede">Личные кабинеты посетителей сайта. Пока работает один гостевой вход (логин guest, пароль guest): его данные видят все, кто им входит. Регистрация по почте — следующим шагом.</p>
-    <div class="panel tw"><table><tr><th>Пользователь</th><th>Контакты</th><th>Избранное</th><th>Следит</th><th>Поиски</th><th>Заявки</th><th>Отчёты</th><th>Заходил</th></tr>
-    ${users.map(u=>`<tr class="click" data-u="${u.id}"><td><b>${esc(u.name||u.login)}</b><br><span class="muted">${esc(u.login)} · с ${dt(u.created_at).slice(0,10)}</span></td>
-      <td>${[u.phone,u.email,u.telegram].filter(Boolean).map(esc).join('<br>')||'<span class="muted">—</span>'}</td>
+  await loadSettings();
+  const purp = u => u.purpose ? esc(u.purpose) + (u.purpose_note ? `<br><span class="muted">${esc(u.purpose_note)}</span>` : '') : '<span class="muted">—</span>';
+  const kind = u => u.login === 'guest' ? 'гостевой вход' : !u.auth_id ? 'вход по логину' : u.confirmed_at ? '' : '<span style="color:var(--bad)">почта не подтверждена</span>';
+  V().innerHTML = `<h1>Пользователи</h1><p class="lede">Личные кабинеты посетителей сайта: регистрация по почте с кодом подтверждения. Гостевой вход guest/guest пока тоже работает — его данные видят все, кто им входит.</p>
+    <div class="panel tw"><table><tr><th>Пользователь</th><th>Для чего БелЛот</th><th>Контакты</th><th>Избранное</th><th>Следит</th><th>Поиски</th><th>Заявки</th><th>Отчёты</th><th>Заходил</th></tr>
+    ${users.map(u=>`<tr class="click" data-u="${u.id}"><td><b>${esc(u.name||u.login)}</b><br><span class="muted">${esc(u.login)} · с ${dt(u.created_at).slice(0,10)}</span>${kind(u)?'<br><small>'+kind(u)+'</small>':''}</td>
+      <td>${purp(u)}</td>
+      <td>${[u.phone,u.auth_id?'':u.email,u.telegram].filter(Boolean).map(esc).join('<br>')||'<span class="muted">—</span>'}</td>
       <td>${c(ul,u.id,x=>x.fav)}</td><td>${c(ul,u.id,x=>x.watch)}</td><td>${c(ss,u.id)}</td><td>${c(ld,u.id)}</td><td>${c(rp,u.id)}</td><td>${u.last_seen?dt(u.last_seen):'—'}</td></tr>`).join('')}</table></div>
-    <p class="muted">Нажмите на строку — избранное пользователя, его заявки и отправка отчёта по объекту.</p>`;
+    <p class="muted">Нажмите на строку — избранное пользователя, его заявки и отправка отчёта по объекту.</p>
+    <div class="panel"><h2>Варианты «Для чего вам БелЛот» при регистрации</h2>
+      <p class="muted" style="margin-top:0">Обязательное поле в форме регистрации. Вариант «Другое» с полем «Уточните» есть всегда, последним. На сайте — после публикации.</p>
+      <div id="rp-list"></div>
+      <div class="saverow"><button class="btn" id="rp-add">+ Добавить вариант</button><button class="btn pri" id="rp-save">Сохранить</button><button class="btn" id="rp-def">Вернуть по умолчанию</button></div></div>`;
   V().querySelectorAll('tr[data-u]').forEach(tr=>tr.onclick = ()=>{ location.hash = 'users?id=' + tr.dataset.u; });
+  const cur = (SET.texts||{}).reg_purposes;
+  let rpl = (Array.isArray(cur) && cur.length ? cur : REG_DEF).slice();
+  const draw = () => { $('#rp-list').innerHTML = rpl.map((p,i)=>`<div class="bar" style="margin-bottom:6px"><input data-rp="${i}" value="${esc(p)}" style="flex:1" maxlength="120">
+      <button class="btn" data-up="${i}" title="Выше"${i?'':' disabled'}>↑</button><button class="btn bad" data-del="${i}" title="Убрать">✕</button></div>`).join('')
+      + '<div class="bar"><input value="Другое" disabled style="flex:1"></div>';
+    const sync = () => { rpl = [...V().querySelectorAll('[data-rp]')].map(i=>i.value); };
+    V().querySelectorAll('[data-del]').forEach(b=>b.onclick = ()=>{ sync(); rpl.splice(+b.dataset.del, 1); draw(); });
+    V().querySelectorAll('[data-up]').forEach(b=>b.onclick = ()=>{ sync(); const i = +b.dataset.up; [rpl[i-1], rpl[i]] = [rpl[i], rpl[i-1]]; draw(); });
+    $('#rp-add').onclick = ()=>{ sync(); rpl.push(''); draw(); const l = V().querySelectorAll('[data-rp]'); l[l.length-1].focus(); };
+    $('#rp-save').onclick = async ()=>{ sync(); const list = [...new Set(rpl.map(x=>x.trim()).filter(x=>x && x.toLowerCase() !== 'другое'))];
+      if(!list.length){ toast('Нужен хотя бы один вариант', true); return; }
+      try{ await saveSetting('texts', Object.assign({}, SET.texts || {}, { reg_purposes:list })); rpl = list; draw(); toast('Сохранено — опубликуйте, чтобы обновить сайт'); refreshStats(); }catch(err){ toast(err.message, true); } };
+    $('#rp-def').onclick = ()=>{ rpl = REG_DEF.slice(); draw(); toast('Нажмите «Сохранить», чтобы применить'); };
+  };
+  draw();
 }
 async function pUser(id, params){
   const [[u], ul, ld, rp, ss] = await Promise.all([
-    api(`users?id=eq.${id}&select=id,login,name,email,phone,telegram,created_at,last_seen`),
+    api(`users?id=eq.${id}&select=id,login,name,email,phone,telegram,created_at,last_seen,auth_id,purpose,purpose_note,confirmed_at,consent_at`),
     api(`user_lots?user_id=eq.${id}&select=lot,fav,watch,stage,note,updated_at&order=updated_at.desc`),
     api(`leads?user_id=eq.${id}&select=*&order=created_at.desc`),
     api(`reports?user_id=eq.${id}&select=id,lot,lot_name,title,created_at,read_at,file_name,file_size&order=created_at.desc`),
@@ -853,7 +881,10 @@ async function pUser(id, params){
   const lotLink = id => lots[id] ? `<a href="../#/lot/${enc(id)}" target="_blank" rel="noopener">${esc(lots[id].name.slice(0,80))}</a>` : esc(id);
   const opts = [...new Set([...ul.filter(x=>x.fav||x.watch).map(x=>x.lot), ...ld.map(x=>x.lot_id).filter(Boolean)])].filter(x=>lots[x]);
   V().innerHTML = `<p><a href="#users">← Все пользователи</a></p><h1>${esc(u.name||u.login)}</h1>
-    <p class="lede">Логин ${esc(u.login)} · ${[u.phone,u.email,u.telegram].filter(Boolean).map(esc).join(' · ')||'контакты не указаны'} · в кабинете с ${dt(u.created_at).slice(0,10)}</p>
+    <p class="lede">Логин ${esc(u.login)} · ${[u.phone,u.auth_id?'':u.email,u.telegram].filter(Boolean).map(esc).join(' · ')||'контакты не указаны'} · в кабинете с ${dt(u.created_at).slice(0,10)}</p>
+    ${u.auth_id ? `<p>Для чего БелЛот: <b>${esc(u.purpose||'—')}</b>${u.purpose_note?' — '+esc(u.purpose_note):''} ·
+      ${u.confirmed_at ? 'почта подтверждена ' + dt(u.confirmed_at).slice(0,10) : '<span style="color:var(--bad)">почта не подтверждена</span>'} ·
+      ${u.consent_at ? 'согласие на обработку данных ' + dt(u.consent_at).slice(0,10) : 'согласия на обработку данных нет'}</p>` : ''}
     <div class="panel"><h2>Отправить отчёт по объекту</h2>
       <p class="muted" style="margin-top:0">Отчёт появится в разделе «Отчёты» кабинета, пользователь получит уведомление.</p>
       <div class="grid2"><label class="fld"><span>Лот</span><select id="r-lot"><option value="">— без привязки к лоту —</option>

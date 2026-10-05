@@ -1,0 +1,11 @@
+{
+  "site_url": "https://ringo2122.github.io/bellot-site/",
+  "mailer_autoconfirm": false,
+  "mailer_otp_length": 6,
+  "mailer_otp_exp": 3600,
+  "password_min_length": 8,
+  "mailer_subjects_confirmation": "Код подтверждения БелЛот: {{ .Token }}",
+  "mailer_templates_confirmation_content": "<div style=\"font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#18181b\">\n  <div style=\"font-size:20px;font-weight:700;margin-bottom:16px\"><span style=\"color:#f4511e\">●</span> БелЛот</div>\n  <h2 style=\"font-size:18px;margin:0 0 12px\">Подтвердите почту</h2>\n  <p style=\"margin:0 0 16px;line-height:1.5\">Вы регистрируетесь в личном кабинете БелЛот. Введите этот код на сайте:</p>\n  <div style=\"font-size:32px;font-weight:700;letter-spacing:6px;background:#fff1ea;border-radius:12px;padding:16px;text-align:center\">{{ .Token }}</div>\n  <p style=\"margin:16px 0 0;line-height:1.5;color:#52525b;font-size:14px\">Код действует 1 час. Если вы не регистрировались — просто удалите письмо.</p>\n  <p style=\"margin:24px 0 0;color:#a1a1aa;font-size:12px\">БелЛот — агрегатор торгов по имуществу со всех площадок Беларуси.</p>\n</div>\n",
+  "mailer_subjects_recovery": "Код для смены пароля БелЛот: {{ .Token }}",
+  "mailer_templates_recovery_content": "<div style=\"font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#18181b\">\n  <div style=\"font-size:20px;font-weight:700;margin-bottom:16px\"><span style=\"color:#f4511e\">●</span> БелЛот</div>\n  <h2 style=\"font-size:18px;margin:0 0 12px\">Смена пароля</h2>\n  <p style=\"margin:0 0 16px;line-height:1.5\">Кто-то, возможно вы, попросил сменить пароль от личного кабинета БелЛот. Введите этот код на сайте:</p>\n  <div style=\"font-size:32px;font-weight:700;letter-spacing:6px;background:#fff1ea;border-radius:12px;padding:16px;text-align:center\">{{ .Token }}</div>\n  <p style=\"margin:16px 0 0;line-height:1.5;color:#52525b;font-size:14px\">Код действует 1 час. Если вы не просили сменить пароль — удалите письмо, пароль останется прежним.</p>\n  <p style=\"margin:24px 0 0;color:#a1a1aa;font-size:12px\">БелЛот — агрегатор торгов по имуществу со всех площадок Беларуси.</p>\n</div>\n"
+}

@@ -627,6 +627,14 @@
   .login{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:28px;align-items:start;margin:10px 0 40px}
   .login-card{padding:24px}.login-card h1{font-size:24px;margin:0 0 16px}
   .login-why ul{padding-left:18px;line-height:1.6;color:var(--ink-2)}.login-why li{margin-bottom:8px}.login-why b{color:var(--ink)}
+  .ltabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--hair);border-radius:10px;padding:4px;margin:0 0 18px}
+  .ltabs a{flex:1;text-align:center;padding:8px;border-radius:7px;font-weight:600;color:var(--ink-2);text-decoration:none}
+  .ltabs a.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(24,24,27,.1)}
+  .fhint{font-size:12px;color:var(--ink-3);margin-top:4px}.fhint.ok{color:#2e7d32}.fhint.bad{color:#c0392b}
+  .fg label .opt{text-transform:none;letter-spacing:0;font-weight:400}
+  .fg input.code{font-size:22px;letter-spacing:6px;text-align:center;font-weight:700;padding:10px}
+  .login-card .lrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:13.5px}
+  .login-card .lrow .lnk:disabled{color:var(--ink-3);cursor:default}
   .me{display:grid;grid-template-columns:230px minmax(0,1fr);gap:24px;align-items:start;margin:6px 0 40px}
   .me-nav{position:sticky;top:60px;background:var(--card);border:1px solid var(--hair);border-radius:16px;padding:12px;box-shadow:var(--sh);display:flex;flex-direction:column}
   .me-nav a{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:14.5px}
@@ -1947,10 +1955,10 @@ function pageHelp(params){
       <a class="btn" href="#/catalog">Вернуться к лотам</a></div>`; };
     if(!CFG.sb || $('#h-web').value){ done(); return; }   // локальная сборка без базы; заполнено скрытое поле — это бот
     btn.disabled = true; btn.textContent = 'Отправляем…';
-    fetch(CFG.sb.url + '/rest/v1/rpc/submit_lead', { method:'POST',
-      headers:Object.assign({ apikey: CFG.sb.key, 'Content-Type':'application/json' }, UTOK ? { 'x-user-token':UTOK } : {}),
+    (async () => fetch(CFG.sb.url + '/rest/v1/rpc/submit_lead', { method:'POST',
+      headers:Object.assign({ apikey: CFG.sb.key, 'Content-Type':'application/json' }, await uhdr()),
       body: JSON.stringify({ p_name:name, p_phone:ph, p_email:mail||null, p_lot:lotv||null, p_service:$('#h-svc').value||null,
-        p_lot_name:lotRec?lotRec.name:null, p_lot_id:lotRec?lotRec.id:null }) })
+        p_lot_name:lotRec?lotRec.name:null, p_lot_id:lotRec?lotRec.id:null }) }))()
       .then(r => r.ok ? done() : r.json().then(j => { throw new Error(j.message || 'ошибка'); }))
       .catch(e => { btn.disabled = false; btn.textContent = 'Отправить заявку';
         $('#h-err').textContent = 'Не удалось отправить: ' + (e.message||'нет связи') + '. Попробуйте ещё раз.'; });
@@ -2315,10 +2323,60 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') calClose(); });
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && $('#cal') && CAL_TODAY !== dkey(new Date()) && !$('#cal-pop')) drawCal(); });
 
 /* ───────── личный кабинет ─────────
-   Данные кабинета — в базе (Supabase), вход по логину и паролю: ключ сессии в заголовке x-user-token.
-   Пока один гостевой вход guest/guest; регистрация по почте — позже. Без базы (локальная сборка) кабинета нет. */
+   Данные кабинета — в базе (Supabase). Кабинеты по почте: регистрация, пароль, коды подтверждения и смены пароля —
+   встроенный вход Supabase (/auth/v1), сессия — ключ на час и ключ продления (bl_auth), в запросах — Authorization.
+   Гостевой вход guest/guest — по-старому: ключ сессии в заголовке x-user-token (bl_user). Без базы кабинета нет. */
 const UB = CFG.sb || null;
 let UTOK = ''; try{ UTOK = localStorage.getItem('bl_user') || ''; }catch(e){}
+let USESS = null; try{ USESS = JSON.parse(localStorage.getItem('bl_auth') || 'null'); }catch(e){}
+function usess(s){
+  USESS = s && s.access_token ? { access_token:s.access_token, refresh_token:s.refresh_token,
+    expires_at:s.expires_at || Math.floor(Date.now()/1000) + (s.expires_in || 3600) } : null;
+  try{ USESS ? localStorage.setItem('bl_auth', JSON.stringify(USESS)) : localStorage.removeItem('bl_auth'); }catch(e){}
+}
+// ответы входа Supabase — по-русски
+const AUTH_ERR = [
+  [/invalid_credentials|invalid login credentials/i, 'Неверная почта или пароль'],
+  [/email_not_confirmed|email not confirmed/i, 'Почта ещё не подтверждена'],
+  [/user_already_exists|already registered/i, 'Эта почта уже зарегистрирована. Войдите или восстановите пароль'],
+  [/weak_password|password should/i, 'Слишком простой пароль: нужно не меньше 8 символов'],
+  [/otp_expired|has expired or is invalid|invalid otp/i, 'Код неверный или устарел. Запросите новый'],
+  [/after (\d+) second/i, raw => 'Повторно отправить код можно через ' + raw.match(/after (\d+) second/i)[1] + ' с'],
+  [/over_email_send_rate_limit|email rate limit/i, 'Слишком много писем за час. Попробуйте позже'],
+  [/rate_limit|rate limit|too many/i, 'Слишком много попыток. Подождите немного'],
+  [/email_address_not_authorized|not authorized/i, 'Отправка писем ещё настраивается — попробуйте позже'],
+  [/email_address_invalid|unable to validate email|invalid format/i, 'Проверьте адрес почты'],
+  [/same_password|should be different/i, 'Новый пароль совпадает со старым'],
+  [/signup_disabled|signups not allowed/i, 'Регистрация временно закрыта'],
+  [/refresh_token|session_not_found|bad_jwt/i, 'Вход устарел — войдите снова']
+];
+async function uauth(path, body, o={}){
+  const h = { apikey: UB.key, 'Content-Type':'application/json' };
+  if(o.tok) h.Authorization = 'Bearer ' + o.tok;
+  const r = await fetch(UB.url + '/auth/v1/' + path, { method:o.method||'POST', headers:h, body:JSON.stringify(body || {}) });
+  let j = {}; try{ j = await r.json(); }catch(e){}
+  if(!r.ok){
+    const raw = [j.error_code, j.error, j.msg, j.message, j.error_description].filter(x=>typeof x==='string').join(' ');
+    const m = AUTH_ERR.find(([re])=>re.test(raw));
+    const e = new Error(m ? (typeof m[1]==='function' ? m[1](raw) : m[1]) : 'Не получилось: ' + (j.msg || j.error_description || j.message || 'ошибка ' + r.status));
+    e.code = j.error_code || j.error || 'http' + r.status; throw e;
+  }
+  return j;
+}
+// ключ на час: за минуту до конца продлеваем (один запрос на всех); сервер отказал — выходим, нет связи — ключ оставляем
+let UREF = null;
+async function uaccess(){
+  if(!USESS) return null;
+  if(USESS.expires_at * 1000 - Date.now() > 60000) return USESS.access_token;
+  UREF = UREF || uauth('token?grant_type=refresh_token', { refresh_token:USESS.refresh_token })
+    .then(j=>usess(j), e=>{ if(e.code) usess(null); }).finally(()=>{ UREF = null; });
+  await UREF; return USESS ? USESS.access_token : null;
+}
+async function uhdr(){ const t = await uaccess(); return t ? { Authorization:'Bearer ' + t } : UTOK ? { 'x-user-token':UTOK } : {}; }
+async function ulogout(){
+  try{ if(USESS){ const t = await uaccess(); if(t) await uauth('logout', {}, { tok:t }); } else if(UTOK) await urpc('user_logout'); }catch(e){}
+  utok(''); usess(null); ME = null; ULOTS = {}; drawUser();
+}
 let ME = null, ULOTS = {}, UREADY = null;
 const STAGES = [['look','Изучаю'],['visit','Осмотр'],['apply','Готовлю заявку'],['bid','Участвую'],['won','Выиграл'],['drop','Отказался']];
 const IC = {
@@ -2329,8 +2387,7 @@ const IC = {
 };
 async function uapi(path, o={}){
   if(!UB) throw new Error('Личный кабинет недоступен в этой версии сайта');
-  const h = { apikey: UB.key, 'Content-Type':'application/json' };
-  if(UTOK) h['x-user-token'] = UTOK;
+  const h = Object.assign({ apikey: UB.key, 'Content-Type':'application/json' }, await uhdr());
   if(o.prefer) h.Prefer = o.prefer;
   const r = await fetch(UB.url + '/rest/v1/' + path, { method:o.method||'GET', headers:h, body:o.body!==undefined?JSON.stringify(o.body):undefined });
   if(!r.ok){ let j = {}; try{ j = await r.json(); }catch(e){} throw new Error(j.message || ('ошибка ' + r.status)); }
@@ -2340,10 +2397,10 @@ const urpc = (fn, args={}) => uapi('rpc/' + fn, { method:'POST', body:args });
 function utok(t){ UTOK = t || ''; try{ t ? localStorage.setItem('bl_user', t) : localStorage.removeItem('bl_user'); }catch(e){} }
 function uload(){
   UREADY = (async () => {
-    if(!UB || !UTOK){ ME = null; ULOTS = {}; drawUser(); return; }
+    if(!UB || (!UTOK && !USESS)){ ME = null; ULOTS = {}; drawUser(); return; }
     try{
       ME = await urpc('user_me');
-      if(!ME){ utok(''); ULOTS = {}; }
+      if(!ME){ utok(''); usess(null); ULOTS = {}; }
       else ULOTS = Object.fromEntries((await uapi('user_lots?select=lot,fav,watch,stage,note')).map(r=>[r.lot, r]));
     }catch(e){ /* нет связи с базой — сайт работает без кабинета */ }
     drawUser();
@@ -2427,20 +2484,21 @@ async function saveSearch(section){
 }
 function openSearch(p){ CARRY = {}; SS_KEYS.forEach(k=>{ if(p[k]) CARRY[k] = p[k]; }); location.hash = p.sec ? '#/s/' + p.sec : '#/catalog'; }
 
-/* вход */
+/* вход, регистрация, подтверждение почты кодом, смена забытого пароля */
+const REG_PURPOSES = ['Купить недвижимость для себя', 'Купить автомобиль или технику для себя', 'Инвестиции и перепродажа',
+  'Покупки для бизнеса: помещения, транспорт, оборудование', 'Аренда помещений и земли',
+  'Работаю с клиентами: риелтор, юрист, агент', 'Слежу за рынком и ценами'];
+const regPurposes = () => { const p = (CFG.texts||{}).reg_purposes; return (Array.isArray(p) && p.length ? p : REG_PURPOSES).filter(Boolean); };
+const OTHER = 'Другое';
+const MAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function pageLogin(params){
   document.title = 'Вход в личный кабинет — БелЛот';
-  const next = params.get('next') || '/me';
+  const next = params.get('next') || '/me', mode = params.get('mode') || 'in';
+  const href = m => '#/login?' + new URLSearchParams(Object.assign({ mode:m }, params.get('next') ? { next } : {}));
+  const go = async () => { await uload(); location.hash = '#' + (next.startsWith('/') ? next : '/me'); };
   $('#app').innerHTML = `<div class="wrap">${crumbs([['Личный кабинет']])}
     <div class="login">
-      <div class="panel login-card"><h1>Вход в личный кабинет</h1>
-        ${UB ? `<form id="uf" autocomplete="on">
-          <div class="fg"><label for="u-login">Логин</label><input id="u-login" autocomplete="username" required></div>
-          <div class="fg"><label for="u-pass">Пароль</label><input id="u-pass" type="password" autocomplete="current-password" required></div>
-          <div class="ferr" id="u-err"></div>
-          <button class="btn pri" type="submit" style="width:100%">Войти</button></form>
-          <p class="note">Сейчас работает гостевой вход: логин <b>guest</b>, пароль <b>guest</b>. Регистрация по почте появится позже.</p>`
-        : '<p>Личный кабинет недоступен в этой версии сайта.</p>'}</div>
+      <div class="panel login-card" id="lc"></div>
       <div class="login-why"><h2>Что даёт кабинет</h2><ul>
         <li><b>Избранное</b> — лоты под рукой, со своим этапом и заметками</li>
         <li><b>Уведомления</b> — если у лота изменится цена или сроки, его снимут с торгов, или скоро закончится приём заявок</li>
@@ -2449,17 +2507,141 @@ function pageLogin(params){
         <li><b>Заявки и отчёты</b> — помощь по лоту и отчёты наших специалистов по объектам</li>
         <li><b>Аналитика рынка</b> — цены, скидки к рынку, регионы и площадки</li></ul></div>
     </div></div>`;
-  const f = $('#uf'); if(!f) return;
-  $('#u-login').focus();
-  f.addEventListener('submit', async e=>{
-    e.preventDefault(); $('#u-err').textContent = '';
-    try{
-      const tok = await urpc('user_login', { p_login:$('#u-login').value, p_pass:$('#u-pass').value });
-      if(!tok){ $('#u-err').textContent = 'Неверный логин или пароль'; return; }
-      utok(tok); await uload();
-      location.hash = '#' + (next.startsWith('/') ? next : '/me');
-    }catch(err){ $('#u-err').textContent = err.message; }
-  });
+  const C = $('#lc');
+  if(!UB){ C.innerHTML = '<h1>Вход в личный кабинет</h1><p>Личный кабинет недоступен в этой версии сайта.</p>'; return; }
+  const tabs = m => `<div class="ltabs"><a href="${href('in')}" class="${m==='in'?'on':''}">Вход</a><a href="${href('up')}" class="${m==='up'?'on':''}">Регистрация</a></div>`;
+  const fail = (e, el='#u-err') => { $(el).textContent = e.message || String(e); };
+  const busy = (b, on, t) => { b.disabled = on; if(t) b.textContent = t; };
+
+  // вход: почта и пароль; без «@» — гостевой вход guest/guest
+  const viewIn = () => {
+    C.innerHTML = `${tabs('in')}<form id="uf" autocomplete="on" novalidate>
+      <div class="fg"><label for="u-login">Почта</label><input id="u-login" type="text" inputmode="email" autocomplete="username" required></div>
+      <div class="fg"><label for="u-pass">Пароль</label><input id="u-pass" type="password" autocomplete="current-password" required></div>
+      <div class="ferr" id="u-err"></div>
+      <button class="btn pri" type="submit" style="width:100%">Войти</button></form>
+      <div class="lrow"><a href="${href('reset')}">Забыли пароль?</a><a href="${href('up')}">Зарегистрироваться</a></div>
+      <p class="note">Посмотреть кабинет без регистрации: гостевой вход — логин <b>guest</b>, пароль <b>guest</b>.</p>`;
+    $('#u-login').focus();
+    $('#uf').addEventListener('submit', async e=>{
+      e.preventDefault(); $('#u-err').textContent = '';
+      const login = $('#u-login').value.trim(), pass = $('#u-pass').value, b = $('#uf button');
+      if(!login || !pass){ $('#u-err').textContent = 'Введите почту и пароль'; return; }
+      busy(b, true);
+      try{
+        if(!login.includes('@')){
+          const tok = await urpc('user_login', { p_login:login, p_pass:pass });
+          if(!tok){ $('#u-err').textContent = 'Неверный логин или пароль'; busy(b, false); return; }
+          usess(null); utok(tok); await go(); return;
+        }
+        usess(await uauth('token?grant_type=password', { email:login, password:pass })); utok(''); await go();
+      }catch(err){
+        busy(b, false);
+        if(err.code === 'email_not_confirmed'){
+          try{ await uauth('resend', { type:'signup', email:login }); }catch(e2){}
+          viewCode('signup', login, 'Почта ещё не подтверждена. Мы отправили новый код'); return;
+        }
+        fail(err);
+      }
+    });
+  };
+
+  // регистрация
+  const viewUp = () => {
+    C.innerHTML = `${tabs('up')}<form id="uf" autocomplete="on" novalidate>
+      <div class="fg"><label for="r-name">Имя</label><input id="r-name" autocomplete="name" required></div>
+      <div class="fg"><label for="r-mail">Почта</label><input id="r-mail" type="email" autocomplete="email" required></div>
+      <div class="fg"><label for="r-pass">Пароль</label><input id="r-pass" type="password" autocomplete="new-password" minlength="8" required>
+        <div class="fhint">Не короче 8 символов</div></div>
+      <div class="fg"><label for="r-pass2">Пароль ещё раз</label><input id="r-pass2" type="password" autocomplete="new-password" required>
+        <div class="fhint" id="r-match"></div></div>
+      <div class="fg"><label for="r-phone">Телефон <span class="opt">— необязательно</span></label><input id="r-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00"></div>
+      <div class="fg"><label for="r-purp">Для чего вам БелЛот</label><select id="r-purp" required>
+        <option value="">Выберите…</option>${regPurposes().map(p=>`<option>${esc(p)}</option>`).join('')}<option>${OTHER}</option></select></div>
+      <div class="fg" id="r-note-w" hidden><label for="r-note">Уточните</label><input id="r-note" maxlength="300" placeholder="Коротко, для чего вам сервис"></div>
+      <div class="fg"><label class="chk"><input type="checkbox" id="r-ok"> <span>Соглашаюсь на обработку персональных данных в соответствии
+        с <a href="#/privacy" target="_blank" rel="noopener">политикой конфиденциальности</a></span></label></div>
+      <div class="ferr" id="u-err"></div>
+      <button class="btn pri" type="submit" style="width:100%">Зарегистрироваться</button></form>
+      <div class="lrow"><span class="muted">Уже есть кабинет?</span><a href="${href('in')}">Войти</a></div>`;
+    $('#r-name').focus();
+    const match = () => { const a = $('#r-pass').value, b2 = $('#r-pass2').value, m = $('#r-match');
+      m.textContent = !b2 ? '' : a === b2 ? 'Пароли совпадают' : 'Пароли не совпадают'; m.className = 'fhint ' + (!b2 ? '' : a === b2 ? 'ok' : 'bad'); };
+    $('#r-pass').oninput = match; $('#r-pass2').oninput = match;
+    $('#r-purp').onchange = () => { $('#r-note-w').hidden = $('#r-purp').value !== OTHER; };
+    $('#uf').addEventListener('submit', async e=>{
+      e.preventDefault();
+      const v = id => $('#' + id).value.trim(), name = v('r-name'), email = v('r-mail').toLowerCase(), pass = $('#r-pass').value,
+        phone = v('r-phone'), purpose = $('#r-purp').value, note = purpose === OTHER ? v('r-note') : '';
+      const err = !name ? 'Укажите имя' : !MAIL_RE.test(email) ? 'Проверьте адрес почты' : pass.length < 8 ? 'Пароль — не короче 8 символов'
+        : pass !== $('#r-pass2').value ? 'Пароли не совпадают' : (phone && phone.replace(/\D/g,'').length < 9) ? 'Проверьте номер телефона'
+        : !purpose ? 'Выберите, для чего вам БелЛот' : (purpose === OTHER && !note) ? 'Уточните, для чего вам БелЛот'
+        : !$('#r-ok').checked ? 'Нужно согласие на обработку персональных данных' : '';
+      $('#u-err').textContent = err; if(err) return;
+      const b = $('#uf button'); busy(b, true, 'Регистрируем…');
+      try{
+        const j = await uauth('signup', { email, password:pass, data:{ name, phone, purpose, purpose_note:note, consent:true } });
+        if(j.access_token){ usess(j); utok(''); await go(); return; }        // подтверждение почты выключено
+        const u = j.user || j;
+        if(Array.isArray(u.identities) && !u.identities.length){ busy(b, false, 'Зарегистрироваться');
+          $('#u-err').innerHTML = `Эта почта уже зарегистрирована. <a href="${href('in')}">Войти</a> или <a href="${href('reset')}">восстановить пароль</a>`; return; }
+        viewCode('signup', email, 'Мы отправили код');
+      }catch(err2){ busy(b, false, 'Зарегистрироваться'); fail(err2); }
+    });
+  };
+
+  // забыли пароль: код на почту → новый пароль
+  const viewReset = () => {
+    C.innerHTML = `<h1>Восстановление пароля</h1><p class="muted" style="margin-top:0">Пришлём на почту код — по нему зададите новый пароль.</p>
+      <form id="uf" novalidate><div class="fg"><label for="f-mail">Почта</label><input id="f-mail" type="email" autocomplete="email" required></div>
+      <div class="ferr" id="u-err"></div><button class="btn pri" type="submit" style="width:100%">Получить код</button></form>
+      <div class="lrow"><a href="${href('in')}">← Ко входу</a></div>`;
+    $('#f-mail').focus();
+    $('#uf').addEventListener('submit', async e=>{
+      e.preventDefault(); const email = $('#f-mail').value.trim().toLowerCase(), b = $('#uf button');
+      if(!MAIL_RE.test(email)){ $('#u-err').textContent = 'Проверьте адрес почты'; return; }
+      busy(b, true, 'Отправляем…');
+      try{ await uauth('recover', { email }); viewCode('recovery', email, 'Если эта почта зарегистрирована, мы отправили на неё код'); }
+      catch(err){ busy(b, false, 'Получить код'); fail(err); }
+    });
+  };
+
+  // ввод кода из письма; для смены пароля — сразу и новый пароль
+  const viewCode = (type, email, lead) => {
+    const rec = type === 'recovery';
+    C.innerHTML = `<h1>${rec ? 'Новый пароль' : 'Подтвердите почту'}</h1>
+      <p style="margin-top:0">${esc(lead)} на <b>${esc(email)}</b>. Письмо может идти пару минут — загляните и в «Спам».</p>
+      <form id="uf" novalidate><div class="fg"><label for="c-code">Код из письма</label>
+        <input id="c-code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required></div>
+      ${rec ? `<div class="fg"><label for="c-pass">Новый пароль</label><input id="c-pass" type="password" autocomplete="new-password" required><div class="fhint">Не короче 8 символов</div></div>
+        <div class="fg"><label for="c-pass2">Новый пароль ещё раз</label><input id="c-pass2" type="password" autocomplete="new-password" required></div>` : ''}
+      <div class="ferr" id="u-err"></div><button class="btn pri" type="submit" style="width:100%">${rec ? 'Сменить пароль и войти' : 'Подтвердить'}</button></form>
+      <div class="lrow"><button class="lnk" type="button" id="c-again" style="margin:0">Отправить код ещё раз</button><a href="${href(rec ? 'reset' : 'up')}">Другая почта</a></div>`;
+    $('#c-code').focus();
+    const again = $('#c-again'); let t = 0;
+    const wait = () => { t = 60; again.disabled = true; const tick = () => { if(!again.isConnected) return;
+      if(--t <= 0){ again.disabled = false; again.textContent = 'Отправить код ещё раз'; } else { again.textContent = `Отправить ещё раз через ${t} с`; setTimeout(tick, 1000); } }; tick(); };
+    wait();
+    again.onclick = async () => { $('#u-err').textContent = '';
+      try{ await (rec ? uauth('recover', { email }) : uauth('resend', { type:'signup', email })); utoast('Код отправлен'); wait(); }catch(err){ fail(err); } };
+    $('#uf').addEventListener('submit', async e=>{
+      e.preventDefault(); const code = $('#c-code').value.replace(/\s/g,''), b = $('#uf button');
+      if(!/^\d{6,10}$/.test(code)){ $('#u-err').textContent = 'Введите код из письма'; return; }
+      if(rec){ const p = $('#c-pass').value;
+        const er = p.length < 8 ? 'Пароль — не короче 8 символов' : p !== $('#c-pass2').value ? 'Пароли не совпадают' : '';
+        if(er){ $('#u-err').textContent = er; return; } }
+      busy(b, true);
+      try{
+        const j = await uauth('verify', { type, email, token:code });
+        usess(j); utok('');
+        if(rec) await uauth('user', { password:$('#c-pass').value }, { method:'PUT', tok:j.access_token });
+        if(rec) utoast('Пароль изменён');
+        await go();
+      }catch(err){ busy(b, false); fail(err); }
+    });
+  };
+
+  ({ up:viewUp, reset:viewReset }[mode] || viewIn)();
 }
 
 /* кабинет */
@@ -2483,7 +2665,7 @@ async function pageMe(sub, params){
       </aside>
       <section class="me-main" id="mm"><div class="skel"></div></section>
     </div></div>`;
-  $('#u-out').onclick = async () => { try{ await urpc('user_logout'); }catch(e){} utok(''); ME = null; ULOTS = {}; drawUser(); location.hash = '#/'; };
+  $('#u-out').onclick = async () => { await ulogout(); location.hash = '#/'; };
   const M = $('#mm');
   try{
     const fn = { '':meHome, fav:meFav, notify:meNotify, searches:meSearches, calendar:meCal, orders:meOrders, reports:meReports, stats:meStats, profile:meProfile }[tab] || meHome;
@@ -2771,25 +2953,39 @@ async function meProfile(M){
   const NT = [['price','Цена лота изменилась'],['dates','Изменились сроки приёма заявок или дата торгов'],['status','Лот снят с торгов, завершён или снова выставлен'],
     ['remind','Напоминания: за 3 дня и за сутки до окончания приёма заявок'],['search','Новые лоты по сохранённым поискам']];
   M.innerHTML = `<h1>Профиль</h1>
-    ${guest ? '<div class="banner" style="margin:0 0 16px">Вы вошли гостем: избранное этого входа видят все, кто входит как guest. Заявки к гостевому входу не привязываются, контакты и настройки не сохраняются. Скоро появится регистрация по почте.</div>' : ''}
+    ${guest ? '<div class="banner" style="margin:0 0 16px">Вы вошли гостем: избранное этого входа видят все, кто входит как guest. Заявки к гостевому входу не привязываются, контакты и настройки не сохраняются. Свой кабинет — <a href="#" id="p-reg">зарегистрируйтесь по почте</a>.</div>' : ''}
     <div class="panel me-p"><h2>Контакты</h2><p class="muted" style="margin-top:0">Подставляются в заявку на помощь, чтобы не вводить заново.</p>
       ${guest ? '<p class="muted" style="margin:0">У гостевого входа контакты не сохраняются: их видели бы все, кто входит как guest.</p>' : `<div class="me-form"><div class="fg"><label for="p-name">Имя</label><input id="p-name" value="${esc(ME.name && !(guest && ME.name==='Гость') ? ME.name : '')}"></div>
         <div class="fg"><label for="p-phone">Телефон</label><input id="p-phone" type="tel" value="${esc(ME.phone||'')}" placeholder="+375 (29) 000-00-00"></div>
-        <div class="fg"><label for="p-mail">Email</label><input id="p-mail" type="email" value="${esc(ME.email||'')}"></div>
+        <div class="fg"><label for="p-mail">Email</label><input id="p-mail" type="email" value="${esc(ME.email||'')}"${ME.auth?' disabled':''}>${ME.auth?'<div class="fhint">Почта — логин кабинета, здесь не меняется</div>':''}</div>
         <div class="fg"><label for="p-tg">Telegram</label><input id="p-tg" value="${esc(ME.telegram||'')}" placeholder="@username"></div></div>
+      ${ME.purpose ? `<p class="muted">Для чего вам БелЛот: ${esc(ME.purpose)}${ME.purpose_note ? ' — ' + esc(ME.purpose_note) : ''}</p>` : ''}
       <button class="btn pri" type="button" id="p-save">Сохранить</button>`}</div>
     <div class="panel me-p"><h2>Уведомления</h2><p class="muted" style="margin-top:0">Приходят в личный кабинет. Доставка на почту и в Telegram — позже.</p>
       ${NT.map(([k,t])=>`<label class="chk"><input type="checkbox" data-nt="${k}"${on(k)?' checked':''}${guest?' disabled':''}> ${t}</label>`).join('')}
       <p class="muted">Заявки и отчёты приходят всегда.</p></div>
     <div class="panel me-p"><h2>Пароль</h2>${guest ? '<p class="muted" style="margin:0">У гостевого входа пароль не меняется.</p>' : `<div class="me-form">
       <div class="fg"><label for="p-old">Текущий пароль</label><input id="p-old" type="password" autocomplete="current-password"></div>
-      <div class="fg"><label for="p-new">Новый пароль</label><input id="p-new" type="password" autocomplete="new-password"></div></div>
+      <div class="fg"><label for="p-new">Новый пароль</label><input id="p-new" type="password" autocomplete="new-password"></div>
+      ${ME.auth ? '<div class="fg"><label for="p-new2">Новый пароль ещё раз</label><input id="p-new2" type="password" autocomplete="new-password"></div>' : ''}</div>
+      ${ME.auth ? `<p class="muted">Забыли текущий? <a href="#" id="p-forgot">Сменить пароль по коду из письма</a></p>` : ''}
       <button class="btn" type="button" id="p-pw">Сменить пароль</button>`}</div>`;
-  if($('#p-save')) $('#p-save').onclick = async () => { try{ await urpc('user_update', { p:{ name:$('#p-name').value, phone:$('#p-phone').value, email:$('#p-mail').value, telegram:$('#p-tg').value } }); await uload(); utoast('Сохранено'); }catch(e){ utoast(e.message, true); } };
+  if($('#p-save')) $('#p-save').onclick = async () => { try{ await urpc('user_update', { p:Object.assign({ name:$('#p-name').value, phone:$('#p-phone').value, telegram:$('#p-tg').value }, ME.auth ? {} : { email:$('#p-mail').value }) }); await uload(); utoast('Сохранено'); }catch(e){ utoast(e.message, true); } };
+  if($('#p-reg')) $('#p-reg').onclick = async e => { e.preventDefault(); await ulogout(); location.hash = '#/login?mode=up'; };
+  if($('#p-forgot')) $('#p-forgot').onclick = async e => { e.preventDefault(); const em = ME.email; await ulogout(); location.hash = '#/login?mode=reset'; setTimeout(()=>{ const i = $('#f-mail'); if(i) i.value = em; }, 50); };
   M.querySelectorAll('[data-nt]').forEach(i=>i.onchange = async () => { const n = {}; M.querySelectorAll('[data-nt]').forEach(x=>{ if(!x.checked) n[x.dataset.nt] = false; });
     try{ await urpc('user_update', { p:{ notify:n } }); ME.notify = n; utoast('Сохранено'); }catch(e){ utoast(e.message, true); } });
   const pw = $('#p-pw');
-  if(pw) pw.onclick = async () => { try{ await urpc('user_passwd', { p_old:$('#p-old').value, p_new:$('#p-new').value }); utoast('Пароль изменён'); $('#p-old').value = $('#p-new').value = ''; }catch(e){ utoast(e.message, true); } };
+  // кабинет по почте: старый пароль проверяем входом, новый задаём в Supabase; гостевой и старые входы — как было
+  if(pw) pw.onclick = async () => { try{
+    if(ME.auth){ const n = $('#p-new').value;
+      if(n.length < 8) throw new Error('Новый пароль — не короче 8 символов');
+      if(n !== $('#p-new2').value) throw new Error('Новые пароли не совпадают');
+      let j; try{ j = await uauth('token?grant_type=password', { email:ME.email, password:$('#p-old').value }); }
+      catch(e){ throw new Error(e.code === 'invalid_credentials' || e.code === 'invalid_grant' ? 'Текущий пароль указан неверно' : e.message); }
+      usess(j); await uauth('user', { password:n }, { method:'PUT', tok:j.access_token }); $('#p-new2').value = '';
+    } else await urpc('user_passwd', { p_old:$('#p-old').value, p_new:$('#p-new').value });
+    utoast('Пароль изменён'); $('#p-old').value = $('#p-new').value = ''; }catch(e){ utoast(e.message, true); } };
 }
 
 /* ───────── роутер с переходом страниц ───────── */
@@ -2837,6 +3033,13 @@ function go(){
   }
 }
 addEventListener('hashchange', go);
+// письмо со ссылкой вместо кода (стандартный шаблон Supabase, пока не подключена своя почта):
+// #access_token=…&refresh_token=… — входим и открываем кабинет; ссылка устарела (#error=…) — на страницу входа
+if(UB && /^#(access_token|error)=/.test(location.hash)){
+  const p = new URLSearchParams(location.hash.slice(1));
+  if(p.get('access_token')) usess({ access_token:p.get('access_token'), refresh_token:p.get('refresh_token'), expires_in:+p.get('expires_in') || 3600 });
+  history.replaceState(null, '', location.pathname + location.search + (p.get('access_token') ? '#/me' : '#/login'));
+}
 uload();
 $('#app').addEventListener('animationend', e=>{ if(e.target.id==='app') e.target.classList.remove('in'); });
 go();
