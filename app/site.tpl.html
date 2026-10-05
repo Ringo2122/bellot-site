@@ -865,12 +865,13 @@ const SNAP = __SNAP__;
 const ARCHN = __ARCHN__;          // размер архива по разделам (cut — граница свежего архива), сам архив — в arch.js и arch2.js
 const CFG = __CFG__;              // из админки: тексты, правила калькулятора, часы обновления, выключенные разделы
 /* ошибки у посетителей — в базу (rpc report_error), монитор пересылает новые в Telegram. Одна и та же — один раз за визит,
-   не больше 5 за визит; чужие скрипты (расширения браузера, «Script error.» без подробностей) и чужие картинки — не в счёт */
+   не больше 5 за визит; чужие скрипты (расширения браузера, «Script error.» без подробностей), чужие картинки и роботы поисковиков — не в счёт */
 (()=>{
   const sent = new Set();
   const send = (msg, src) => { try{
     const m = String(msg || '').slice(0, 500), k = m.slice(0, 160);
-    if(!m || sent.has(k) || sent.size >= 5 || !(CFG.sb && CFG.sb.url) || /^Script error\.?$/.test(m) || /extension:\/\//.test(src || '')) return;
+    if(!m || sent.has(k) || sent.size >= 5 || !(CFG.sb && CFG.sb.url) || /^Script error\.?$/.test(m) || /extension:\/\//.test(src || '')
+       || /Googlebot|Google-Read-Aloud|bingbot|YandexBot|crawler|spider/i.test(navigator.userAgent)) return;
     sent.add(k);
     fetch((CFG.sb && CFG.sb.url) + '/rest/v1/rpc/report_error', { method:'POST', keepalive:true,
       headers:{ apikey:CFG.sb.key, Authorization:'Bearer ' + CFG.sb.key, 'Content-Type':'application/json' },
