@@ -415,6 +415,8 @@
   .land{margin-top:-22px;position:relative;overflow:hidden;color:var(--ink);background:var(--hero);
     padding:64px 0 120px}
   .land .sky{position:absolute;left:0;right:0;bottom:0;width:100%;height:62%;pointer-events:none;color:var(--sky)}
+  .land .sky-m{display:none}
+  @media (max-width:760px){ .land .sky-d{display:none} .land .sky-m{display:block;height:46%;opacity:.8} }
   .land-in{position:relative}
   .land h1{font-size:44px;line-height:1.1;letter-spacing:-.02em;font-weight:700;max-width:17ch;margin:0 0 16px;text-wrap:balance}
   .land p{font-size:17px;line-height:1.55;color:var(--ink-2);max-width:58ch;margin:0 0 26px}
@@ -609,13 +611,15 @@
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
   .fcont{margin:12px 0 0;line-height:1.7}.fcont a{color:#fff}
-  .ck{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:56;max-width:380px;display:flex;flex-wrap:wrap;align-items:center;
+  .ck{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:56;display:flex;align-items:center;
     gap:8px 12px;padding:12px 14px;border-radius:12px;background:rgba(24,24,27,.82);color:#f4f4f5;font-size:13px;line-height:1.45;
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 6px 20px rgba(0,0,0,.18)}
   .ck[hidden]{display:none}
   .ck a{color:#ffab91}
-  .ck .btn{padding:6px 14px;font-size:13px}
-  @media (max-width:760px){ .ck{right:84px;max-width:none} }
+  .ck .btn{padding:6px 14px;font-size:13px;flex:none}
+  #ck-t{flex:1}
+  .ck a{flex:none}
+  @media (max-width:760px){ .ck{right:84px;flex-wrap:wrap} #ck-t{flex-basis:100%} }   /* справа — кнопка меню; на телефоне текст — строкой, ниже ссылка и кнопка */
   .privacy{max-width:72ch}
   .privacy p{margin:0 0 14px;line-height:1.65}
   .svc-p{margin:6px 0 0;font-weight:600;color:var(--brand)}
@@ -2067,38 +2071,41 @@ function pageAbout(){
 }
 
 /* ───────── главная ───────── */
-/* фон первого экрана: город, стройка и дорога — недвижимость, техника и транспорт.
-   Рисуется кодом: чёткий на любом экране и ничего не весит */
-function skyline(){
+/* фон первого экрана: изометрические кварталы — объёмные блоки-дома на сетке улиц, как 3D-значки (вариант 2, выбор Артёма 05.10;
+   прежний рисунок — город с краном и дорогой — в коммите 9a28d9d). Рисуется кодом: чёткий на любом экране и ничего не весит.
+   Цвет — currentColor (--sky), слева под текстом бледнее (маска). Две копии: на компьютере — вся полоса 1440×360 (кварталы справа),
+   на телефоне — кадр вокруг кварталов (иначе при обрезке по ширине их не видно) */
+function isoArt(id){
   let s = 11; const r = () => (s = (s*9301 + 49297) % 233280) / 233280;
-  let back = '', mid = '', x = -10;
-  while(x < 1440){ const w = 36+r()*54, h = 110+r()*160; back += `<rect x="${x|0}" y="${(332-h)|0}" width="${w|0}" height="${h|0}"/>`; x += w+3; }
-  x = -30;
-  while(x < 1440){
-    if(x > 880 && x < 1060){ x = 1060; continue; }          // место под кран
-    const w = 54+r()*80, h = 70+r()*130; mid += `<rect x="${x|0}" y="${(332-h)|0}" width="${w|0}" height="${h|0}" rx="2"/>`; x += w+14+r()*46;
+  const W = 38, H = 22, ox = 1090, oy = 118, cell = (cx, cy, w, d) => `M${cx} ${cy-d}L${cx+w} ${cy}L${cx} ${cy+d}L${cx-w} ${cy}Z`;
+  // сетка улиц: клетки расходятся во всю ширину полосы
+  let grid = '';
+  for(let i = -26; i < 14; i++) for(let j = -10; j < 16; j++){
+    const cx = ox + (i - j)*W, cy = oy + (i + j)*H;
+    if(cx < -W || cx > 1440 + W || cy < 40 || cy > 360 + H) continue;
+    grid += `<path d="${cell(cx, cy, W, H)}"/>`;
   }
-  return `<svg class="sky" viewBox="0 0 1440 360" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-    <defs><pattern id="win" width="15" height="19" patternUnits="userSpaceOnUse"><rect x="4" y="5" width="6" height="8" rx="1" fill="rgba(255,255,255,.2)"/></pattern></defs>
-    <circle cx="1190" cy="118" r="74" fill="currentColor" opacity=".16"/>
-    <g fill="currentColor" fill-opacity=".06">${back}</g>
-    <g fill="currentColor" fill-opacity=".09">${mid}</g><g fill="url(#win)">${mid}</g>
-    <g stroke="currentColor" stroke-opacity=".22" stroke-width="3" fill="none" stroke-linecap="round">
-      <path d="M968 332V92M952 332V92M952 92h16M952 120l16 26M968 146l-16 26M952 172l16 26M968 198l-16 26M952 224l16 26M968 250l-16 26M952 276l16 26"/>
-      <path d="M880 96h300M880 96l80-28M1180 96l-220-28M960 68v28"/>
-      <path d="M1130 96v74"/><rect x="1118" y="170" width="24" height="18" rx="2" fill="currentColor" fill-opacity=".18"/>
-      <path d="M888 96v22h28V96"/>
-    </g>
-    <rect y="332" width="1440" height="28" fill="currentColor" fill-opacity=".07"/>
-    <path d="M0 346h1440" stroke="currentColor" stroke-opacity=".2" stroke-width="2" stroke-dasharray="26 22"/>
-    <g fill="currentColor" fill-opacity=".2">
-      <rect x="170" y="262" width="176" height="62" rx="4"/>
-      <path d="M350 324v-44h50l22 22v22z"/><rect x="360" y="286" width="26" height="14" rx="2" fill="currentColor" fill-opacity=".5"/>
-      <circle cx="210" cy="330" r="13"/><circle cx="244" cy="330" r="13"/><circle cx="392" cy="330" r="13"/>
-      <path d="M560 326v-12l20-5 24-18h52l26 18 20 4v13z"/>
-      <circle cx="594" cy="328" r="11"/><circle cx="676" cy="328" r="11"/>
-    </g>
-  </svg>`;
+  // кварталы: дальние выше, ближние ниже; рисуем от дальних к ближним
+  const cells = [];
+  for(let i = 0; i < 6; i++) for(let j = 0; j < 6; j++){ if(r() < .3) continue; cells.push([i, j, 12 + r()*(i+j < 4 ? 96 : i+j < 7 ? 64 : 32)]); }
+  cells.sort((x, y)=>(x[0]+x[1]) - (y[0]+y[1]));
+  let blocks = '';
+  for(const [i, j, h] of cells){
+    const cx = ox + (i - j)*W, cy = oy + (i + j)*H, w = W*.92, d = H*.92;
+    blocks += `<path d="M${cx} ${cy-h-d}L${cx+w} ${cy-h}L${cx} ${cy-h+d}L${cx-w} ${cy-h}Z" fill-opacity=".1"/>`
+      + `<path d="M${cx-w} ${cy-h}L${cx} ${cy-h+d}L${cx} ${cy+d}L${cx-w} ${cy}Z" fill-opacity=".18"/>`
+      + `<path d="M${cx+w} ${cy-h}L${cx} ${cy-h+d}L${cx} ${cy+d}L${cx+w} ${cy}Z" fill-opacity=".26"/>`;
+    // окна — светлые полосы на правой грани высоких домов
+    if(h > 60) for(let k = 18; k < h - 10; k += 14) blocks += `<path d="M${cx+w*.2} ${cy-h+d*.2+k+w*.06}l${w*.6} ${-d*.6}" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="3"/>`;
+  }
+  return `<defs><linearGradient id="${id}g" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".45" stop-color="#fff" stop-opacity=".7"/><stop offset=".7" stop-color="#fff"/></linearGradient>
+      <mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="1440" height="360"><rect width="1440" height="360" fill="url(#${id}g)"/></mask></defs>
+    <g mask="url(#${id})"><g fill="none" stroke="currentColor" stroke-opacity=".12">${grid}</g>
+      <g fill="currentColor">${blocks}</g></g>`;
+}
+function heroArt(){
+  return `<svg class="sky sky-d" viewBox="0 0 1440 360" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${isoArt('isd')}</svg>
+    <svg class="sky sky-m" viewBox="800 0 640 360" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${isoArt('ism')}</svg>`;
 }
 
 /* иконки разделов */
@@ -2148,7 +2155,7 @@ function pageHome(){
   const plats = new Set(DATA.flatMap(l=>[l.platform, ...(l.alt||[]).map(a=>a.platform)])).size;   // склеенные площадки тоже в счёт
   $('#app').innerHTML = `
   <section class="land">
-    ${skyline()}
+    ${heroArt()}
     <div class="wrap land-in">
       <h1>${esc(TX('hero_title','Агрегатор торгов по имуществу со всех площадок Беларуси'))}</h1>
       <p>${esc(TX('hero_text','Недвижимость, автомобили, техника и право аренды в одном месте.'))}</p>
