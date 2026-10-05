@@ -2,6 +2,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<!-- Политика безопасности: скрипты — свои и карта Leaflet с cdnjs, запросы — только в базу Supabase; фото площадок — с их сайтов -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'">
 <title>БелЛот — торги Беларуси</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Onest:wght@600;700;800&family=PT+Mono&display=swap">
 <style>
@@ -39,7 +41,7 @@
   body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter",system-ui,sans-serif;
     font-size:15px;line-height:1.5}
   a{color:var(--brand-d);text-decoration:none}
-  h1,h2,h3,h4,.lotname,.logo .nm,.lot .nm,.tile .t,.stile .tt,details.acc>summary{font-family:var(--head)}
+  h1,h2,h3,h4,.lotname,.logo .nm,.lot .nm,.stile .tt,details.acc>summary{font-family:var(--head)}
   a:hover{text-decoration:underline}
   .mono{font-family:"PT Mono",ui-monospace,monospace}
   .wrap{max-width:1220px;margin:0 auto;padding-inline:16px}
@@ -148,29 +150,6 @@
   .sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:14px}
   .sec-h h2{margin:0}
 
-  /* ── главная ── */
-  .hero{background:linear-gradient(180deg,var(--brand-l),var(--bg));border-bottom:1px solid var(--hair);
-    padding-block:34px 30px;margin-bottom:8px}
-  .hero h1{font-size:32px;max-width:20ch;line-height:1.15;text-wrap:balance}
-  .hero p{color:var(--ink-2);max-width:56ch;margin:10px 0 20px}
-  .quick{display:flex;flex-wrap:wrap;gap:8px}
-  .quick a{background:var(--card);border:1px solid var(--hair-2);border-radius:20px;padding:6px 14px;
-    font-size:13.5px;color:var(--ink-2)}
-  .quick a:hover{border-color:var(--brand);color:var(--brand);text-decoration:none}
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
-    background:var(--hair);border:1px solid var(--hair);border-radius:12px;overflow:hidden;margin-top:26px}
-  .stat{background:var(--card);padding:15px 17px}
-  .stat .v{font-size:25px;font-weight:700;color:var(--brand);letter-spacing:-.02em}
-  .stat .k{font-size:12.5px;color:var(--ink-3);margin-top:2px}
-
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:13px}
-  .tile{background:var(--card);border:1px solid var(--hair);border-radius:16px;padding:17px;
-    display:block;color:var(--ink);transition:.15s}
-  .tile:hover{box-shadow:var(--sh-2);text-decoration:none;transform:translateY(-2px)}
-  .tile .ic{font-size:23px;line-height:1}
-  .tile .t{font-weight:700;margin-top:9px;font-size:16px}
-  .tile .n{color:var(--ink-3);font-size:13px;margin-top:3px}
-
   /* ── карточки лотов ── */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(256px,1fr));gap:14px}
   .lot{background:var(--card);border:1px solid var(--hair);border-radius:16px;overflow:hidden;
@@ -217,10 +196,6 @@
   .fg .chk{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:400;color:var(--ink);text-transform:none;
     letter-spacing:0;margin:0;padding:4px 0;cursor:pointer}
   .fg .chk input{width:17px;height:17px;margin:0;accent-color:var(--brand);flex:none}
-  .fcount{font-size:13px;color:var(--ink-2);margin-bottom:13px}
-  .fcount b{color:var(--ink)}
-  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
-    margin-bottom:14px}
 
   /* ── карточка лота ── */
 
@@ -305,7 +280,7 @@
     font-size:13.5px;font-weight:700;transition:background .15s,color .15s}
   .seg button.on{background:var(--card);color:var(--brand);box-shadow:var(--sh)}
   .seg small{font-weight:400;color:var(--ink-3);margin-left:2px}
-  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
   .toolbar .cnt{font-size:14px;color:var(--ink-2);margin-right:auto}
   .toolbar .cnt b{color:var(--ink)}
   .toolbar select{padding:7px 9px;border:1px solid var(--hair-2);border-radius:8px;background:var(--card);
@@ -385,10 +360,6 @@
   .facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
   .dl{display:inline-block;margin-left:6px;font-size:12px;padding:1px 8px;border-radius:12px;
     background:var(--accent-l);color:var(--accent);font-weight:700}
-  .mini{display:block;margin-top:14px;padding:10px 12px;border-radius:8px;background:var(--ok-l);
-    border:1px solid var(--ok);color:var(--ink);font-size:13.5px}
-  .mini:hover{text-decoration:none;filter:brightness(.98)}
-  .mini b{color:var(--ok)}
   .cta{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
   .cta .btn{flex:1;text-align:center}
   .accs{margin-top:24px;display:flex;flex-direction:column;gap:10px}
@@ -552,6 +523,7 @@
   .hform{padding:22px;position:sticky;top:62px}
   .hform h2{margin:0 0 6px}
   .hform small{text-transform:none;letter-spacing:0;font-weight:400}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
   .ferr{color:#c0392b;font-size:13px;min-height:18px;margin-bottom:6px}
   .done{text-align:center;padding:10px 0}
   .done .ok{width:56px;height:56px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;
@@ -923,7 +895,7 @@ const SECTIONS = [
 const TX = (k, d) => { const v = (CFG.texts||{})[k]; return v && String(v).trim() ? String(v) : d; };
 const numv = v => v===''||v==null||isNaN(+v) ? null : +v;
 const $ = s => document.querySelector(s);
-const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nf = n => Math.round(n).toLocaleString('ru-RU');
 const p2 = n => String(n).padStart(2,'0');
 const dt = ts => { const d=new Date(ts*1000); return p2(d.getDate())+'.'+p2(d.getMonth()+1)+'.'+d.getFullYear(); };
@@ -1681,7 +1653,11 @@ function loadLeaflet(){
   if(LEAF) return LEAF;
   const base = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
   const put = (tag, attrs) => new Promise((res, rej)=>{ const e = document.createElement(tag); Object.assign(e, attrs); e.onload = res; e.onerror = rej; document.head.appendChild(e); });
-  LEAF = Promise.all([put('link', { rel:'stylesheet', href:base + 'leaflet.min.css' }), put('script', { src:base + 'leaflet.min.js' })])
+  // хеши — с cdnjs (api.cdnjs.com/libraries/leaflet/1.9.4?fields=sri): подменённый на CDN файл браузер не загрузит
+  LEAF = Promise.all([put('link', { rel:'stylesheet', href:base + 'leaflet.min.css', crossOrigin:'anonymous', referrerPolicy:'no-referrer',
+      integrity:'sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==' }),
+    put('script', { src:base + 'leaflet.min.js', crossOrigin:'anonymous', referrerPolicy:'no-referrer',
+      integrity:'sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==' })])
     .then(()=>window.L).catch(e=>{ LEAF = null; throw e; });
   return LEAF;
 }
@@ -1906,6 +1882,7 @@ function pageHelp(params){
           <div class="fg"><label for="h-lot">Номер лота <small>необязательно</small></label><input id="h-lot" value="${esc(lot)}" placeholder="например, 34950"></div>
           <div class="fg"><label for="h-svc">Что нужно <small>необязательно</small></label><select id="h-svc"><option value="">Пока не знаю — нужна консультация</option>
             ${svcList().map(([,t])=>`<option${t===svc?' selected':''}>${esc(t)}</option>`).join('')}</select></div>
+          <input class="hp" id="h-web" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
           <div class="ferr" id="h-err"></div>
           <button class="btn pri" type="submit" style="width:100%">Отправить заявку</button>
           <p class="note">Нажимая «Отправить», вы соглашаетесь, что мы свяжемся с вами по указанным контактам.</p>
@@ -1923,7 +1900,7 @@ function pageHelp(params){
       <p>${esc(name)}, спасибо! Свяжемся с вами по номеру ${esc(ph)}${lotv?` по лоту № ${esc(lotv)}`:''}.</p>
       ${ME?'<p><a href="#/me/orders">Заявка появилась в личном кабинете →</a></p>':''}
       <a class="btn" href="#/catalog">Вернуться к лотам</a></div>`; };
-    if(!CFG.sb){ done(); return; }   // локальная сборка без базы
+    if(!CFG.sb || $('#h-web').value){ done(); return; }   // локальная сборка без базы; заполнено скрытое поле — это бот
     btn.disabled = true; btn.textContent = 'Отправляем…';
     fetch(CFG.sb.url + '/rest/v1/rpc/submit_lead', { method:'POST',
       headers:Object.assign({ apikey: CFG.sb.key, 'Content-Type':'application/json' }, UTOK ? { 'x-user-token':UTOK } : {}),
@@ -2492,7 +2469,7 @@ const NK = { price_down:['Цена ↓','g'], price_up:['Цена ↑',''], dead
 const agoTxt = t => { const s = (Date.now() - new Date(t)) / 1000; return s < 3600 ? Math.max(1, Math.round(s/60)) + ' мин назад' : s < 86400 ? Math.round(s/3600) + ' ч назад' : dtm(new Date(t)/1000); };
 function notifRow(n){
   const [k, c] = NK[n.kind] || ['Событие',''];
-  return `<a class="nrow${n.read_at?'':' un'}" href="${n.link ? esc(n.link) : n.lot ? '#/lot/' + encodeURIComponent(n.lot) : '#/me/notify'}" data-nid="${n.id}">
+  return `<a class="nrow${n.read_at?'':' un'}" href="${n.link && /^#\//.test(n.link) ? esc(n.link) : n.lot ? '#/lot/' + encodeURIComponent(n.lot) : '#/me/notify'}" data-nid="${n.id}">
     <span class="ntag ${c}">${k}</span><span class="nbd"><b>${esc(n.title||'')}</b><span>${esc(n.body||'')}</span></span><span class="nt">${agoTxt(n.created_at)}</span></a>`;
 }
 function bindNotif(M){
@@ -2742,21 +2719,21 @@ async function meProfile(M){
   const NT = [['price','Цена лота изменилась'],['dates','Изменились сроки приёма заявок или дата торгов'],['status','Лот снят с торгов, завершён или снова выставлен'],
     ['remind','Напоминания: за 3 дня и за сутки до окончания приёма заявок'],['search','Новые лоты по сохранённым поискам']];
   M.innerHTML = `<h1>Профиль</h1>
-    ${guest ? '<div class="banner" style="margin:0 0 16px">Вы вошли гостем: избранное, заявки и настройки этого входа видят все, кто входит как guest. Скоро появится регистрация по почте.</div>' : ''}
+    ${guest ? '<div class="banner" style="margin:0 0 16px">Вы вошли гостем: избранное этого входа видят все, кто входит как guest. Заявки к гостевому входу не привязываются, контакты и настройки не сохраняются. Скоро появится регистрация по почте.</div>' : ''}
     <div class="panel me-p"><h2>Контакты</h2><p class="muted" style="margin-top:0">Подставляются в заявку на помощь, чтобы не вводить заново.</p>
-      <div class="me-form"><div class="fg"><label for="p-name">Имя</label><input id="p-name" value="${esc(ME.name && !(guest && ME.name==='Гость') ? ME.name : '')}"></div>
+      ${guest ? '<p class="muted" style="margin:0">У гостевого входа контакты не сохраняются: их видели бы все, кто входит как guest.</p>' : `<div class="me-form"><div class="fg"><label for="p-name">Имя</label><input id="p-name" value="${esc(ME.name && !(guest && ME.name==='Гость') ? ME.name : '')}"></div>
         <div class="fg"><label for="p-phone">Телефон</label><input id="p-phone" type="tel" value="${esc(ME.phone||'')}" placeholder="+375 (29) 000-00-00"></div>
         <div class="fg"><label for="p-mail">Email</label><input id="p-mail" type="email" value="${esc(ME.email||'')}"></div>
         <div class="fg"><label for="p-tg">Telegram</label><input id="p-tg" value="${esc(ME.telegram||'')}" placeholder="@username"></div></div>
-      <button class="btn pri" type="button" id="p-save">Сохранить</button></div>
+      <button class="btn pri" type="button" id="p-save">Сохранить</button>`}</div>
     <div class="panel me-p"><h2>Уведомления</h2><p class="muted" style="margin-top:0">Приходят в личный кабинет. Доставка на почту и в Telegram — позже.</p>
-      ${NT.map(([k,t])=>`<label class="chk"><input type="checkbox" data-nt="${k}"${on(k)?' checked':''}> ${t}</label>`).join('')}
+      ${NT.map(([k,t])=>`<label class="chk"><input type="checkbox" data-nt="${k}"${on(k)?' checked':''}${guest?' disabled':''}> ${t}</label>`).join('')}
       <p class="muted">Заявки и отчёты приходят всегда.</p></div>
     <div class="panel me-p"><h2>Пароль</h2>${guest ? '<p class="muted" style="margin:0">У гостевого входа пароль не меняется.</p>' : `<div class="me-form">
       <div class="fg"><label for="p-old">Текущий пароль</label><input id="p-old" type="password" autocomplete="current-password"></div>
       <div class="fg"><label for="p-new">Новый пароль</label><input id="p-new" type="password" autocomplete="new-password"></div></div>
       <button class="btn" type="button" id="p-pw">Сменить пароль</button>`}</div>`;
-  $('#p-save').onclick = async () => { try{ await urpc('user_update', { p:{ name:$('#p-name').value, phone:$('#p-phone').value, email:$('#p-mail').value, telegram:$('#p-tg').value } }); await uload(); utoast('Сохранено'); }catch(e){ utoast(e.message, true); } };
+  if($('#p-save')) $('#p-save').onclick = async () => { try{ await urpc('user_update', { p:{ name:$('#p-name').value, phone:$('#p-phone').value, email:$('#p-mail').value, telegram:$('#p-tg').value } }); await uload(); utoast('Сохранено'); }catch(e){ utoast(e.message, true); } };
   M.querySelectorAll('[data-nt]').forEach(i=>i.onchange = async () => { const n = {}; M.querySelectorAll('[data-nt]').forEach(x=>{ if(!x.checked) n[x.dataset.nt] = false; });
     try{ await urpc('user_update', { p:{ notify:n } }); ME.notify = n; utoast('Сохранено'); }catch(e){ utoast(e.message, true); } });
   const pw = $('#p-pw');

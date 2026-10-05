@@ -35,10 +35,15 @@ module Src
 
   module_function
 
+  # curl только по http(s), и после переадресации тоже (адрес из чужой страницы не прочитает file:// и не уйдёт на ftp://),
+  # страница — не больше 20 МБ
+  CURL = %w[curl -sS -L --proto =http,https --proto-redir =http,https --max-filesize 20000000].freeze
+
   # короче min — сбой, пробуем ещё раз; для маленьких служебных ответов (окно «все ставки») — get(url, min: 1, tries: 1)
   def get(url, min: 1500, tries: 2)
+    return nil unless url.to_s =~ %r{\Ahttps?://}i
     tries.times do |i|
-      out = IO.popen(['curl', '-sS', '-L', '-m', '40', '-A', UA, url], err: File::NULL, &:read)
+      out = IO.popen([*CURL, '-m', '40', '-A', UA, url], err: File::NULL, &:read)
       out = out.to_s.force_encoding('UTF-8')
       return out if out.size >= min
       sleep 2 if i < tries - 1
@@ -58,14 +63,6 @@ module Src
     s.to_s.gsub('&nbsp;', ' ').gsub('&quot;', '"').gsub('&laquo;', '«').gsub('&raquo;', '»').gsub('&mdash;', '—').gsub('&ndash;', '–').gsub('&lt;', '<').gsub('&gt;', '>').gsub('&apos;', "'")
      .gsub(/&#(\d{2,5});/) { $1.to_i.chr(Encoding::UTF_8) rescue ' ' }.gsub(/&#x([0-9a-f]{2,4});/i) { $1.hex.chr(Encoding::UTF_8) rescue ' ' }
      .gsub('&amp;', '&')
-  end
-
-  # Подчистка уже сохранённого текста (подробности до 29.09): коды символов и хвост с вёрсткой или кодом сайта.
-  # У «Описания» konfiskat — ещё и повтор списка характеристик («Описание: Тип транспорта: …») и общий текст про аукцион.
-  def clean_stored(key, v)
-    v = decode(v).sub(/\s*(?:-->|<!--|BX\.message|BX\.|function\s*\().*\z/m, '')
-    v = v.sub(/\s+Описание:\s+Тип транспорта:.*\z/m, '').sub(/\s*\.?\s*Аукцион проводится на электронной торговой площадке.*\z/m, '') if key == 'Описание'
-    v.gsub(/\s+/, ' ').strip
   end
 
   def num(s)
@@ -560,7 +557,7 @@ module Src
     NOTICE_LOCK.synchronize do
       return NOTICES[url] if NOTICES.key?(url)
       tmp = File.join(Dir.tmpdir, "kf-notice-#{url.hash.abs}.pdf")
-      system('curl', '-sS', '-L', '-m', '60', '-A', UA, '-o', tmp, url, out: File::NULL, err: File::NULL)
+      system(*CURL, '-m', '60', '-A', UA, '-o', tmp, url, out: File::NULL, err: File::NULL) if url.to_s =~ %r{\Ahttps?://}i
       t = (File.exist?(tmp) ? PdfText.text(tmp) : '').gsub(/\s+/, ' ') rescue ''
       File.delete(tmp) if File.exist?(tmp)
       n = {}

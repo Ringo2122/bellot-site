@@ -67,13 +67,6 @@ module Geo
   # активные лоты без координат; stop — когда остановиться (общий бюджет прогона)
   def run(db, stat, stop)
     cache = File.exist?(CACHE) ? (JSON.parse(File.read(CACHE, encoding: 'UTF-8')) rescue {}) : {}
-    # 29.09: дом, найденный как организация, считался «по населённому пункту» (круг вместо точки) — переспросить один раз
-    fix = File.join(Store::DATA, 'geo_fix')
-    unless File.exist?(fix)
-      cache.reject! { |q, v| v != 0 && v[2] == 'p' && q =~ /[\s,]\d+[а-яa-z]?(?:\/\d+)?\z/i }
-      db.each_value { |l| l.delete('geo') if l['status'] == 'active' && l['geo'] && l['geo'][2] == 'p' }
-      File.write(fix, '1')
-    end
     asked = 0
     todo = db.values.select { |l| l['status'] == 'active' && !l.key?('geo') && l['geo_try'].to_i < 2 }
     todo.each do |l|

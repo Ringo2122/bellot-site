@@ -18,10 +18,9 @@ on:
     branches: [main]
     paths: ['app/**', '.github/workflows/**']   # правка кода — пересобрать сайт без обхода
 
+# по умолчанию — только чтение; запись в репозиторий и на Pages — только у шага сборки
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 jobs:
   gate:
@@ -33,11 +32,11 @@ jobs:
       build: ${{ steps.g.outputs.build }}
       run_id: ${{ steps.g.outputs.run_id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           sparse-checkout: app     # память робота с фото не нужна — только скрипты
 
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1
         with:
           ruby-version: '3.2'
 
@@ -54,6 +53,10 @@ jobs:
 
   update:
     needs: gate
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
     if: needs.gate.outputs.build == 'true'
     concurrency:
       group: site
@@ -72,13 +75,13 @@ jobs:
       SB_KEY: ${{ secrets.SB_KEY }}
       SB_TOKEN: ${{ secrets.SB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # память — свежая, а не на момент запуска: 04.10 обход 9:00 час ждал в очереди за ночным архивом,
           # взял память до архива и не смог сохраниться (конфликт data/lots.json)
           ref: main
 
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1
         with:
           ruby-version: '3.2'
 
@@ -112,14 +115,14 @@ jobs:
       - name: Сборка сайта
         run: ruby app/build.rb
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
           path: _site
 
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
 
       - name: Отчёт и копия каталога — в админку
         if: always()

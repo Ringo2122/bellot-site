@@ -183,20 +183,6 @@ stat['удалено: площадка исключена'] = dropped if dropped
 db.each_value do |l|
   %w[name location debtor].each { |k| l[k] = Src.decode(l[k]) if l[k].is_a?(String) && l[k] =~ /&#?\w+;/ }
 end
-# 29.09: описания konfiskat с кусками вёрстки и кода сайта, коды символов вместо скобок — подчистить сохранённое (один раз)
-clean_mark = File.join(Store::DATA, 'det_clean')
-unless File.exist?(clean_mark) && File.read(clean_mark).to_i >= 1
-  db.each_value do |l|
-    secs = Store.details(l['key'])
-    changed = false
-    secs.each { |sec| sec['rows'].each { |row| v = Src.clean_stored(row[0], row[1]); (row[1] = v; changed = true) if v != row[1] } }
-    next unless changed
-    secs.each { |sec| sec['rows'].reject! { |_, v| v.to_s.empty? } }
-    Store.save_details(l['key'], secs.reject { |sec| sec['rows'].empty? })
-    stat['подробности подчищены'] += 1
-  end
-  File.write(clean_mark, '1')
-end
 
 (RESULTS_ONLY || YEAR_ARCH ? {} : PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }).map do |plat, secs|
   Thread.new do

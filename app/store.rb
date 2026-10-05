@@ -14,7 +14,6 @@ module Store
   LOTS = File.join(DATA, 'lots.json')
   DET  = File.join(DATA, 'det')
   PH   = File.join(DATA, 'ph')
-  SEED = File.join(DATA, 'seed.tgz')   # первая заливка одним файлом: GitHub API не любит тысячи мелких
   W    = 400
   Q    = 48
 
@@ -22,11 +21,6 @@ module Store
 
   def load
     FileUtils.mkdir_p([DET, PH])
-    if !File.exist?(LOTS) && File.exist?(SEED)
-      system('tar', 'xzf', SEED, '-C', DATA) or abort('не распаковался seed.tgz')
-      File.delete(SEED)
-      STDERR.puts "память распакована из seed.tgz"
-    end
     File.exist?(LOTS) ? JSON.parse(File.read(LOTS, encoding: 'UTF-8')) : []
   end
 
@@ -81,7 +75,9 @@ module Store
     return true if File.exist?(dst)
     raw = dst + '.raw'
     urls.compact.uniq.each do |u|
-      system('curl', '-sS', '-L', '-m', '40', '-A', ua, '-o', raw, u, out: File::NULL, err: File::NULL)
+      next unless u.to_s =~ %r{\Ahttps?://}i   # только http(s): адрес фото берётся со страницы площадки
+      system('curl', '-sS', '-L', '--proto', '=http,https', '--proto-redir', '=http,https', '--max-filesize', '15000000',
+             '-m', '40', '-A', ua, '-o', raw, u, out: File::NULL, err: File::NULL)
       next unless File.exist?(raw) && File.size(raw) > 1000
       ok = shrink(raw, dst, w, q)
       File.delete(raw) if File.exist?(raw)

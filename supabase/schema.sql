@@ -7,7 +7,7 @@
 -- Доступ: вход по логину и паролю (admin_login) выдаёт ключ сессии, админка шлёт его в заголовке
 -- x-admin-token. Все таблицы закрыты правилами RLS: читать и писать может только тот, у кого есть
 -- живая сессия. В базе хранится не сам ключ, а его хеш. У робота и бота — своя бессрочная сессия.
--- Публично доступна одна функция — submit_lead (форма «Помощь в аукционе»).
+-- Посетителю доступны только функции из списка в конце файла (заявка, ошибки, вход в кабинет); остальные — изнутри базы.
 
 create extension if not exists pgcrypto with schema extensions;
 create extension if not exists pg_net;
@@ -79,7 +79,7 @@ create table if not exists daily (                -- снимок каталог
   stats jsonb not null,
   updated_at timestamptz not null default now()
 );
--- итоги завершённых торгов — копятся навсегда (архив робота живёт 180 дней): аналитика продаж.
+-- итоги завершённых торгов — копятся навсегда (архив робота живёт год): аналитика продаж.
 -- Один лот может торговаться несколько раз (повторные торги) — ключ «лот + время окончания торгов»
 create table if not exists sales (
   key text not null,
@@ -159,7 +159,8 @@ create or replace function admin_login(p_login text, p_pass text) returns text
 language plpgsql security definer set search_path = public, extensions as $$
 declare v_ok boolean; tok text; lg text := lower(trim(p_login));
 begin
-  if (select count(*) from login_attempts where at > now() - interval '15 minutes' and not ok) >= 20 then
+  if (select count(*) from login_attempts where at > now() - interval '15 minutes' and not ok and login = left(lg, 60)) >= 10
+     or (select count(*) from login_attempts where at > now() - interval '15 minutes' and not ok and login not like 'u:%') >= 200 then
     raise exception 'Слишком много неудачных попыток. Подождите 15 минут.';
   end if;
   select exists (select 1 from admin_users where login = lg and pass = crypt(p_pass, pass)) into v_ok;
@@ -194,7 +195,7 @@ begin
   if not exists (select 1 from admin_users where login = lg and pass = crypt(p_old, pass)) then
     raise exception 'Текущий пароль указан неверно';
   end if;
-  if length(coalesce(p_new, '')) < 4 then raise exception 'Новый пароль — не короче 4 символов'; end if;
+  if length(coalesce(p_new, '')) < 10 then raise exception 'Новый пароль — не короче 10 символов'; end if;
   update admin_users set pass = crypt(p_new, gen_salt('bf')), updated_at = now() where login = lg;
 end $$;
 
@@ -255,22 +256,7 @@ begin
   return r;
 end $$;
 
--- ── форма «Помощь в аукционе»: единственное, что доступно посетителю сайта ──
-create or replace function submit_lead(p_name text, p_phone text, p_email text default null, p_lot text default null) returns bigint
-language plpgsql security definer set search_path = public, extensions as $$
-declare v_id bigint;
-begin
-  if length(trim(coalesce(p_name, ''))) < 1 or length(regexp_replace(coalesce(p_phone, ''), '\D', '', 'g')) < 9 then
-    raise exception 'Укажите имя и телефон';
-  end if;
-  if (select count(*) from leads where created_at > now() - interval '10 minutes') >= 30 then
-    raise exception 'Слишком много заявок, попробуйте позже';
-  end if;
-  insert into leads (name, phone, email, lot)
-  values (left(trim(p_name), 120), left(trim(p_phone), 40), nullif(left(trim(coalesce(p_email, '')), 120), ''), nullif(left(trim(coalesce(p_lot, '')), 120), ''))
-  returning leads.id into v_id;
-  return v_id;
-end $$;
+-- форма «Помощь в аукционе» — submit_lead, ниже (раздел «Личный кабинет»): заявку можно привязать к кабинету
 
 
 -- ════════════════════ ЛИЧНЫЙ КАБИНЕТ ════════════════════
@@ -393,7 +379,8 @@ create or replace function user_login(p_login text, p_pass text) returns text
 language plpgsql security definer set search_path = public, extensions as $$
 declare v_id bigint; tok text; lg text := lower(trim(p_login));
 begin
-  if (select count(*) from login_attempts where at > now() - interval '15 minutes' and not ok and login like 'u:%') >= 30 then
+  if (select count(*) from login_attempts where at > now() - interval '15 minutes' and not ok and login = 'u:' || left(lg, 58)) >= 10
+     or (select count(*) from login_attempts where at > now() - interval '15 minutes' and not ok and login like 'u:%') >= 200 then
     raise exception 'Слишком много неудачных попыток. Подождите 15 минут.';
   end if;
   select id into v_id from users where login = lg and pass = crypt(p_pass, pass);
@@ -425,6 +412,7 @@ create or replace function user_update(p jsonb) returns void
 language plpgsql security definer set search_path = public, extensions as $$
 begin
   if cur_user() is null then raise exception 'Войдите в кабинет'; end if;
+  if (select login from users where id = cur_user()) = 'guest' then raise exception 'У гостевого входа профиль не меняется'; end if;
   update users set
     name = case when p ? 'name' then left(nullif(trim(p->>'name'), ''), 120) else name end,
     email = case when p ? 'email' then left(nullif(trim(p->>'email'), ''), 120) else email end,
@@ -454,19 +442,21 @@ create or replace function submit_lead(p_name text, p_phone text, p_email text d
                                        p_service text default null, p_lot_name text default null, p_lot_id text default null,
                                        p_msg text default null) returns bigint
 language plpgsql security definer set search_path = public, extensions as $$
-declare v_id bigint;
+declare v_id bigint; v_user bigint := cur_user(); v_digits text := regexp_replace(coalesce(p_phone, ''), '\D', '', 'g');
 begin
-  if length(trim(coalesce(p_name, ''))) < 1 or length(regexp_replace(coalesce(p_phone, ''), '\D', '', 'g')) < 9 then
+  if length(trim(coalesce(p_name, ''))) < 1 or length(v_digits) < 9 then
     raise exception 'Укажите имя и телефон';
   end if;
-  if (select count(*) from leads where created_at > now() - interval '10 minutes') >= 30 then
+  if (select count(*) from leads where created_at > now() - interval '10 minutes') >= 60
+     or (select count(*) from leads where created_at > now() - interval '1 hour' and regexp_replace(phone, '\D', '', 'g') = v_digits) >= 3 then
     raise exception 'Слишком много заявок, попробуйте позже';
   end if;
+  if (select login from users where id = v_user) = 'guest' then v_user := null; end if;
   insert into leads (name, phone, email, lot, service, lot_name, lot_id, msg, user_id)
   values (left(trim(p_name), 120), left(trim(p_phone), 40), nullif(left(trim(coalesce(p_email, '')), 120), ''),
           nullif(left(trim(coalesce(p_lot, '')), 120), ''), nullif(left(trim(coalesce(p_service, '')), 120), ''),
           nullif(left(trim(coalesce(p_lot_name, '')), 300), ''), nullif(left(trim(coalesce(p_lot_id, '')), 120), ''),
-          nullif(left(trim(coalesce(p_msg, '')), 2000), ''), cur_user())
+          nullif(left(trim(coalesce(p_msg, '')), 2000), ''), v_user)
   returning leads.id into v_id;
   return v_id;
 end $$;
@@ -650,3 +640,27 @@ begin
   delete from client_errors where at < now() - interval '30 days';
 end $$;
 grant execute on function report_error(text, text, text, text) to anon, authenticated;
+
+-- ── кто может вызывать функции базы (ревизия 05.10.2026) ──
+-- По умолчанию функцию может вызвать любой посетитель. Разрешено только то, что нужно сайту, админке и роботу;
+-- новые функции, которые должен вызывать посетитель, — добавить в этот список.
+revoke execute on all functions in schema public from public, anon, authenticated;
+alter default privileges in schema public revoke execute on functions from public, anon, authenticated;
+do $$
+declare f text;
+begin
+  foreach f in array array[
+    -- проверки доступа: их вызывают правила таблиц (RLS) и значения по умолчанию от имени посетителя
+    'hdr_token()', 'is_admin()', 'cur_user()',
+    -- админка (каждая сама проверяет сессию админа)
+    'admin_login(text, text)', 'admin_me()', 'admin_logout(boolean)', 'admin_passwd(text, text)',
+    'request_publish(boolean)', 'set_github_token(text)', 'admin_stats()',
+    -- сайт: форма заявки, ошибки у посетителей, личный кабинет
+    'submit_lead(text, text, text, text, text, text, text, text)', 'report_error(text, text, text, text)',
+    'user_login(text, text)', 'user_me()', 'user_logout()', 'user_update(jsonb)', 'user_passwd(text, text)',
+    -- робот после сборки (проверяет сессию админа)
+    'cab_tick()'
+  ] loop
+    execute format('grant execute on function public.%s to anon, authenticated', f);
+  end loop;
+end $$;

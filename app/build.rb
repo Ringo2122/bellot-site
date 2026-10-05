@@ -87,7 +87,13 @@ MOD_SINCE = CFG['mod_since'].to_i   # лоты, появившиеся позж�
 
 now = Time.now.to_i
 lots = Store.load
+# ссылки со страниц площадок — только http(s): ссылка вида «javascript:…» на сайт не попадёт, даже если площадку взломают
+web = ->(u) { u.is_a?(String) && u =~ %r{\Ahttps?://}i ? u : nil }
 lots.each do |l|
+  l['url'] = web.(l['url'])
+  l['phx'] = web.(l['phx']) if l['phx']
+  l['pics'] = l['pics'].select { |u| web.(u) } if l['pics'].is_a?(Array)
+  l['market'] = l['market'].merge('link' => web.(l['market']['link'])) if l['market'].is_a?(Hash) && l['market']['link']
   # срок истёк после прогона обновления — в выдаче такой лот уже не нужен
   if l['status'] == 'active' && l['req_to'].to_i <= now
     l.merge!('status' => 'archive', 'closed' => l['req_to'], 'why' => 'deadline')
