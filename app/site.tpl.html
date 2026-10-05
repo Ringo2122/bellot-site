@@ -444,7 +444,7 @@
   .sec-sub{font-size:13px;color:var(--ink-3);margin-top:2px}
   .car{position:relative}
   .car-track{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 42px)/4);gap:14px;overflow-x:auto;
-    scroll-snap-type:x mandatory;scrollbar-width:none;padding:3px 2px 8px}
+    scroll-snap-type:x mandatory;scroll-padding-inline:2px;scrollbar-width:none;padding:3px 2px 8px}
   .car-track::-webkit-scrollbar{display:none}
   .car-track>.lot{scroll-snap-align:start}
   .car-b{position:absolute;top:34%;width:44px;height:44px;border-radius:50%;border:1px solid var(--hair-2);
@@ -2117,8 +2117,12 @@ function bindCarousels(){
   document.querySelectorAll('.car').forEach(c=>{
     const t = c.querySelector('.car-track'), p = c.querySelector('.prev'), n = c.querySelector('.next');
     const upd = () => { p.disabled = t.scrollLeft < 5; n.disabled = t.scrollLeft + t.clientWidth >= t.scrollWidth - 5; };
-    p.onclick = () => t.scrollBy({left:-t.clientWidth, behavior:'smooth'});
-    n.onclick = () => t.scrollBy({left: t.clientWidth, behavior:'smooth'});
+    // листаем ровно на целое число карточек: шаг = карточка + промежуток, начало — всегда край карточки
+    const go = d => { const k = t.children; if(k.length < 2) return;
+      const step = k[1].offsetLeft - k[0].offsetLeft, per = Math.max(1, Math.round((t.clientWidth - 4 + 14) / step));
+      t.scrollTo({ left: (Math.round(t.scrollLeft / step) + d * per) * step, behavior:'smooth' }); };
+    p.onclick = () => go(-1);
+    n.onclick = () => go(1);
     t.addEventListener('scroll', upd, {passive:true});
     upd();
   });
