@@ -31,7 +31,8 @@ end
 ref = api('GET', "repos/#{REPO}/git/ref/heads/main")
 parent = ref['object']['sha']
 base = api('GET', "repos/#{REPO}/git/commits/#{parent}")['tree']['sha']
-remote = api('GET', "repos/#{REPO}/git/trees/#{base}?recursive=1")['tree'].map { |t| t['path'] }
+# только файлы (в списке есть и папки: «app/img» — не файл, удалять его как файл нельзя)
+remote = api('GET', "repos/#{REPO}/git/trees/#{base}?recursive=1")['tree'].select { |t| t['type'] == 'blob' }.map { |t| t['path'] }
 
 files = Dir.chdir(ROOT) { Dir['app/*', 'app/noph/*', 'app/img/*', '.github/workflows/*', 'tools/*', 'supabase/*', 'README.md'].select { |f| File.file?(f) } }
 
