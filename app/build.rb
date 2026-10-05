@@ -101,7 +101,8 @@ lots.each do |l|
   # konfiskat.by: город есть только в извещении, а часть извещений — сканы. Правило Артёма (24.09):
   # если площадка не указала иного — Минск
   l['location'] = 'г. Минск' if l['platform'] == 'konfiskat.by' && l['location'].to_s.strip.empty?
-  l['region'] = region_of(l['location']) if l['region'].to_s.empty?
+  # область, а не город: «г. Речица» из старых записей → «Гомельская область» (фильтр «Регион» — только области и Минск)
+  l['region'] = region_of(l['location']) unless l['region'].to_s =~ /област|\Aг\. Минск\z/
   l['debtor'] = 'Физическое лицо' if ENV['MASK'] && l['debtor'].to_s =~ FIO
   l['id'] = id_of(l['key'])
   l['photo'] = File.exist?(Store.ph_path(l['key'])) ? l['id'] : nil

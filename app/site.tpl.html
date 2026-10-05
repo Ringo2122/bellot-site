@@ -988,14 +988,24 @@ const norm = s => String(s||'').toLowerCase().replace(/ё/g,'е');
    ищем с начала слова. Номера, VIN и латиницу не трогаем: номер ищем в любом месте, латиницу — с начала слова */
 const ADJ_END = /(ая|яя|ий|ый|ой|ое|ее|ого|его|ому|ему|ую|юю|ые|ие|ых|их|ым|им|ыми|ими)$/;
 const WEND = /(иями|ями|ами|ого|его|ому|ему|ыми|ими|ая|яя|ий|ый|ой|ое|ее|ые|ие|ых|их|ым|им|ую|юю|ов|ев|ей|ам|ям|ах|ях|ом|ем|а|я|у|ю|е|и|ы|о|ь)$/;
+/* марки русскими буквами: «мерседес» находит и «Mercedes-Benz», и «Мерседес» */
+const BRAND = { мерседес:'mercedes', фольксваген:'volkswagen', фольцваген:'volkswagen', ауди:'audi', бмв:'bmw', рено:'renault',
+  тойота:'toyota', опель:'opel', форд:'ford', пежо:'peugeot', ситроен:'citroen', шкода:'skoda', киа:'kia', хендай:'hyundai',
+  хундай:'hyundai', хендэ:'hyundai', ниссан:'nissan', мазда:'mazda', вольво:'volvo', мицубиси:'mitsubishi', митсубиси:'mitsubishi',
+  хонда:'honda', субару:'subaru', лексус:'lexus', шевроле:'chevrolet', фиат:'fiat', ивеко:'iveco', скания:'scania', даф:'daf',
+  джили:'geely', чери:'chery', хавал:'haval', порше:'porsche', инфинити:'infiniti', сузуки:'suzuki' };
 const qword = w => {
   if(/\d/.test(w)) return { s:w, num:true };
+  const b = Object.keys(BRAND).find(k => w.startsWith(k) && w.length - k.length <= 2);
+  if(b) return { s:b, adj:true, alt:{ s:BRAND[b], adj:true } };
   if(/[a-z]/.test(w)) return { s:w, adj:true };
   const m = w.match(WEND), st = m && w.length - m[0].length >= 3 ? w.slice(0, -m[0].length) : w;
   // «в Минске» — существительное: прилагательные «Минская обл.», «Минский р-н» не подходят; «минская» в запросе — подходят
   return { s:st, adj:ADJ_END.test(w) };
 };
-const qwords = q => norm(q).split(/[\s,]+/).filter(w=>w.length>1 || /\d/.test(w)).map(qword);
+// края слова без знаков («(дом)», «🏠»); слово без букв и цифр не ищем
+const qwords = q => norm(q).split(/[\s,]+/).map(w=>w.replace(/^[^a-zа-я0-9]+|[^a-zа-я0-9]+$/g, ''))
+  .filter(w=>w.length>1 || /\d/.test(w)).map(qword);
 /* поиск по описанию: VIN, кадастровый и инвентарный номера, адрес, марка, начало описания — srch.js, грузится при первом поиске */
 let SRCH = null; const SRCHW = [];
 window.__srch = m => { SRCH = m; SRCHW.splice(0).forEach(f=>f()); };
@@ -1008,7 +1018,10 @@ const primOf = l => { let p = PRIM.get(l); if(!p){ const nm = norm(l.name); p = 
 const descOf = l => (SRCH && SRCH[l.id]) || SRCH2[l.id] || '';
 const isL = c => !!c && /[a-zа-я0-9]/.test(c);
 function hasW(hay, w){
-  if(w.num) return hay.includes(w.s) || hay.includes(w.s.replace(/[авекмнорстух]/g, c=>LATW[c]));
+  if(w.alt && hasW(hay, w.alt)) return true;
+  // «мтз-82» находит и «МТЗ 82», и «МТЗ82»
+  if(w.num) return [w.s, w.s.replace(/-/g, ' '), w.s.replace(/-/g, '')]
+    .some(v => hay.includes(v) || hay.includes(v.replace(/[авекмнорстух]/g, c=>LATW[c])));
   for(let i = hay.indexOf(w.s); i >= 0; i = hay.indexOf(w.s, i + 1)){
     if(isL(hay[i-1])) continue;                          // только с начала слова: «дом» не находит «Кодомо»
     let j = i + w.s.length; while(isL(hay[j])) j++;
@@ -1264,7 +1277,6 @@ const FKEYS = ['st','sort','q','cat','res','region','pmin','pmax','dfrom','dto',
 const CAT_POS = {};   // адрес каталога → { y, show, t }
 let CAT_NOW = null;   // открытый каталог: { hash, show }
 function pageCatalog(section, params){
-  const q = params.get('q');
   FSTATE = CARRY || {}; CARRY = null;
   FKEYS.forEach(k=>{ const v = params.get(k); if(v) FSTATE[k] = v; });
   const view = params.get('view');
@@ -1279,8 +1291,9 @@ function pageCatalog(section, params){
     const h = basePath + (p.toString() ? '?' + p : '');
     if(h !== CUR){ CUR = h; history.replaceState(history.state, '', '#' + h); }
     CAT_NOW = { hash:h, show }; };
-  const title = section ? secName(section) : view==='soon' ? 'Истекающие торги' : view==='new' ? 'Новые лоты' : view==='pin' ? 'Рекомендуем'
-    : (q ? 'Поиск по каталогу' : FSTATE.st==='arch' ? 'Архив торгов' : 'Все лоты');
+  const titleOf = () => section ? secName(section) : view==='soon' ? 'Истекающие торги' : view==='new' ? 'Новые лоты' : view==='pin' ? 'Рекомендуем'
+    : (FSTATE.q ? 'Поиск по каталогу' : FSTATE.st==='arch' ? 'Архив торгов' : 'Все лоты');
+  const title = titleOf();
   const STEP = 36; let show = STEP;
   // вернулись с лота кнопкой «Назад» — тот же объём списка и то же место
   const pos = CAT_POS[CUR];
@@ -1335,6 +1348,9 @@ function pageCatalog(section, params){
   const render = more => {
     if(more!==true) show = STEP;
     const arch = FSTATE.st==='arch';
+    // «Активные / Архив» и поиск меняют заголовок: «Все лоты», «Архив торгов», «Поиск по каталогу»
+    if(!section && document.title !== titleOf() + ' — БелЛот'){ const t = titleOf(); document.title = t + ' — БелЛот';
+      $('.cat-head h1').textContent = t; $('#app .crumbs').outerHTML = crumbs([[t]]); }
     $('#c-lede').textContent = arch
       ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним год — для истории цен, похожих торгов и аналитики.'
       : 'Лоты с открытым приёмом заявок. Каталог обновляется автоматически.';
@@ -1792,7 +1808,7 @@ function pageLot(id){
     (ARCH1 ? loadArch() : loadArch1()).then(()=>{ if(CUR==='/lot/'+encodeURIComponent(id)){ pageLot(id); paint(); } });
     return;
   }
-  if(!l){ $('#app').innerHTML = `<div class="wrap">${crumbs([['Лот не найден']])}<div class="panel empty">Лот не найден — возможно, он уже удалён из архива.</div></div>`; return; }
+  if(!l){ document.title = 'Лот не найден — БелЛот'; $('#app').innerHTML = `<div class="wrap">${crumbs([['Лот не найден']])}<div class="panel empty">Лот не найден — возможно, он уже удалён из архива.</div></div>`; return; }
   const arch = l.status==='archive', d = left(l), pc = pchg(l);
   document.title = l.name.slice(0,60) + ' — БелЛот';
   $('#app').innerHTML = `<div class="wrap">
@@ -1968,7 +1984,7 @@ function pageCalc(price){
   </div>`;
   const calc=()=>{
     const p=+$('#c-price').value||0, dep=+$('#c-dep').value||0, st=+$('#c-step').value||0,
-          n=+$('#c-n').value||0, days=+$('#c-days').value||0;
+          n=+$('#c-n').value||0, days=Math.min(Math.max(+$('#c-days').value||0, 0), 3650);
     const deposit=p*dep/100, stepAmt=p*st/100, final=p+stepAmt*n, rest=Math.max(final-deposit,0);
     const pay=new Date(Date.now()+days*86400000);
     $('#c-out').innerHTML = `
@@ -2784,7 +2800,7 @@ function render(path, params){
   links.forEach(a=>a.classList.toggle('on', a===cur));
   $('#ov').classList.remove('open');
   if(path.startsWith('/lot/')) pageLot(decodeURIComponent(path.slice(5)));
-  else if(path.startsWith('/s/')) pageCatalog(path.slice(3), params);
+  else if(path.startsWith('/s/')) pageCatalog(SECTIONS.some(x=>x[0]===path.slice(3)) ? path.slice(3) : null, params);   // нет такого раздела — все лоты
   else if(path==='/catalog') pageCatalog(null, params);
   else if(path==='/calc') pageCalc(params.get('price'));
   else if(path==='/about') pageAbout();
