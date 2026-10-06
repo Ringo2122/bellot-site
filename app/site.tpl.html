@@ -144,6 +144,23 @@
   .lede{color:var(--ink-2);margin:0 0 20px;max-width:70ch}
   .panel{background:var(--card);border:1px solid var(--hair);border-radius:12px;box-shadow:var(--sh)}
   .sec{margin-top:34px}
+  /* новости: карточки как у лотов — рамка в покое, тень при наведении */
+  .news{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media (max-width:900px){ .news{grid-template-columns:1fr 1fr} }
+  @media (max-width:560px){ .news{grid-template-columns:1fr} }
+  .ncard{display:flex;flex-direction:column;gap:8px;padding:18px;background:var(--card);border:1px solid var(--hair);border-radius:16px;color:var(--ink);
+    text-decoration:none;transition:box-shadow .18s,transform .18s}
+  .ncard:hover{text-decoration:none;box-shadow:var(--sh-2);transform:translateY(-2px)}
+  .ncard h3{margin:0;font-size:16.5px;line-height:1.3;font-family:var(--head)}
+  .ncard p{margin:0;color:var(--ink-2);font-size:14px;line-height:1.5;flex:1}
+  .nmeta{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-3)}
+  .ntag{background:var(--brand-l);color:var(--brand-d);font-weight:600;padding:3px 9px;border-radius:999px}
+  .nmore{color:var(--brand);font-weight:600;font-size:14px}
+  .nart{max-width:760px}
+  .nart h1{font-size:30px;line-height:1.2;margin:12px 0 14px}
+  .nart p{font-size:16px;line-height:1.65;color:var(--ink);margin:0 0 14px}
+  .nart .nlead{font-size:18px;color:var(--ink-2)}
+  .nart .nsrc{font-size:14px;color:var(--ink-3)}
   .sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:14px}
   .sec-h h2{margin:0}
 
@@ -2072,6 +2089,54 @@ function svcList(){
 
 /* политика конфиденциальности — текст из админки (texts.privacy_text), пока его нет — заглушка; абзацы — через пустую строку */
 const PRIVACY_DEF = 'Здесь будет политика обработки персональных данных БелЛот: какие данные мы получаем (контакты из заявок на помощь, данные личного кабинета, файлы cookie), зачем, сколько храним и как их удалить.\n\nТекст готовится. По вопросам обработки данных пишите по контактам из подвала сайта.';
+/* ───────── новости ─────────
+   Пока статьи — здесь (NEWS); потом — из админки (texts.news, тот же вид: slug, date, tag, title, lead, body — абзацы через пустую строку, src, srcName, cta).
+   Первые три — пересказ своими словами реальных новостей 2026 года со ссылкой на источник. */
+const NEWS = [
+  { slug:'zemlya-minskij-rajon-16-oktyabrya', date:'2026-09-19', tag:'Земля',
+    title:'16 октября — аукцион земли под Минском: участки от 11 до 225 тысяч рублей',
+    lead:'Минский район выставляет восемь участков под жилой дом — от Ратомки и Колодищ до деревни Селище.',
+    body:'На 16 октября 2026 года назначен аукцион по продаже земельных участков в Минском районе. На торги выходят восемь участков — в агрогородках Ратомка и Колодищи, а также в деревнях Подгорье, Птичь, Селище и Василевщина.\n\nРазброс стартовых цен большой. Самый дорогой лот — в Ратомке, его начальная цена 225 тысяч рублей. Самый доступный — в деревне Селище, за 11 тысяч рублей.\n\nСтартовая цена на земельных аукционах под Минском — только начало: на востребованных участках ставки часто поднимаются в разы. Перед подачей заявки стоит сравнить лот с ценами на похожие участки и заранее определить для себя предел.',
+    src:'https://myfin.by/article/rynki/zemla-pod-minskom-ot-11-tysac-rublej-kakie-ucastki-vystavili-na-aukcion-48559', srcName:'Myfin.by',
+    cta:['Земельные участки на БелЛот', '#/s/nedvizhimost?land=1'] },
+  { slug:'pustuyushchie-doma-2-kvartal-2026', date:'2026-07-08', tag:'Пустующие дома',
+    title:'Каждый второй пустующий дом в Беларуси продают за одну базовую',
+    lead:'Итоги второго квартала: 357 сделок, 193 дома ушли по символической цене.',
+    body:'Национальное кадастровое агентство подвело итоги продажи пустующих домов за апрель–июнь 2026 года. Всего заключено 357 сделок: 140 домов продано через аукцион, 217 — без торгов.\n\nПримерно каждый второй дом — 193 объекта — купили за одну базовую величину. Это возможно, когда на дом нет других желающих или аукцион не состоялся.\n\nБольше всего сделок в Гродненской области — 96. Дальше Минская (64), Брестская (63), Витебская (57) и Могилёвская (56) области; в Гомельской — 21.\n\nТакие дома часто требуют серьёзного ремонта, а покупатель обязан привести их в порядок в установленный срок. Перед покупкой стоит съездить на осмотр и оценить состояние дома и участка.',
+    src:'https://myfin.by/article/rynki/kazdyj-vtoroj-pustuusij-dom-v-belarusi-prodaut-za-1-bazovuu-itogi-vtorogo-kvartala-2026-46811', srcName:'Myfin.by',
+    cta:['Недвижимость на торгах', '#/s/nedvizhimost'] },
+  { slug:'uchastok-leskovka-192-tysyachi', date:'2026-06-19', tag:'Итоги торгов',
+    title:'Участок под Минском продали за 192 тысячи долларов — вдвое дороже стартовой цены',
+    lead:'На аукционе в Минском районе цены на землю выросли в 2–3 раза от начальных.',
+    body:'В июне прошёл аукцион по продаже земельных участков под жилые дома в Минском и Березинском районах. Самыми дорогими стали два участка по 22 сотки в Лесковке: оба стартовали с 250 тысяч рублей и ушли примерно за 536 тысяч рублей — около 192 тысяч долларов. За них боролись пять и семь участников.\n\nЕщё сильнее подорожал участок в Колодищах на 16 соток: при стартовой цене 150 тысяч рублей его продали за 475 тысяч, заявок было десять. Участок в Малиновке ушёл за 215 тысяч рублей при старте 150 тысяч.\n\nЕсли у лота много желающих, итоговая цена может в разы превысить начальную. Поэтому стоит смотреть не только на стартовую цену, но и на итоги похожих торгов — они есть в архиве БелЛот.',
+    src:'https://nashaniva.com/ru/398035', srcName:'Наша Ніва (по данным Realt)',
+    cta:['Архив торгов с итогами', '#/catalog?st=arch'] }
+];
+const newsList = () => { const n = (CFG.texts||{}).news; return (Array.isArray(n) && n.length ? n : NEWS).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))); };
+const ndate = d => { const [y,m,dd] = String(d).split('-').map(Number);
+  return y ? `${dd} ${['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'][m-1]} ${y}` : ''; };
+const newsCard = n => `<a class="ncard" href="#/news/${encodeURIComponent(n.slug)}"><span class="nmeta"><span class="ntag">${esc(n.tag||'Новости')}</span>${ndate(n.date)}</span>
+  <h3>${esc(n.title)}</h3><p>${esc(n.lead||'')}</p><span class="nmore">Читать →</span></a>`;
+function pageNews(){
+  document.title = 'Новости — БелЛот';
+  $('#app').innerHTML = `<div class="wrap">${crumbs([['Новости']])}<h1>Новости</h1>
+    <p class="lede">Торги, аукционы и рынок имущества в Беларуси: события, итоги и что они значат для покупателя.</p>
+    <div class="news">${newsList().map(newsCard).join('')}</div></div>`;
+}
+function pageNewsItem(slug){
+  const n = newsList().find(x=>x.slug===slug);
+  if(!n){ document.title = 'Новость не найдена — БелЛот'; $('#app').innerHTML = `<div class="wrap">${crumbs([['Новости','#/news'],['Не найдено']])}<div class="panel empty">Такой новости нет. <a href="#/news">Все новости →</a></div></div>`; return; }
+  document.title = n.title + ' — БелЛот';
+  const more = newsList().filter(x=>x.slug!==slug).slice(0,3);
+  $('#app').innerHTML = `<div class="wrap">${crumbs([['Новости','#/news'],[n.title.length > 60 ? n.title.slice(0,57) + '…' : n.title]])}
+    <article class="nart"><div class="nmeta"><span class="ntag">${esc(n.tag||'Новости')}</span>${ndate(n.date)}</div><h1>${esc(n.title)}</h1>
+      ${n.lead ? `<p class="nlead">${esc(n.lead)}</p>` : ''}
+      ${String(n.body||'').split(/\n\s*\n/).map(p=>`<p>${esc(p.trim())}</p>`).join('')}
+      ${n.src ? `<p class="nsrc">Источник: <a href="${esc(n.src)}" target="_blank" rel="noopener">${esc(n.srcName || n.src)} ↗</a></p>` : ''}
+      ${n.cta ? `<p><a class="btn pri" href="${esc(n.cta[1])}">${esc(n.cta[0])}</a></p>` : ''}</article>
+    ${more.length ? `<div class="sec"><div class="sec-h"><h2>Другие новости</h2><a href="#/news">Все новости →</a></div><div class="news">${more.map(newsCard).join('')}</div></div>` : ''}</div>`;
+}
+
 function pagePrivacy(){
   document.title = 'Политика конфиденциальности — БелЛот';
   const t = TX('privacy_text', PRIVACY_DEF).split(/\n\s*\n/).map(p=>`<p>${esc(p.trim()).replace(/\n/g,'<br>')}</p>`).join('');
@@ -2230,6 +2295,9 @@ function pageHome(){
     <div class="sec" id="cal-sec"><div class="sec-h"><h2>Календарь торгов</h2></div>
       <p class="lede" style="margin:-4px 0 12px">Торги всех площадок по датам. Нажмите на день — откроется список лотов.</p>
       <div class="cal" id="cal"></div></div>
+
+    <div class="sec"><div class="sec-h"><h2>Новости</h2><a href="#/news">Все новости →</a></div>
+      <div class="news">${newsList().slice(0,3).map(newsCard).join('')}</div></div>
   </div>`;
   attachSuggest($('#ls-q'), $('#ls-sugg'));
   bindCarousels();
@@ -3002,6 +3070,8 @@ function render(path, params){
   else if(path==='/calc') pageCalc(params.get('price'));
   else if(path==='/about') pageAbout();
   else if(path==='/privacy') pagePrivacy();
+  else if(path==='/news') pageNews();
+  else if(path.startsWith('/news/')) pageNewsItem(decodeURIComponent(path.slice(6)));
   else if(path==='/help') pageHelp(params);
   else if(path==='/login') pageLogin(params);
   else if(path==='/me' || path.startsWith('/me/')) pageMe(path.slice(4), params);
