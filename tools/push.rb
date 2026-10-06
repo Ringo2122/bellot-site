@@ -34,7 +34,7 @@ base = api('GET', "repos/#{REPO}/git/commits/#{parent}")['tree']['sha']
 # только файлы (в списке есть и папки: «app/img» — не файл, удалять его как файл нельзя)
 remote = api('GET', "repos/#{REPO}/git/trees/#{base}?recursive=1")['tree'].select { |t| t['type'] == 'blob' }.map { |t| t['path'] }
 
-files = Dir.chdir(ROOT) { Dir['app/*', 'app/noph/*', 'app/img/*', '.github/workflows/*', 'tools/*', 'supabase/*', 'README.md'].select { |f| File.file?(f) } }
+files = Dir.chdir(ROOT) { Dir['app/*', 'app/noph/*', 'app/img/*', 'app/img/news/*', '.github/workflows/*', 'tools/*', 'supabase/*', 'README.md'].select { |f| File.file?(f) } }
 
 tree = files.map do |f|
   b = api('POST', "repos/#{REPO}/git/blobs",
