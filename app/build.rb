@@ -74,7 +74,8 @@ end
 ADM = if Sb.on?
         begin
           { 'cfg' => Sb.settings, 'ov' => Sb.all('overrides').map { |o| [o['key'], o] }.to_h,
-            'rules' => Sb.all('dup_rules'), 'photos' => Sb.all('lot_photos', 'key,updated_at'), 'sales' => Sb.all('sales') }
+            'rules' => Sb.all('dup_rules'), 'photos' => Sb.all('lot_photos', 'key,updated_at'), 'sales' => Sb.all('sales'),
+            'news' => Sb.get('news?select=*&published=is.true&order=date.desc,updated_at.desc&limit=500') }
         rescue StandardError => e
           abort "база админки не ответила — сайт не пересобираю, остаётся прежняя версия: #{e.message}"
         end
@@ -309,6 +310,22 @@ end
 pub = { 'texts' => CFG['texts'] || {}, 'calc' => CFG['calc'] || {}, 'sec_off' => sec_off,
         'bav' => Bav.load.slice('v', 'from', 'src', 'url') }   # действующая БАВ — для расчёта аренды
 pub['sb'] = { 'url' => ENV['SB_URL'], 'key' => ENV['SB_KEY'] } if Sb.on?
+# новости из админки (без базы — сайт берёт статьи из своего кода). Фото, загруженное в админке, — файлом news/<…>.jpg
+# (в имени — отпечаток фото: новое фото не застрянет в кеше браузера); фото по умолчанию — путь к файлу сайта (img/news/…)
+if ADM['news']
+  FileUtils.mkdir_p(File.join(OUT, 'news'))
+  pub['news'] = ADM['news'].map do |n|
+    img = n['photo'].to_s
+    if img.start_with?('data:')
+      file = "news/#{Digest::MD5.hexdigest(n['slug'].to_s)[0, 10]}-#{Digest::MD5.hexdigest(img)[0, 8]}.jpg"
+      File.binwrite(File.join(OUT, file), Base64.decode64(img.sub(/\Adata:[^,]*,/, '')))
+      img = file
+    end
+    { 'slug' => n['slug'], 'date' => n['date'], 'title' => n['title'], 'lead' => n['lead'], 'body' => n['body'],
+      'img' => (img.empty? ? nil : img), 'src' => n['src'], 'srcName' => n['src_name'],
+      'cta' => (n['cta_text'].to_s.strip.empty? || n['cta_url'].to_s.strip.empty? ? nil : [n['cta_text'], n['cta_url']]) }.compact
+  end
+end
 
 arch_cut = now - ARCH_NEW * 86_400
 arch1, arch2 = arch.partition { |l| l['closed'].to_i >= arch_cut }

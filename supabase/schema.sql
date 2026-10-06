@@ -249,7 +249,7 @@ begin
     'by_platform', (select json_object_agg(platform, n) from (select platform, count(*) n from lots where status = 'active' and published group by 1) x),
     'merged_by_platform', (select json_object_agg(platform, n) from (select platform, count(*) n from lots where status = 'active' and dup_of is not null group by 1) x),
     'changed_at', (select max(t) from (select max(updated_at) t from overrides union all select max(updated_at) from settings where k not in ('publish_req', 'bot', 'hours', 'min_price', 'cab_stats', 'monitor', 'alert_chat')
-                     union all select max(created_at) from dup_rules union all select max(updated_at) from lot_photos) x),
+                     union all select max(created_at) from dup_rules union all select max(updated_at) from lot_photos union all select max(updated_at) from news) x),
     'last_build', (select max(at) from runs),
     'github', exists (select 1 from vault.secrets where name = 'github_token')
   ) into r;
@@ -700,3 +700,20 @@ begin
     execute format('grant execute on function public.%s to anon, authenticated', f);
   end loop;
 end $$;
+
+-- ── новости на сайте (06.10.2026): правятся в админке, на сайт — при публикации ──
+create table if not exists news (
+  slug text primary key,                       -- адрес статьи: #/news/<slug>
+  date date not null default current_date,
+  title text not null,
+  lead text,                                   -- вступление: в карточке и под заголовком
+  body text,                                   -- текст, абзацы через пустую строку
+  photo text,                                  -- JPEG base64 из админки или путь к файлу сайта (img/news/…)
+  src text, src_name text,                     -- источник
+  cta_text text, cta_url text,                 -- кнопка под статьёй
+  published boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+alter table news enable row level security;
+drop policy if exists admin_all on news;
+create policy admin_all on news for all using ((select is_admin())) with check ((select is_admin()));

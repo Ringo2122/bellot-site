@@ -292,7 +292,7 @@ async function refreshStats(){
 
 const PAGES = [
   ['dash','Сводка'], ['stats','Аналитика'], ['queue','Проверка'], ['lots','Лоты'], ['dups','Дубли'], ['market','Ориентиры'], ['leads','Заявки'], ['users','Пользователи'],
-  ['sources','Площадки и разделы'], ['calc','Калькулятор'], ['bot','Telegram-бот'], ['services','Услуги'], ['texts','Тексты сайта'], ['access','Доступ']
+  ['sources','Площадки и разделы'], ['calc','Калькулятор'], ['bot','Telegram-бот'], ['services','Услуги'], ['news','Новости'], ['texts','Тексты сайта'], ['access','Доступ']
 ];
 function drawNav(){
   const cur = (location.hash.slice(1).split('?')[0]) || 'dash';
@@ -412,7 +412,7 @@ async function route(){
   const params = new URLSearchParams(qs||'');
   drawNav(); RELOAD = () => {};
   V().innerHTML = '<p class="muted">Загрузка…</p>';
-  const fn = { dash:pDash, stats:pStats, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, users:pUsers, sources:pSources, calc:pCalc, bot:pBot, services:pServices, texts:pTexts, access:pAccess }[page] || pDash;
+  const fn = { dash:pDash, stats:pStats, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, users:pUsers, sources:pSources, calc:pCalc, bot:pBot, services:pServices, news:pNews, texts:pTexts, access:pAccess }[page] || pDash;
   try{ await fn(params); }catch(err){ V().innerHTML = `<div class="empty">Не получилось загрузить: ${esc(err.message)}</div>`; }
 }
 addEventListener('hashchange', route);
@@ -959,6 +959,73 @@ async function pServices(){
       try{ await saveSetting('texts', Object.assign({}, SET.texts || {}, { services })); list = services; toast('Сохранено — опубликуйте, чтобы обновить сайт'); refreshStats(); draw(); }catch(err){ toast(err.message, true); } };
   };
   draw();
+}
+
+/* Новости сайта: таблица news. На сайт — при публикации (робот берёт опубликованные, фото кладёт файлами) */
+const TRL = {а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'j',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'shch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',і:'i',ў:'u'};
+const slugOf = t => String(t||'').toLowerCase().split('').map(c=>TRL[c] ?? c).join('').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,70) || 'novost';
+const newsImg = p => !p ? '' : p.startsWith('data:') ? p : '../' + p;   // фото из админки — данными, по умолчанию — файл сайта
+async function pNews(params){
+  const slug = params.get('slug');
+  if(slug !== null) return pNewsEdit(slug);
+  const rows = await api('news?select=slug,date,title,lead,photo,published,updated_at&order=date.desc,updated_at.desc');
+  V().innerHTML = `<h1>Новости</h1><p class="lede">Статьи раздела «Новости»: три последние — на главной, все — на странице «Все новости». На сайте — после публикации.</p>
+    <div class="saverow" style="margin:0 0 14px"><a class="btn pri" href="#news?slug=">+ Новая статья</a></div>
+    ${rows.length ? `<div class="panel tw"><table><tr><th></th><th>Дата</th><th>Заголовок</th><th>На сайте</th></tr>
+      ${rows.map(n=>`<tr class="click" data-s="${esc(n.slug)}"><td style="width:92px">${n.photo ? `<img src="${esc(newsImg(n.photo))}" alt="" style="width:80px;height:48px;object-fit:cover;border-radius:6px;display:block">` : '<span class="muted">без фото</span>'}</td>
+        <td style="white-space:nowrap">${esc(String(n.date).split('-').reverse().join('.'))}</td><td><b>${esc(n.title)}</b><br><span class="muted">${esc((n.lead||'').slice(0,140))}</span></td>
+        <td>${n.published ? 'опубликована' : '<span class="muted">скрыта</span>'}</td></tr>`).join('')}</table></div>`
+      : '<div class="panel empty">Статей пока нет.</div>'}`;
+  V().querySelectorAll('tr[data-s]').forEach(tr=>tr.onclick = ()=>{ location.hash = 'news?slug=' + encodeURIComponent(tr.dataset.s); });
+}
+async function pNewsEdit(slug){
+  const isNew = !slug;
+  const n = isNew ? { date:new Date().toISOString().slice(0,10), published:true } : (await api(`news?slug=eq.${enc(slug)}&select=*`))[0];
+  if(!n){ V().innerHTML = '<p><a href="#news">← Все новости</a></p><div class="empty">Статья не найдена.</div>'; return; }
+  let photo = n.photo || '';
+  const f = (id, label, val, attrs='') => `<label class="fld"><span>${label}</span><input id="${id}" value="${esc(val||'')}" ${attrs}></label>`;
+  V().innerHTML = `<p><a href="#news">← Все новости</a></p><h1>${isNew ? 'Новая статья' : 'Статья'}</h1>
+    <div class="panel">
+      ${f('n-title', 'Заголовок', n.title, 'maxlength="200"')}
+      <div class="grid2">${f('n-date', 'Дата', n.date, 'type="date"')}
+        ${f('n-slug', 'Адрес статьи (латиницей)', n.slug, 'placeholder="заполнится по заголовку"')}</div>
+      <label class="fld"><span>Вступление — в карточке на главной и под заголовком</span><textarea id="n-lead" rows="2" maxlength="400">${esc(n.lead||'')}</textarea></label>
+      <label class="fld"><span>Текст статьи — абзацы через пустую строку</span><textarea id="n-body" rows="14">${esc(n.body||'')}</textarea></label></div>
+    <div class="panel"><h2>Фото</h2><p class="muted" style="margin-top:0">Горизонтальное, лучше 3:2 или 5:3. Уменьшится до 1200 px в браузере перед сохранением.</p>
+      <div id="n-ph"></div>
+      <div class="bar" style="margin-top:10px"><input type="file" id="n-file" accept="image/*"><button class="btn bad" id="n-noph" type="button">Убрать фото</button></div></div>
+    <div class="panel"><h2>Источник и кнопка</h2>
+      <div class="grid2">${f('n-src', 'Ссылка на источник', n.src, 'placeholder="https://…"')}${f('n-srcn', 'Название источника', n.src_name, 'placeholder="например: Myfin.by"')}
+        ${f('n-ctat', 'Кнопка под статьёй — текст', n.cta_text, 'placeholder="например: Земельные участки на БелЛот"')}${f('n-ctau', 'Кнопка — куда ведёт', n.cta_url, 'placeholder="#/s/nedvizhimost или https://…"')}</div>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="n-pub"${n.published!==false?' checked':''}> Показывать на сайте</label></div>
+    <div class="saverow"><button class="btn pri" id="n-save">Сохранить</button>${isNew ? '' : '<button class="btn bad" id="n-del">Удалить статью</button>'}</div>`;
+  const drawPh = () => { $('#n-ph').innerHTML = photo ? `<img src="${esc(newsImg(photo))}" alt="" style="max-width:420px;width:100%;border-radius:10px;display:block">` : '<div class="muted">Фото нет — карточка будет без картинки.</div>'; };
+  drawPh();
+  $('#n-title').oninput = () => { if(isNew && !$('#n-slug').dataset.touched) $('#n-slug').value = slugOf($('#n-title').value); };
+  $('#n-slug').oninput = () => { $('#n-slug').dataset.touched = '1'; };
+  $('#n-file').onchange = async e => { const file = e.target.files[0]; if(!file) return;
+    try{ photo = await shrinkPhoto(file); drawPh(); toast('Фото готово — нажмите «Сохранить»'); }catch(err){ toast(err.message, true); } };
+  $('#n-noph').onclick = () => { photo = ''; drawPh(); };
+  $('#n-save').onclick = async () => {
+    const v = id => $('#' + id).value.trim(), s2 = slugOf(v('n-slug') || v('n-title'));
+    if(!v('n-title')){ toast('Нужен заголовок', true); return; }
+    if(!v('n-date')){ toast('Нужна дата', true); return; }
+    const src = v('n-src'), cu = v('n-ctau');
+    if(src && !/^https?:\/\//i.test(src)){ toast('Ссылка на источник — с https://', true); return; }
+    if(cu && !/^(https?:\/\/|#\/)/i.test(cu)){ toast('Кнопка ведёт на https://… или на раздел сайта #/…', true); return; }
+    if(s2 !== slug && (await api(`news?slug=eq.${enc(s2)}&select=slug`)).length){ toast('Статья с таким адресом уже есть — измените адрес', true); return; }
+    const row = { slug:s2, date:v('n-date'), title:v('n-title'), lead:v('n-lead') || null, body:$('#n-body').value.trim() || null, photo:photo || null,
+      src:src || null, src_name:v('n-srcn') || null, cta_text:v('n-ctat') || null, cta_url:cu || null, published:$('#n-pub').checked, updated_at:nowIso() };
+    try{
+      await upsert('news', [row], 'slug');
+      if(slug && s2 !== slug) await api(`news?slug=eq.${enc(slug)}`, { method:'DELETE' });   // адрес сменили — старую запись убираем
+      toast('Сохранено — опубликуйте, чтобы обновить сайт'); refreshStats(); location.hash = 'news';
+    }catch(err){ toast(err.message, true); }
+  };
+  const del = $('#n-del');
+  if(del) del.onclick = async () => { if(!confirm('Удалить статью «' + (n.title||'') + '»?')) return;
+    try{ await api(`news?slug=eq.${enc(slug)}`, { method:'DELETE' }); await saveSetting('news_rev', { at:nowIso() });   // удаление тоже «изменение для публикации»
+      toast('Удалено — опубликуйте, чтобы обновить сайт'); refreshStats(); location.hash = 'news'; }catch(err){ toast(err.message, true); } };
 }
 
 /* Доступ */
