@@ -2052,6 +2052,8 @@ function howList(){
   return a.length ? a.map(x=>[x.t, x.d||'']) : HOW;
 }
 /* «Почему БелЛот» на главной и услуги на странице помощи: тексты можно поменять в админке, значки остаются */
+// 3D-значок не загрузился (так было на iPhone) — вместо пустой рамки контурный значок того же пункта
+function advFail(img){ const d = document.createElement('div'); d.className = 'ic'; d.innerHTML = advIc(img.dataset.ic); img.replaceWith(d); }
 function advList(){
   const a = ((CFG.texts||{}).adv||[]).filter(x=>x && x.t);
   return a.length ? a.map((x,i)=>[(ADV[i]||['•'])[0], x.t, x.d||'']) : ADV.slice(0,6);
@@ -2223,7 +2225,7 @@ function pageHome(){
     ${carousel('Новые лоты', 'Появились на площадках за последние сутки', fresh, '#/catalog?view=new')}
 
     <div class="sec"><h2>Почему БелЛот</h2>
-      <div class="adv">${advList().map(([ic,t,d],i)=>`<div class="it"><img class="ic3" src="img/adv${i+1}.png" width="64" height="64" alt="" loading="lazy"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
+      <div class="adv">${advList().map(([ic,t,d],i)=>`<div class="it"><img class="ic3" src="img/adv${i+1}.png?v=2" width="64" height="64" alt="" loading="lazy" data-ic="${esc(ic)}" onerror="advFail(this)"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
       <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p></div>
 
     <div class="sec" id="cal-sec"><div class="sec-h"><h2>Календарь торгов</h2></div>
