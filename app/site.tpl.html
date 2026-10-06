@@ -734,6 +734,11 @@
   .xr .mut{color:var(--ink-3);font-size:12.5px}
   .xr b.ok{color:var(--ok)}
   .lmap{height:340px;border-radius:12px;border:1px solid var(--hair);background:var(--bg);z-index:0}
+  .mapsw{display:flex;background:#fff;border-radius:9px;box-shadow:0 1px 6px rgba(24,24,27,.25);padding:3px;gap:2px}
+  .mapsw button{border:0;background:none;padding:6px 11px;border-radius:7px;font:600 13px Inter,system-ui,sans-serif;color:#52525b;cursor:pointer}
+  .mapsw button.on{background:var(--brand);color:#fff}
+  .mapbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .mapbtns .btn{padding:8px 13px;font-size:13.5px}
   @media (max-width:560px){ .xr{flex-direction:column;gap:4px} .xr .xv{text-align:left;align-items:flex-start;flex-direction:row;flex-wrap:wrap;gap:4px 10px} .lmap{height:260px} }
   .lot .ft .rs{font-weight:700}.lot .ft .rs.ok{color:var(--ok)}.lot .ft .rs.no{color:#9a4f0e}
   /* ── цвет площадки: полоса на карточке лота, точка в подсказках поиска, кнопки фильтра, календарь ──
@@ -1717,15 +1722,26 @@ function loadLeaflet(){
 function mapBlock(l, g){
   const prec = { s:'Точка — на улице: дом на карте не нашёлся. ', p:'Точка — по населённому пункту: точного адреса на карте нет. ' }[g[2]] || '';
   return `<section class="panel xs" id="x-map"><h2>Где находится</h2><div id="lmap" class="lmap"></div>
-    <p class="note">${prec}Адрес по данным площадки: ${esc(g[3] || l.location || '—')}.
-      <a href="https://yandex.by/maps/?pt=${g[1]},${g[0]}&z=${g[2]==='p'?12:16}&l=map" target="_blank" rel="noopener">Яндекс Карты ↗</a> ·
-      <a href="https://www.google.com/maps/search/?api=1&query=${g[0]},${g[1]}" target="_blank" rel="noopener">Google Maps ↗</a></p></section>`;
+    <div class="mapbtns"><a class="btn" href="https://yandex.by/maps/?pt=${g[1]},${g[0]}&z=${g[2]==='p'?12:16}&l=map" target="_blank" rel="noopener">Открыть в Яндекс Картах ↗</a>
+      <a class="btn" href="https://www.google.com/maps/search/?api=1&query=${g[0]},${g[1]}" target="_blank" rel="noopener">Открыть в Google Картах ↗</a></div>
+    <p class="note">${prec}Адрес по данным площадки: ${esc(g[3] || l.location || '—')}.</p></section>`;
 }
 function drawMap(g){
   loadLeaflet().then(L=>{
     const el = document.getElementById('lmap'); if(!el || el._leaflet_id) return;
     const m = L.map(el, { scrollWheelZoom:false }).setView([g[0], g[1]], g[2]==='a' ? 16 : g[2]==='s' ? 15 : 12);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(m);
+    // схема — OpenStreetMap в стиле «Humanitarian» (спокойнее стандартного), спутник — снимки Esri; переключатель в углу
+    const scheme = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxZoom:19, subdomains:'abc',
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, стиль — OSM France' }).addTo(m);
+    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom:19,
+      attribution:'Снимки &copy; Esri, Maxar, Earthstar Geographics' });
+    const sw = L.control({ position:'topright' });
+    sw.onAdd = () => { const d = L.DomUtil.create('div', 'mapsw'); L.DomEvent.disableClickPropagation(d);
+      d.innerHTML = '<button type="button" class="on">Схема</button><button type="button">Спутник</button>';
+      d.querySelectorAll('button').forEach((b, i)=>b.onclick = () => { m.removeLayer(i ? scheme : sat); (i ? sat : scheme).addTo(m);
+        d.querySelectorAll('button').forEach(x=>x.classList.toggle('on', x === b)); });
+      return d; };
+    sw.addTo(m);
     (g[2]==='p' ? L.circle([g[0], g[1]], { radius:900, color:'#f4511e', weight:2, fillOpacity:.12 }) : L.marker([g[0], g[1]])).addTo(m);
   }).catch(()=>{ const el = document.getElementById('lmap'); if(el) el.outerHTML = '<p class="note">Карта не загрузилась — откройте адрес в Яндекс Картах или Google Maps по ссылкам ниже.</p>'; });
 }
