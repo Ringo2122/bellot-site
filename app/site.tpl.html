@@ -388,9 +388,9 @@
   /* ── главная: приветственный экран ── */
   .land{margin-top:-22px;position:relative;color:var(--ink);background:var(--hero);
     padding:64px 0 120px}
-  .land .sky{position:absolute;left:0;right:0;bottom:0;width:100%;height:62%;pointer-events:none;color:var(--sky)}
+  .land .sky{position:absolute;left:0;right:0;bottom:0;width:100%;height:100%;pointer-events:none;color:var(--sky)}
   .land .sky-m{display:none}
-  @media (max-width:760px){ .land .sky-d{display:none} .land .sky-m{display:block;height:46%;opacity:.8} }
+  @media (max-width:760px){ .land .sky-d{display:none} .land .sky-m{display:block;opacity:.8} }
   .land-in{position:relative}
   .land h1{font-size:44px;line-height:1.1;letter-spacing:-.02em;font-weight:700;max-width:17ch;margin:0 0 16px;text-wrap:balance}
   .land p{font-size:17px;line-height:1.55;color:var(--ink-2);max-width:58ch;margin:0 0 26px}
@@ -2107,14 +2107,15 @@ function pageAbout(){
    прежний рисунок — город с краном и дорогой — в коммите 9a28d9d). Рисуется кодом: чёткий на любом экране и ничего не весит.
    Цвет — currentColor (--sky), слева под текстом бледнее (маска). Две копии: на компьютере — вся полоса 1440×360 (кварталы справа),
    на телефоне — кадр вокруг кварталов (иначе при обрезке по ширине их не видно) */
-function isoArt(id){
+// top — насколько холст поднят над кварталами (в единицах рисунка): сетка идёт на весь первый экран и тает к верху и краям
+function isoArt(id, top){
   let s = 11; const r = () => (s = (s*9301 + 49297) % 233280) / 233280;
   const W = 38, H = 22, ox = 1090, oy = 118, cell = (cx, cy, w, d) => `M${cx} ${cy-d}L${cx+w} ${cy}L${cx} ${cy+d}L${cx-w} ${cy}Z`;
   // сетка улиц: клетки расходятся во всю ширину полосы
   let grid = '';
-  for(let i = -26; i < 14; i++) for(let j = -10; j < 16; j++){
+  for(let i = -45; i < 14; i++) for(let j = -30; j < 16; j++){
     const cx = ox + (i - j)*W, cy = oy + (i + j)*H;
-    if(cx < -W || cx > 1440 + W || cy < 40 || cy > 360 + H) continue;
+    if(cx < -W || cx > 1440 + W || cy < top - H || cy > 360 + H) continue;
     grid += `<path d="${cell(cx, cy, W, H)}"/>`;
   }
   // кварталы: дальние выше, ближние ниже; рисуем от дальних к ближним
@@ -2131,13 +2132,17 @@ function isoArt(id){
     if(h > 60) for(let k = 18; k < h - 10; k += 14) blocks += `<path d="M${cx+w*.2} ${cy-h+d*.2+k+w*.06}l${w*.6} ${-d*.6}" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="3"/>`;
   }
   return `<defs><linearGradient id="${id}g" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".45" stop-color="#fff" stop-opacity=".7"/><stop offset=".7" stop-color="#fff"/></linearGradient>
-      <mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="1440" height="360"><rect width="1440" height="360" fill="url(#${id}g)"/></mask></defs>
-    <g mask="url(#${id})"><g fill="none" stroke="currentColor" stroke-opacity=".12">${grid}</g>
-      <g fill="currentColor">${blocks}</g></g>`;
+      <mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="1440" height="360"><rect width="1440" height="360" fill="url(#${id}g)"/></mask>
+      <radialGradient id="${id}r" gradientUnits="userSpaceOnUse" cx="${ox}" cy="290" r="1150"><stop offset="0" stop-color="#fff"/><stop offset=".3" stop-color="#fff" stop-opacity=".85"/>
+        <stop offset=".65" stop-color="#fff" stop-opacity=".3"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <mask id="${id}n" maskUnits="userSpaceOnUse" x="0" y="${top - 60}" width="1440" height="${480 - top}"><rect y="${top - 60}" width="1440" height="${480 - top}" fill="url(#${id}r)"/></mask></defs>
+    <g mask="url(#${id}n)" fill="none" stroke="currentColor" stroke-opacity=".12">${grid}</g>
+    <g mask="url(#${id})" fill="currentColor">${blocks}</g>`;
 }
+// холст — на весь первый экран; поднят на столько, чтобы масштаб кварталов был прежним (было: 62% высоты, телефон — 46%)
 function heroArt(){
-  return `<svg class="sky sky-d" viewBox="0 0 1440 360" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${isoArt('isd')}</svg>
-    <svg class="sky sky-m" viewBox="800 0 640 360" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${isoArt('ism')}</svg>`;
+  return `<svg class="sky sky-d" viewBox="0 -220 1440 580" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${isoArt('isd', -220)}</svg>
+    <svg class="sky sky-m" viewBox="800 -423 640 783" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${isoArt('ism', -423)}</svg>`;
 }
 
 /* иконки разделов */
