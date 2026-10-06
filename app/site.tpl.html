@@ -48,13 +48,6 @@
   button,input,select{font:inherit}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-  /* ── верхняя полоса ── */
-  .topbar{background:var(--navy);color:#fff;font-size:12.5px}
-  .topbar .wrap{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:center;padding-block:7px}
-  .topbar b{font-weight:700}
-  .topbar .demo{margin-left:auto;background:rgba(255,255,255,.16);padding:2px 9px;border-radius:3px;
-    letter-spacing:.04em}
-
   /* ── шапка ── */
   header.main{background:var(--card);border-bottom:1px solid var(--hair);position:relative;z-index:50}
   .hrow{display:flex;align-items:center;gap:14px;padding-block:13px;position:relative}
@@ -136,7 +129,7 @@
       width:48px;height:48px;border:0;border-radius:50%;background:var(--accent);color:#fff;cursor:pointer;
       box-shadow:0 8px 20px rgba(244,81,30,.35)}
     .mnav-btn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
-    .topbar .wrap{padding-right:68px}   /* место под кнопкой меню, пока страница не прокручена */
+    header.main .hrow{padding-right:64px}   /* место под кнопкой меню, пока страница не прокручена */
     .mnav-ov{display:block;position:fixed;inset:0;z-index:57;background:rgba(10,15,22,.32);opacity:0;pointer-events:none;transition:opacity .18s}
     body.mnav .mnav-ov{opacity:1;pointer-events:auto}
   }
@@ -756,7 +749,6 @@
   :root[data-theme="dark"] .p-ipmtorgi{--pc:#5cb6f5} :root[data-theme="dark"] .p-mgcn{--pc:#6f95f2} :root[data-theme="dark"] .p-belauction{--pc:#e2b34a}
   :root[data-theme="dark"] .p-minskestate{--pc:#4fb3c4} :root[data-theme="dark"] .p-auction24{--pc:#a597f0}
   .pdot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--pc,var(--ink-3));flex:none}
-  .lot[class*=" p-"]{border-top:3px solid var(--pc)}
   .lot .ft .pl{display:inline-flex;align-items:center;gap:5px;color:var(--pc,var(--ink-3));font-weight:700}
   .pchips{display:flex;flex-wrap:wrap;gap:6px}
   .pchip{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border:1px solid var(--hair-2);border-radius:14px;background:var(--card);
@@ -808,18 +800,13 @@
   .me-main .done{text-align:center;padding:30px}
   .me-main .done .ok{width:46px;height:46px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:24px;margin:0 auto 10px}
   .h-short{display:none}
-    @media (max-width:520px){ .h-long{display:none} .h-short{display:inline} .hacts{gap:7px} }
+    @media (max-width:520px){ .h-long{display:none} .h-short{display:inline} .hacts{gap:6px}
+      .hrow{gap:8px} .hs-btn{width:38px;height:38px} .hacts .btn{padding:8px 10px} }   /* справа ещё кнопка меню */
+    @media (max-width:359px){ .hacts .btn{display:none} }   /* совсем узкий телефон: «Помощь» — в первом экране и подвале */
 </style>
 
 <div id="bar"></div>
 <div class="overlay" id="ov"></div>
-
-<div class="topbar"><div class="wrap">
-  <span>Торги по имуществу должников в Беларуси</span>
-  <span>Обновлено: <b id="tb-upd"></b></span>
-  <span>Активных лотов: <b id="tb-cnt"></b></span>
-  <span class="demo">ПРОТОТИП</span>
-</div></div>
 
 <header class="main"><div class="wrap hrow">
   <a class="logo" href="#/">
@@ -874,7 +861,7 @@
       <li><a href="https://bankrot.gov.by" target="_blank" rel="noopener">Реестр банкротств</a></li>
     </ul></div>
   </div>
-  <div class="fbot">Прототип. Данные собираются с открытых площадок автоматически, последнее обновление <span id="f-upd"></span>. Перед участием в торгах сверяйтесь с карточкой лота на площадке-первоисточнике.
+  <div class="fbot">Данные собираются с открытых площадок автоматически, последнее обновление <span id="f-upd"></span>. Перед участием в торгах сверяйтесь с карточкой лота на площадке-первоисточнике.
     · <a href="#/privacy">Политика конфиденциальности</a></div>
 </div></footer>
 <div class="ck" id="ck" role="region" aria-label="Файлы cookie" hidden><span id="ck-t"></span> <a href="#/privacy">Подробнее</a><button class="btn pri" id="ck-ok" type="button">Понятно</button></div>
@@ -984,7 +971,6 @@ function loadArch(){
 const byId = id => DATA.find(l=>l.id===id) || (ARCH||ARCH1||[]).find(l=>l.id===id);
 
 /* ───────── шапка и меню ───────── */
-$('#tb-upd').textContent = dtm(SNAP);
 $('#f-upd').textContent = dtm(SNAP);
 (()=>{ const c = (CFG.texts||{}).contacts || {}, out = [];
   if(c.phone) out.push(`<a href="tel:${esc(c.phone.replace(/[^+\d]/g,''))}">${esc(c.phone)}</a>`);
@@ -993,7 +979,6 @@ $('#f-upd').textContent = dtm(SNAP);
   if(c.address) out.push(esc(c.address));
   $('#fcont').innerHTML = out.length ? `<p class="fcont">${out.join('<br>')}</p>` : '';
 })();
-$('#tb-cnt').textContent = DATA.length;
 $('#nav').innerHTML = '<li><a href="#/">Главная</a></li><li><a href="#/catalog">Все лоты</a></li>'
   + SECTIONS.map(([s,n])=>`<li><a href="#/s/${s}">${n}</a></li>`).join('')
   + '<li><a href="#/catalog?st=arch">Архив</a></li>'
@@ -2108,20 +2093,7 @@ function pageAbout(){
     <h1>Возможности платформы</h1>
     <p class="lede">БелЛот собирает торги по имуществу должников со всех площадок Беларуси, приводит их к одному виду и помогает довести покупку до сделки.</p>
     <div class="adv">${ADV.map(([ic,t,d])=>`<div class="it"><div class="ic">${advIc(ic)}</div><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
-    <div class="sec"><h2>Что уже работает в прототипе</h2>
-      <table class="plain">
-        <tr><th>Функция</th><th>Состояние</th></tr>
-        <tr><td>Сбор лотов с площадок</td><td>Работает: e-auction.by, ipmtorgi.by, beltorgi.by, konfiskat.by — ${DATA.length} активных лотов</td></tr>
-        <tr><td>Обновление каталога</td><td>Работает: несколько раз в день</td></tr>
-        <tr><td>Архив завершённых торгов</td><td>Работает: ${ARCHN._||0} лотов с итогами торгов, хранятся год</td></tr>
-        <tr><td>Фильтры, поиск, рыночный ориентир</td><td>Работает</td></tr>
-        <tr><td>Калькулятор торгов</td><td>Работает</td></tr>
-        <tr><td>Уведомления в Telegram</td><td>Работает отдельным ботом</td></tr>
-        <tr><td>Склейка дублей, алерты о снижении цены</td><td>В разработке</td></tr>
-        <tr><td>Осмотр, проверка, сопровождение</td><td>Планируется</td></tr>
-      </table>
-      <div class="note">Это демонстрационная версия. Часть возможностей описана как план и пока не реализована.</div>
-    </div></div>`;
+    </div>`;
 }
 
 /* ───────── главная ───────── */
