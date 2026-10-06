@@ -895,7 +895,8 @@ const CFG = __CFG__;              // из админки: тексты, прав
   }catch(e){} };
   addEventListener('error', e => {
     const t = e.target;
-    if(t && t !== window && t.tagName){ const u = t.src || t.href || ''; if(u.startsWith(location.origin)) send('Не загрузился файл: ' + u.replace(location.origin, ''), 'файл'); return; }
+    if(t && t !== window && t.tagName){ if(t.classList.contains('ic3')) return;   // значок с запасным вариантом — посетитель пустоты не видит
+      const u = t.src || t.href || ''; if(u.startsWith(location.origin)) send('Не загрузился файл: ' + u.replace(location.origin, ''), 'файл'); return; }
     send(e.message, (e.filename || '').replace(location.origin, '') + ':' + (e.lineno || '') + ':' + (e.colno || ''));
   }, true);
   addEventListener('unhandledrejection', e => { const r = e.reason; send('Необработанная ошибка: ' + (r && (r.message || r)), r && r.stack ? String(r.stack).split('\n')[1] : ''); });
@@ -2041,7 +2042,7 @@ const ADV = [
 ];
 
 /* значки «Возможности платформы» — линиями, как у разделов (05.10: были эмодзи и символы); «Почему БелЛот» на главной —
-   3D-значки img/adv1–6.png (Microsoft Fluent Emoji 3D, лицензия MIT — app/img/LICENSE-fluentui-emoji.txt), по порядку пунктов */
+   3D-значки img/why1–6.png (Microsoft Fluent Emoji 3D, лицензия MIT — app/img/LICENSE-fluentui-emoji.txt), по порядку пунктов */
 const ADV_IC = {
   mkt:'<path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z"/>',
   plat:'<path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5M3 17l9 5 9-5"/>',
@@ -2068,7 +2069,8 @@ function howList(){
   return a.length ? a.map(x=>[x.t, x.d||'']) : HOW;
 }
 /* «Почему БелЛот» на главной и услуги на странице помощи: тексты можно поменять в админке, значки остаются */
-// 3D-значок не загрузился (так было на iPhone) — вместо пустой рамки контурный значок того же пункта
+// 3D-значок не загрузился (так было на iPhone: файлы назывались adv*.png, а «adv» в адресе режут блокировщики рекламы) —
+// вместо пустой рамки контурный значок того же пункта
 function advFail(img){ const d = document.createElement('div'); d.className = 'ic'; d.innerHTML = advIc(img.dataset.ic); img.replaceWith(d); }
 function advList(){
   const a = ((CFG.texts||{}).adv||[]).filter(x=>x && x.t);
@@ -2246,7 +2248,7 @@ function pageHome(){
     ${carousel('Новые лоты', 'Появились на площадках за последние сутки', fresh, '#/catalog?view=new')}
 
     <div class="sec"><h2>Почему БелЛот</h2>
-      <div class="adv">${advList().map(([ic,t,d],i)=>`<div class="it"><img class="ic3" src="img/adv${i+1}.png?v=2" width="64" height="64" alt="" loading="lazy" data-ic="${esc(ic)}" onerror="advFail(this)"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
+      <div class="adv">${advList().map(([ic,t,d],i)=>`<div class="it"><img class="ic3" src="img/why${i+1}.png" width="64" height="64" alt="" loading="lazy" data-ic="${esc(ic)}" onerror="advFail(this)"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
       <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p></div>
 
     <div class="sec" id="cal-sec"><div class="sec-h"><h2>Календарь торгов</h2></div>

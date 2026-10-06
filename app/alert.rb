@@ -111,9 +111,21 @@ end
 gone = open.values.reject { |a| found.any? { |p| p['fp'] == a['fp'] } }
 
 # ── ошибки у посетителей: новые с прошлого сообщения ──
-cur = (Sb.settings['monitor'] || {})['client_err_id'].to_i
+mon = Sb.settings['monitor'] || {}
+cur = mon['client_err_id'].to_i
 errs = Sb.get("client_errors?id=gt.#{cur}&select=id,at,msg,src,url,ua&order=id&limit=200")
-client = errs.group_by { |e| e['msg'] }.first(6).map do |msg, es|
+# «не загрузился файл» у одного посетителя — почти всегда его блокировщик рекламы или плохая связь: в Telegram не шлём.
+# Пишем, если файл не загрузился за сутки у 5+ разных посещений (браузер + полчаса), и про один файл — не чаще раза в сутки.
+# Ошибки в коде сайта — сразу. Всё остальное по-прежнему лежит в базе (client_errors).
+file_err = ->(e) { e['src'].to_s.end_with?('файл') }
+day_ago = (now - 86_400).utc.iso8601
+fsent = (mon['files'] || {}).select { |_, at| now - Time.parse(at) < 86_400 }
+files = errs.select(&file_err).map { |e| e['msg'] }.uniq.reject { |m| fsent[m] }.select do |m|
+  Sb.get("client_errors?msg=eq.#{URI.encode_www_form_component(m).gsub("+", "%20")}&at=gt.#{day_ago}&select=ua,at")
+    .map { |r| [r['ua'], Time.parse(r["at"]).to_i / 1800] }.uniq.size >= 5
+end
+shown = errs.reject(&file_err) + errs.select { |e| files.include?(e['msg']) }
+client = shown.group_by { |e| e['msg'] }.first(6).map do |msg, es|
   e = es.first
   dev = e['ua'].to_s =~ /iPhone|iPad/ ? 'iPhone/iPad' : e['ua'].to_s =~ /Android/ ? 'Android' : e['ua'].to_s =~ /Mac OS/ ? 'Mac' : e['ua'].to_s =~ /Windows/ ? 'Windows' : 'браузер'
   "• #{msg.to_s[0, 200]}#{es.size > 1 ? " (×#{es.size})" : ''}\n  #{e['src'].to_s[0, 80]} · #{dev} · #{e['url'].to_s[0, 120]}"
@@ -123,7 +135,7 @@ end
 parts = []
 parts << "🔴 Новые проблемы:\n#{fresh.map { |p| line(p) }.join("\n")}" unless fresh.empty?
 parts << "⏰ Всё ещё не исправлено:\n#{remind.map { |p| line(p) }.join("\n")}" unless remind.empty?
-parts << "🟠 Ошибки у посетителей (#{errs.size}):\n#{client.join("\n")}" unless client.empty?
+parts << "🟠 Ошибки у посетителей (#{shown.size}):\n#{client.join("\n")}" unless client.empty?
 gone_sent = gone.reject { |a| a['sent_at'].nil? }   # о неотправленном «исправлено» не пишем
 parts << "✅ Исправлено:\n#{gone_sent.map { |a| "• #{a['title']}" }.join("\n")}" unless gone_sent.empty?
 ok = if parts.empty?
@@ -147,4 +159,8 @@ found.each do |p|
   end
 end
 gone.each { |a| Sb.patch('alerts', "fp=eq.#{URI.encode_www_form_component(a['fp'])}", { 'open' => false, 'resolved_at' => t }) }
-Sb.upsert('settings', [{ 'k' => 'monitor', 'v' => { 'client_err_id' => errs.last['id'], 'at' => t } }], 'k') if ok && errs.any?
+# прочитанные ошибки отмечаем и тогда, когда слать было нечего (только одиночные «файлы»); не ушло сообщение — перечитаем
+if errs.any? && (ok || parts.empty?)
+  fsent.merge!(files.to_h { |m| [m, t] }) if ok
+  Sb.upsert('settings', [{ 'k' => 'monitor', 'v' => { 'client_err_id' => errs.last['id'], 'at' => t, 'files' => fsent } }], 'k')
+end
