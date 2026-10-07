@@ -205,6 +205,13 @@ applyTheme(window.THEME);
   .helpband.st-soft{background:var(--brand-l);color:var(--ink)}
   .helpband.st-soft h2{color:var(--ink)}
   .helpband.st-soft p{color:var(--ink-2)}
+  /* свои картинки из конструктора: первый экран, логотип, значки разделов */
+  .land-in.has-img{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.8fr);gap:40px;align-items:center}
+  .land .hero-img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:20px;box-shadow:var(--sh-2)}
+  @media (max-width:900px){ .land-in.has-img{grid-template-columns:1fr;gap:22px} }
+  .logo img.mark{object-fit:contain;background:none;padding:0}
+  .stile .ti img{width:100%;height:100%;object-fit:contain;padding:5px}
+  .stile .bg img{width:120px;height:120px;object-fit:contain}
   /* текст с картинкой */
   .htx{display:flex;gap:28px;align-items:center}
   .htx img{width:46%;max-width:540px;aspect-ratio:4/3;object-fit:cover;border-radius:16px;flex:none;display:block}
@@ -2350,9 +2357,10 @@ const ICON = {
   arenda:'<svg viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L20 3M16 7l3 3M13.5 9.5l2 2"/></svg>'
 };
 
-function sectionTiles(){
-  return `<div class="stiles">${SECTIONS.map(([s,n])=>{ const k = cnt(s);
-    return `<a class="stile s-${s}" href="#/s/${s}"><span class="bg">${ICON[s]}</span><span class="ti">${ICON[s]}</span>
+// imgs — свои значки разделов из конструктора главной: { nedvizhimost:'media/…jpg', … }
+function sectionTiles(imgs){
+  return `<div class="stiles">${SECTIONS.map(([s,n])=>{ const k = cnt(s), ic = imgs && imgs[s] ? `<img src="${esc(imgs[s])}" alt="" loading="lazy">` : ICON[s];
+    return `<a class="stile s-${s}" href="#/s/${s}"><span class="bg">${ic}</span><span class="ti">${ic}</span>
       <span class="tt">${n}</span><span class="tn">${k} ${plural(k,'активный лот','активных лота','активных лотов')}</span></a>`;
   }).join('')}</div>`;
 }
@@ -2381,7 +2389,7 @@ function lotsHtml(b, list, def, sub, all){
       <button class="car-b next" type="button" aria-label="Вперёд">›</button></div>`;
 }
 const HB = {
-  tiles: b => head2(b, 'Что продаётся на торгах', '<a href="#/catalog">Весь каталог →</a>') + sectionTiles(),
+  tiles: b => head2(b, 'Что продаётся на торгах', '<a href="#/catalog">Весь каталог →</a>') + sectionTiles(b.imgs),
   how: b => head2(b, 'Как это работает') + `<div class="how">${howList().map(([t,d],i)=>`<div><span class="hn">${i+1}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>`,
   band: b => `<div class="helpband st-${esc(b.style || 'dark')}"><div><h2>${esc(TX('band_title','Первый раз на торгах?'))}</h2>
       <p>${esc(TX('band_text','Проверим объект до задатка, съездим на осмотр, подскажем разумный предел цены и проведём через аукцион.'))}</p></div>
@@ -2389,8 +2397,9 @@ const HB = {
   pins: b => lotsHtml(b, DATA.filter(l=>l.pin).sort((a,c)=>a.req_to-c.req_to), 'Рекомендуем', 'Лоты, отобранные специалистами МониТорга', '#/catalog?view=pin'),
   soon: b => lotsHtml(b, DATA.filter(isSoon).sort((a,c)=>a.req_to-c.req_to), 'Истекающие торги', 'Приём заявок закрывается в ближайшие 3 дня', '#/catalog?view=soon'),
   fresh: b => lotsHtml(b, DATA.filter(isNew).sort((a,c)=>c.first_seen-a.first_seen), 'Новые лоты', 'Появились на площадках за последние сутки', '#/catalog?view=new'),
-  why: b => head2(b, 'Почему МониТорг') + `<div class="adv">${advList().map(([ic,t,d],i)=>`<div class="it">${b.icons === 'line'
-      ? `<div class="ic">${advIc(ic)}</div>` : `<img class="ic3" src="img/why${i+1}.png" width="64" height="64" alt="" loading="lazy" data-ic="${esc(ic)}" onerror="advFail(this)">`}<h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
+  why: b => head2(b, 'Почему МониТорг') + `<div class="adv">${advList().map(([ic,t,d],i)=>{ const own = (b.imgs||[])[i];   // свой значок пункта из конструктора
+      return `<div class="it">${b.icons === 'line' && !own ? `<div class="ic">${advIc(ic)}</div>`
+        : `<img class="ic3" src="${esc(own || `img/why${i+1}.png`)}" width="64" height="64" alt="" loading="lazy" data-ic="${esc(ic)}" onerror="advFail(this)">`}<h3>${esc(t)}</h3><p>${esc(d)}</p></div>`; }).join('')}</div>
       <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p>`,
   cal: b => `<div class="sec-h"><h2>${esc(b.title || 'Календарь торгов')}</h2></div>
       <p class="lede" style="margin:-4px 0 12px">${esc(b.sub || 'Торги всех площадок по датам. Нажмите на день — откроется список лотов.')}</p><div class="cal" id="cal"></div>`,
@@ -2399,12 +2408,14 @@ const HB = {
     if(!b.title && !b.text && !img) return '';
     return `<div class="htx${img ? ' side-' + esc(b.side || 'right') : ''}">${img}<div class="htx-t">${b.title ? `<h2>${esc(b.title)}</h2>` : ''}${paras(b.text)}
       ${u && b.btn_text ? `<a class="btn pri" href="${esc(u)}"${extAttr(u)}>${esc(b.btn_text)}</a>` : ''}</div></div>`; },
+  // у каждого баннера свой номер (bid): по нему считаем показы и клики (bindBanners, rpc banner_hit)
   banners: b => { const t = todayKey(), f = ['wide','big','2','3','4'].includes(b.format) ? b.format : '3';
     const it = (b.items||[]).filter(x=>x && x.img && (!x.from || x.from <= t) && (!x.to || x.to >= t));
     if(!it.length) return '';
     return (b.title ? `<div class="sec-h"><h2>${esc(b.title)}</h2></div>` : '') + `<div class="hbn f-${f}">${it.map(x=>{ const u = safeUrl(x.url);
       const inner = `<img src="${esc(x.img)}" alt="${esc(x.name || '')}" loading="lazy">${x.ad !== false ? `<span class="adl">Реклама${x.adv ? ' · ' + esc(x.adv) : ''}</span>` : ''}`;
-      return u ? `<a href="${esc(u)}"${/^https?:/i.test(u) ? ' target="_blank" rel="sponsored noopener"' : ''}>${inner}</a>` : `<div>${inner}</div>`; }).join('')}</div>`; },
+      const bid = /^[a-z0-9-]{4,40}$/.test(x.bid || '') ? ` data-bid="${x.bid}"` : '';
+      return u ? `<a href="${esc(u)}"${/^https?:/i.test(u) ? ' target="_blank" rel="sponsored noopener"' : ''}${bid}>${inner}</a>` : `<div${bid}>${inner}</div>`; }).join('')}</div>`; },
   faq: b => { const it = (b.items||[]).filter(x=>x && x.q); return it.length ? `<h2>${esc(b.title || 'Вопросы и ответы')}</h2>
     <div class="faq">${it.map(x=>`<details><summary>${esc(x.q)}</summary><div>${paras(x.a)}</div></details>`).join('')}</div>` : ''; }
 };
@@ -2428,9 +2439,10 @@ function bindCarousels(){
 
 function heroHtml(b){
   const plats = new Set(DATA.flatMap(l=>[l.platform, ...(l.alt||[]).map(a=>a.platform)])).size;   // склеенные площадки тоже в счёт
+  // своя картинка из конструктора — справа от текста (на телефоне под ним) вместо рисунка с кварталами
   return `<section class="land">
-    ${b.art === false ? '' : heroArt()}
-    <div class="wrap land-in">
+    ${b.art === false || b.img ? '' : heroArt()}
+    <div class="wrap land-in${b.img ? ' has-img' : ''}">${b.img ? '<div>' : ''}
       <h1>${esc(TX('hero_title','Агрегатор торгов по имуществу со всех площадок Беларуси'))}</h1>
       <p>${esc(TX('hero_text','Недвижимость, автомобили, техника и право аренды в одном месте.'))}</p>
       <form class="land-search" id="ls"><input id="ls-q" type="search" placeholder="Например: квартира в Минске, Volkswagen, экскаватор" aria-label="Поиск лота" autocomplete="off"><button type="submit">Найти лот</button><div class="sugg" id="ls-sugg"></div></form>
@@ -2439,8 +2451,33 @@ function heroHtml(b){
         <a class="btn ghost big" href="#/help">Помощь в аукционе</a>
       </div>
       <div class="land-live"><b>${nf(DATA.length)}</b> ${plural(DATA.length,'активный лот','активных лота','активных лотов')} с <b>${plats}</b> ${plural(plats,'площадки','площадок','площадок')} · обновлено ${updLabel(SNAP)}</div>
-    </div>
+    ${b.img ? `</div><img class="hero-img" src="${esc(b.img)}" alt="">` : ''}</div>
   </section>`;
+}
+// логотип в шапке: своя картинка из конструктора («Общий стиль») вместо букв «МТ»
+function applyLogo(t){
+  const m = $('.logo .mark'), src = t && t.logo;
+  if(!m) return;
+  if(src){ const i = document.createElement('img'); i.className = 'mark mimg'; i.src = src; i.alt = ''; m.replaceWith(i); }
+  else if(m.tagName === 'IMG'){ const s = document.createElement('span'); s.className = 'mark'; s.textContent = 'МТ'; m.replaceWith(s); }
+}
+applyLogo(CFG.home && CFG.home.theme);
+// показы и клики рекламных баннеров: показ — когда баннер хотя бы наполовину на экране (раз за открытие страницы), клик — по нажатию.
+// Роботы поисковиков и предпросмотр из админки не считаются
+const BN_SEEN = new Set();
+function bannerHit(bid, click){
+  if(!CFG.sb || /preview=/.test(location.search) || /bot|crawler|spider|Read-Aloud|Headless|Lighthouse/i.test(navigator.userAgent)) return;
+  fetch(CFG.sb.url + '/rest/v1/rpc/banner_hit', { method:'POST', keepalive:true,
+    headers:{ apikey:CFG.sb.key, Authorization:'Bearer ' + CFG.sb.key, 'Content-Type':'application/json' },
+    body:JSON.stringify({ p_bid:bid, p_click:!!click }) }).catch(()=>{});
+}
+function bindBanners(){
+  const els = [...document.querySelectorAll('[data-bid]')]; if(!els.length) return;
+  els.forEach(el=>el.addEventListener('click', ()=>bannerHit(el.dataset.bid, true)));
+  if(!('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver(es=>es.forEach(e=>{ const bid = e.target.dataset.bid;
+    if(e.isIntersecting && !BN_SEEN.has(bid)){ BN_SEEN.add(bid); io.unobserve(e.target); bannerHit(bid, false); } }), { threshold:.5 });
+  els.forEach(el=>io.observe(el));
 }
 function homeHtml(b){
   if(b.type === 'hero') return heroHtml(b);
@@ -2455,6 +2492,7 @@ function pageHome(){
   $('#app').innerHTML = homeBlocks().map(homeHtml).join('');
   if($('#ls-q')) attachSuggest($('#ls-q'), $('#ls-sugg'));
   bindCarousels();
+  bindBanners();
   if(!$('#cal')) return;
   drawCal();
   // прошедшие и уже закрывшие приём заявок торги — в свежем архиве (arch.js, ≈ 2 МБ): грузим, когда календарь близко к экрану
@@ -2464,7 +2502,7 @@ function pageHome(){
   } else if(!ARCH1) loadArch1().then(()=>{ if($('#cal')) drawCal(); });
 }
 // предпросмотр из админки: сайт открыт в окне админки, та передаёт черновик главной (картинки — данными, ещё не опубликованы)
-window.previewHome = home => { CFG.home = home; applyTheme(home.theme); $('#ck').hidden = true;
+window.previewHome = home => { CFG.home = home; applyTheme(home.theme); applyLogo(home.theme); $('#ck').hidden = true;
   if((location.hash || '#/') === '#/') pageHome(); else location.hash = '#/'; };
 
 /* ───────── календарь торгов (главная, внизу) ─────────

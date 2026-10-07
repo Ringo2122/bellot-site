@@ -153,6 +153,9 @@
   .swl input[type=color]{width:36px;height:30px;border:1px solid var(--hair-2);border-radius:8px;padding:2px;background:var(--card)}
   .himg{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
   .himg img{width:180px;max-height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--hair)}
+  .himg img.sq{width:56px;height:56px;object-fit:contain;background:var(--bg)}
+  .hico{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);align-items:center;gap:10px;margin-bottom:6px}
+  .bst{font-size:12px}
   .hitem{padding:12px;margin-bottom:10px;background:var(--bg)}
   #h-pv{position:fixed;inset:0;z-index:300;background:rgba(10,15,22,.6);display:flex;flex-direction:column}
   #h-pv .pvbar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;background:var(--card)}
@@ -1087,12 +1090,27 @@ const TH_COLORS = [['#f4511e','Оранжевый (сейчас)'],['#e53935','�
 const TH_FONTS = ['Onest','Golos Text','Manrope','Montserrat','Unbounded','PT Serif'];
 let HOME = null, HSEL = -1, HMEDIA = {};
 const homeDefault = () => ({ blocks:HB_BASE.map(t=>({ id:t, type:t })), theme:{} });
-const homeMediaIds = h => h.blocks.flatMap(b=>[b.img, ...(b.items||[]).map(x=>x.img)]).filter(Boolean);
+// все картинки черновика: img и logo, наборы imgs (значки разделов и пунктов), картинки баннеров
+const homeMediaIds = h => { const out = [];
+  const walk = o => { if(Array.isArray(o)) o.forEach(walk); else if(o && typeof o === 'object') Object.entries(o).forEach(([k,v])=>{
+    if((k === 'img' || k === 'logo') && typeof v === 'string') out.push(v);
+    else if(k === 'imgs') Object.values(v || {}).forEach(x=>{ if(typeof x === 'string') out.push(x); });
+    else walk(v); }); };
+  walk(h); return [...new Set(out.filter(Boolean))]; };
+const homeWithData = h => { const d = JSON.parse(JSON.stringify(h)), M = id => HMEDIA[id] || '';   // для предпросмотра: номер картинки → сама картинка
+  const walk = o => { if(Array.isArray(o)) o.forEach(walk); else if(o && typeof o === 'object') Object.keys(o).forEach(k=>{
+    if((k === 'img' || k === 'logo') && typeof o[k] === 'string') o[k] = M(o[k]);
+    else if(k === 'imgs' && o[k]) Object.keys(o[k]).forEach(j=>{ if(o[k][j]) o[k][j] = M(o[k][j]); });
+    else walk(o[k]); }); };
+  walk(d); return d; };
+const newBid = () => 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const HB_SECS = [['nedvizhimost','Недвижимость'],['avto','Легковые авто'],['gruz','Грузовые и автобусы'],['spec','Спецтехника'],['oborud','Оборудование'],['arenda','Право аренды']];
 async function pHome(){
   await loadSettings();
   const cur = SET.home && Array.isArray(SET.home.blocks) && SET.home.blocks.length ? SET.home : homeDefault();
   HOME = JSON.parse(JSON.stringify(cur)); HOME.theme = HOME.theme || {};
   HB_BASE.forEach(t=>{ if(!HOME.blocks.some(b=>b.type===t)) HOME.blocks.push({ id:t, type:t, on:false }); });   // блок появился в коде позже
+  HOME.blocks.forEach(b=>{ if(b.type === 'banners') (b.items||[]).forEach(x=>{ if(!x.bid) x.bid = newBid(); }); });   // номер для счётчика
   HMEDIA = {}; const ids = homeMediaIds(HOME);
   if(ids.length) (await api(`site_media?id=${inq(ids)}&select=id,data`)).forEach(m=>HMEDIA[m.id] = m.data);
   HSEL = -1; drawHome();
@@ -1124,7 +1142,10 @@ function drawHome(){
         <div class="fld"><span>Фирменный цвет — кнопки, цены, акценты на всём сайте</span><div class="swl">${TH_COLORS.map(([c,n])=>`<button class="sw${(t.color||'#f4511e')===c?' on':''}" data-c="${c}" title="${n}" style="background:${c}"></button>`).join('')}
           <input type="color" id="h-col" value="${esc(t.color||'#f4511e')}" title="Свой цвет"></div></div>
         <div class="grid2"><label class="fld"><span>Углы карточек и кнопок</span><select id="h-rad"><option value="">Средние (сейчас)</option><option value="sharp"${t.radius==='sharp'?' selected':''}>Острые</option><option value="round"${t.radius==='round'?' selected':''}>Круглые</option></select></label>
-          <label class="fld"><span>Шрифт заголовков</span><select id="h-font">${TH_FONTS.map(f=>`<option${(t.font||'Onest')===f?' selected':''}>${f}</option>`).join('')}</select></label></div></div>
+          <label class="fld"><span>Шрифт заголовков</span><select id="h-font">${TH_FONTS.map(f=>`<option${(t.font||'Onest')===f?' selected':''}>${f}</option>`).join('')}</select></label></div>
+        <div class="fld"><span>Логотип в шапке — вместо букв «МТ» (квадратная картинка, лучше PNG с прозрачным фоном)</span>
+          <div class="himg">${t.logo && HMEDIA[t.logo] ? `<img src="${HMEDIA[t.logo]}" alt="" style="width:56px;height:56px;object-fit:contain">` : '<span class="muted">буквы «МТ»</span>'}
+          <input type="file" accept="image/*" id="h-logo">${t.logo ? '<button class="btn bad" type="button" id="h-nologo">Убрать</button>' : ''}</div></div></div>
     </div><div id="h-ed">${HSEL >= 0 && B[HSEL] ? '' : '<div class="panel muted">Нажмите «Настроить» у блока — здесь появятся его настройки.</div>'}</div></div>`;
   if(HSEL >= 0 && B[HSEL]) drawHomeEd();
   const rows = V().querySelectorAll('.hbr');
@@ -1145,6 +1166,9 @@ function drawHome(){
   $('#h-col').onchange = e => { t.color = e.target.value; drawHome(); };
   $('#h-rad').onchange = e => { t.radius = e.target.value || undefined; };
   $('#h-font').onchange = e => { t.font = e.target.value === 'Onest' ? undefined : e.target.value; };
+  $('#h-logo').onchange = async e => { const f = e.target.files[0]; if(!f) return;
+    try{ t.logo = await hUpload(f, true); drawHome(); toast('Логотип загружен'); }catch(err){ toast(err.message, true); } };
+  if($('#h-nologo')) $('#h-nologo').onclick = () => { delete t.logo; drawHome(); };
   $('#h-add').onchange = e => { const ty = e.target.value; if(!ty) return;
     const b = { id:ty + '-' + Math.random().toString(36).slice(2,8), type:ty };
     if(ty==='banners'){ b.format = '3'; b.items = []; } if(ty==='faq') b.items = [{ q:'', a:'' }]; if(ty==='text') b.side = 'right';
@@ -1172,10 +1196,11 @@ function hMove(from, to){
 // поле настройки: data-k — ключ блока; изменения сразу в черновик
 const hf = (k, label, v, attrs='', hint='') => `<label class="fld"><span>${label}</span><input data-k="${k}" value="${esc(v ?? '')}" ${attrs}>${hint?`<span class="hint">${hint}</span>`:''}</label>`;
 const hs = (k, label, v, opts) => `<label class="fld"><span>${label}</span><select data-k="${k}">${opts.map(([o,n])=>`<option value="${o}"${String(v ?? '')===o?' selected':''}>${n}</option>`).join('')}</select></label>`;
-const hImg = (key, id) => `<div class="himg">${id && HMEDIA[id] ? `<img src="${HMEDIA[id]}" alt="">` : '<span class="muted">нет картинки</span>'}
-  <input type="file" accept="image/*" data-img="${key}">${id ? `<button class="btn bad" type="button" data-noimg="${key}">Убрать</button>` : ''}</div>`;
-async function hUpload(file){
-  const data = await shrinkPhoto(file), id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const hImg = (key, id, png) => `<div class="himg">${id && HMEDIA[id] ? `<img src="${HMEDIA[id]}" alt=""${png ? ' class="sq"' : ''}>` : '<span class="muted">нет картинки</span>'}
+  <input type="file" accept="image/*" data-img="${key}"${png ? ' data-png="1"' : ''}>${id ? `<button class="btn bad" type="button" data-noimg="${key}">Убрать</button>` : ''}</div>`;
+// png — значки и логотип: сохраняем PNG (прозрачный фон), остальное — JPEG как у фото
+async function hUpload(file, png){
+  const data = png ? await shrinkPng(file, 256) : await shrinkPhoto(file), id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   await upsert('site_media', [{ id, data, name:file.name.slice(0,120), updated_at:nowIso() }], 'id');
   HMEDIA[id] = data; return id;
 }
@@ -1186,19 +1211,27 @@ function drawHomeEd(){
   const ttl = HB_DEFT[ty] !== undefined || ['text','banners'].includes(ty) ? hf('title', 'Заголовок блока', b.title, `placeholder="${esc(HB_DEFT[ty] || 'без заголовка')}"`) : '';
   const sub = ['tiles','how','pins','soon','fresh','why','cal','news'].includes(ty) ? hf('sub', 'Подзаголовок', b.sub, 'placeholder="по умолчанию"') : '';
   let x = '';
-  if(ty==='hero') x = hs('art', 'Рисунок справа (кварталы)', b.art===false?'0':'', [['','Показывать'],['0','Не показывать']]) + '<p class="muted">Заголовок, текст и кнопки первого экрана — в «Тексты сайта».</p>';
-  if(ty==='tiles') x = hs('cols', 'Плиток в ряд (на компьютере)', b.cols, [['','3'],['2','2'],['4','4']]);
+  if(ty==='hero') x = `<div class="fld"><span>Своя картинка справа от текста — вместо рисунка с кварталами (горизонтальная, 4:3)</span>${hImg('img', b.img)}</div>`
+    + (b.img ? '' : hs('art', 'Рисунок с кварталами', b.art===false?'0':'', [['','Показывать'],['0','Не показывать']])) + '<p class="muted">Заголовок, текст и кнопки первого экрана — в «Тексты сайта».</p>';
+  if(ty==='tiles') x = hs('cols', 'Плиток в ряд (на компьютере)', b.cols, [['','3'],['2','2'],['4','4']])
+    + `<div class="fld"><span>Свои значки разделов (квадратные, лучше PNG с прозрачным фоном); пусто — стандартный</span></div>`
+    + HB_SECS.map(([k,n])=>`<div class="fld hico"><span>${n}</span>${hImg('imgs.' + k, (b.imgs||{})[k], true)}</div>`).join('');
   if(ty==='how') x = hs('cols', 'Шагов в ряд (на компьютере)', b.cols, [['','4'],['2','2'],['3','3']]) + '<p class="muted">Тексты шагов — в «Тексты сайта».</p>';
   if(ty==='band') x = hs('style', 'Цвет плашки', b.style, [['','Тёмная (сейчас)'],['brand','Фирменного цвета'],['soft','Светлая']]) + '<p class="muted">Заголовок и текст плашки — в «Тексты сайта».</p>';
   if(['pins','soon','fresh'].includes(ty)) x = hs('view', 'Вид', b.view, [['','Лента со стрелками'],['grid','Сетка']]) + hf('count', 'Сколько лотов показывать', b.count, 'type="number" min="1" max="20" placeholder="20"');
-  if(ty==='why') x = hs('cols', 'Пунктов в ряд (на компьютере)', b.cols, [['','3'],['2','2'],['4','4']]) + hs('icons', 'Значки', b.icons, [['','Объёмные 3D'],['line','Контурные']]) + '<p class="muted">Тексты пунктов — в «Тексты сайта».</p>';
+  if(ty==='why') x = hs('cols', 'Пунктов в ряд (на компьютере)', b.cols, [['','3'],['2','2'],['4','4']]) + hs('icons', 'Значки', b.icons, [['','Объёмные 3D'],['line','Контурные']])
+    + `<div class="fld"><span>Свои значки пунктов (квадратные, лучше PNG с прозрачным фоном); пусто — стандартный</span></div>`
+    + ((SET.texts||{}).adv && SET.texts.adv.length ? SET.texts.adv.map(a=>a.t) : TX_DEF.adv.map(a=>a[0])).slice(0,6)
+        .map((n,i)=>`<div class="fld hico"><span>${i+1}. ${esc(n)}</span>${hImg('imgs.' + i, (b.imgs||[])[i], true)}</div>`).join('')
+    + '<p class="muted">Тексты пунктов — в «Тексты сайта».</p>';
   if(ty==='news') x = hs('count', 'Сколько новостей', b.count, [['','3'],['6','6'],['9','9']]);
   if(ty==='text') x = `<label class="fld"><span>Текст — абзацы через пустую строку</span><textarea data-k="text" rows="6">${esc(b.text||'')}</textarea></label>
     <div class="fld"><span>Картинка</span>${hImg('img', b.img)}</div>${hs('side', 'Где картинка', b.side, [['right','Справа от текста'],['left','Слева от текста'],['top','Сверху, во всю ширину']])}
     <div class="grid2">${hf('btn_text', 'Кнопка — текст', b.btn_text, 'placeholder="без кнопки"')}${hf('btn_url', 'Кнопка — куда ведёт', b.btn_url, 'placeholder="#/help или https://…"')}</div>`;
   if(ty==='banners') x = hs('format', 'Формат', b.format || '3', BN_FMT.map(([v,n,sz])=>[v, n + ' — картинка ' + sz])) +
     `<p class="muted" style="margin-top:-6px">Картинка обрезается под формат по краям — важное держите ближе к центру. На телефоне баннеры встают по одному-два в ряд.</p>
-    ${(b.items||[]).map((it,i)=>`<div class="panel hitem"><div class="bar" style="justify-content:space-between;margin:0 0 8px"><b>Баннер ${i+1}</b><span>
+    ${(b.items||[]).map((it,i)=>`<div class="panel hitem"><div class="bar" style="justify-content:space-between;margin:0 0 8px"><b>Баннер ${i+1}</b>
+        <span class="muted bst" data-bst="${esc(it.bid||'')}">показы и клики…</span><span>
         <button class="btn" type="button" data-iup="${i}"${i?'':' disabled'}>↑</button><button class="btn bad" type="button" data-idel="${i}">Удалить</button></span></div>
       ${hImg('items.' + i + '.img', it.img)}
       <div class="grid2" style="margin-top:10px">${hf('items.'+i+'.url', 'Куда ведёт', it.url, 'placeholder="https://… или #/раздел"')}${hf('items.'+i+'.name', 'Подпись для поиска и незрячих', it.name)}
@@ -1212,7 +1245,8 @@ function drawHomeEd(){
     + '<button class="btn" type="button" id="h-iadd">+ Добавить вопрос</button>';
   E.innerHTML = `<div class="panel"><div class="bar" style="justify-content:space-between"><h2 style="margin:0">${esc(HB_NAME[ty])}</h2><button class="btn" id="h-close">Закрыть</button></div>
     ${ttl}${sub}${x}${ty==='hero' ? '' : `<div class="grid2">${ty==='band' ? '' : bg}${pad}</div>`}</div>`;
-  const setK = (k, v) => { const p = k.split('.'); let o = b; for(let i = 0; i < p.length - 1; i++) o = o[p[i]];
+  const setK = (k, v) => { const p = k.split('.'); let o = b;
+    for(let i = 0; i < p.length - 1; i++){ if(o[p[i]] == null) o[p[i]] = /^\d+$/.test(p[i+1]) ? [] : {}; o = o[p[i]]; }
     const last = p[p.length - 1];
     if(last === 'art') v = v === '0' ? false : undefined;
     if(last === 'ad') v = v === '0' ? false : undefined;
@@ -1222,17 +1256,35 @@ function drawHomeEd(){
     setK(el.dataset.k, el.tagName==='SELECT' ? el.value : el.value.trim() === '' ? '' : el.value);
     if(el.tagName==='SELECT'){ const keep = E.scrollTop; drawHome(); } }));
   E.querySelectorAll('[data-img]').forEach(inp=>inp.onchange = async () => { const f = inp.files[0]; if(!f) return;
-    try{ setK(inp.dataset.img, await hUpload(f)); drawHome(); toast('Картинка загружена'); }catch(err){ toast(err.message, true); } });
+    try{ setK(inp.dataset.img, await hUpload(f, !!inp.dataset.png)); drawHome(); toast('Картинка загружена'); }catch(err){ toast(err.message, true); } });
   E.querySelectorAll('[data-noimg]').forEach(x=>x.onclick = () => { setK(x.dataset.noimg, ''); drawHome(); });
   E.querySelectorAll('[data-idel]').forEach(x=>x.onclick = () => { b.items.splice(+x.dataset.idel, 1); drawHome(); });
   E.querySelectorAll('[data-iup]').forEach(x=>x.onclick = () => { const i = +x.dataset.iup; [b.items[i-1], b.items[i]] = [b.items[i], b.items[i-1]]; drawHome(); });
-  const add = $('#h-iadd'); if(add) add.onclick = () => { (b.items = b.items || []).push(ty==='faq' ? { q:'', a:'' } : {}); drawHome(); };
+  const add = $('#h-iadd'); if(add) add.onclick = () => { (b.items = b.items || []).push(ty==='faq' ? { q:'', a:'' } : { bid:newBid() }); drawHome(); };
   $('#h-close').onclick = () => { HSEL = -1; drawHome(); };
+  // показы и клики баннеров: всего и за 30 дней
+  const bids = [...E.querySelectorAll('[data-bst]')].map(x=>x.dataset.bst).filter(Boolean);
+  if(bids.length) api(`banner_stats?bid=${inq(bids)}&select=bid,day,views,clicks`).then(rows=>{
+    const since = new Date(Date.now() - 30*86400000).toISOString().slice(0,10);
+    E.querySelectorAll('[data-bst]').forEach(x=>{ const r = rows.filter(s=>s.bid === x.dataset.bst), r30 = r.filter(s=>s.day >= since);
+      const sum = (a, k) => a.reduce((n, s)=>n + s[k], 0), v = sum(r, 'views'), c = sum(r, 'clicks');
+      x.textContent = `показов ${v} (за 30 дней ${sum(r30,'views')}) · кликов ${c} (за 30 дней ${sum(r30,'clicks')})${v ? ' · CTR ' + (c / v * 100).toFixed(1) + '%' : ''}`; });
+  }).catch(()=>{ E.querySelectorAll('[data-bst]').forEach(x=>x.textContent = ''); });
+}
+// значки и логотип: квадрат до size px, PNG — прозрачный фон сохраняется
+function shrinkPng(file, size){
+  return new Promise((res, rej)=>{
+    const img = new Image();
+    img.onload = () => { const k = Math.min(1, size/Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src); res(c.toDataURL('image/png')); };
+    img.onerror = () => rej(new Error('Не удалось прочитать картинку'));
+    img.src = URL.createObjectURL(file);
+  });
 }
 // предпросмотр: живая главная сайта в окне, с черновиком (картинки — данными, ещё не опубликованы)
 function homePreview(){
-  const d = JSON.parse(JSON.stringify(HOME));
-  d.blocks.forEach(b=>{ if(b.img) b.img = HMEDIA[b.img] || ''; (b.items||[]).forEach(x=>{ if(x.img) x.img = HMEDIA[x.img] || ''; }); });
+  const d = homeWithData(HOME);
   let ov = $('#h-pv');
   if(!ov){ ov = document.createElement('div'); ov.id = 'h-pv'; document.body.appendChild(ov); }
   ov.innerHTML = `<div class="pvbar"><b>Предпросмотр главной</b><span><button class="btn" data-w="">Компьютер</button><button class="btn" data-w="390">Телефон</button>

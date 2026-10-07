@@ -319,19 +319,30 @@ if CFG['home'].is_a?(Hash)
     FileUtils.mkdir_p(File.join(OUT, 'media'))
     ADM['media'].each do |m|
       next unless m['id'].to_s =~ /\A[\w-]{1,40}\z/
-      file = "media/#{m['id']}-#{Digest::MD5.hexdigest(m['data'].to_s)[0, 8]}.jpg"
+      ext = m['data'].to_s.start_with?('data:image/png') ? 'png' : 'jpg'   # значки и логотип — PNG с прозрачным фоном
+      file = "media/#{m['id']}-#{Digest::MD5.hexdigest(m['data'].to_s)[0, 8]}.#{ext}"
       File.binwrite(File.join(OUT, file), Base64.decode64(m['data'].to_s.sub(/\Adata:[^,]*,/, '')))
       media[m['id']] = file
     end
   end
   link = ->(u) { u.to_s.strip =~ %r{\A(https?://|#/)}i ? u.to_s.strip : nil }
   home = JSON.parse(JSON.generate(CFG['home']))
-  (home['blocks'] || []).each do |b|
-    next unless b.is_a?(Hash)
-    b['img'] = media[b['img']] if b.key?('img')
-    b['btn_url'] = link.(b['btn_url']) if b.key?('btn_url')
-    (b['items'] || []).each { |x| next unless x.is_a?(Hash); x['img'] = media[x['img']] if x.key?('img'); x['url'] = link.(x['url']) if x.key?('url') }
+  # картинки: ключи img и logo, наборы imgs (значки разделов и пунктов) — номер картинки → путь к файлу; ссылки — url, btn_url
+  fix = lambda do |o|
+    case o
+    when Array then o.each { |x| fix.(x) }
+    when Hash
+      o.each_key do |k|
+        if %w[img logo].include?(k) then o[k] = media[o[k]]
+        elsif k == 'imgs' && o[k].is_a?(Hash) then o[k] = o[k].transform_values { |v| media[v] }.compact
+        elsif k == 'imgs' && o[k].is_a?(Array) then o[k] = o[k].map { |v| media[v] }
+        elsif %w[url btn_url].include?(k) then o[k] = link.(o[k])
+        else fix.(o[k])
+        end
+      end
+    end
   end
+  fix.(home)
   pub['home'] = home
 end
 # новости из админки (без базы — сайт берёт статьи из своего кода). Фото, загруженное в админке, — файлом news/<…>.jpg
