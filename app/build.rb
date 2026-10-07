@@ -75,7 +75,8 @@ ADM = if Sb.on?
         begin
           { 'cfg' => Sb.settings, 'ov' => Sb.all('overrides').map { |o| [o['key'], o] }.to_h,
             'rules' => Sb.all('dup_rules'), 'photos' => Sb.all('lot_photos', 'key,updated_at'), 'sales' => Sb.all('sales'),
-            'news' => Sb.get('news?select=*&published=is.true&order=date.desc,updated_at.desc&limit=500') }
+            'news' => Sb.get('news?select=*&published=is.true&order=date.desc,updated_at.desc&limit=500'),
+            'media' => Sb.get('site_media?select=id,data&limit=500') }
         rescue StandardError => e
           abort "база админки не ответила — сайт не пересобираю, остаётся прежняя версия: #{e.message}"
         end
@@ -310,6 +311,29 @@ end
 pub = { 'texts' => CFG['texts'] || {}, 'calc' => CFG['calc'] || {}, 'sec_off' => sec_off,
         'bav' => Bav.load.slice('v', 'from', 'src', 'url') }   # действующая БАВ — для расчёта аренды
 pub['sb'] = { 'url' => ENV['SB_URL'], 'key' => ENV['SB_KEY'] } if Sb.on?
+# главная из блоков (админка → «Главная страница»): картинки блоков — файлами media/<id>-<отпечаток>.jpg, в настройках —
+# пути к ним; ссылки — только http(s) и разделы сайта (#/…). Без настроек сайт собирает главную как раньше.
+if CFG['home'].is_a?(Hash)
+  media = {}
+  if ADM['media']
+    FileUtils.mkdir_p(File.join(OUT, 'media'))
+    ADM['media'].each do |m|
+      next unless m['id'].to_s =~ /\A[\w-]{1,40}\z/
+      file = "media/#{m['id']}-#{Digest::MD5.hexdigest(m['data'].to_s)[0, 8]}.jpg"
+      File.binwrite(File.join(OUT, file), Base64.decode64(m['data'].to_s.sub(/\Adata:[^,]*,/, '')))
+      media[m['id']] = file
+    end
+  end
+  link = ->(u) { u.to_s.strip =~ %r{\A(https?://|#/)}i ? u.to_s.strip : nil }
+  home = JSON.parse(JSON.generate(CFG['home']))
+  (home['blocks'] || []).each do |b|
+    next unless b.is_a?(Hash)
+    b['img'] = media[b['img']] if b.key?('img')
+    b['btn_url'] = link.(b['btn_url']) if b.key?('btn_url')
+    (b['items'] || []).each { |x| next unless x.is_a?(Hash); x['img'] = media[x['img']] if x.key?('img'); x['url'] = link.(x['url']) if x.key?('url') }
+  end
+  pub['home'] = home
+end
 # новости из админки (без базы — сайт берёт статьи из своего кода). Фото, загруженное в админке, — файлом news/<…>.jpg
 # (в имени — отпечаток фото: новое фото не застрянет в кеше браузера); фото по умолчанию — путь к файлу сайта (img/news/…)
 if ADM['news']
@@ -335,6 +359,7 @@ tpl = File.read(File.join(__dir__, 'site.tpl.html'), encoding: 'UTF-8')
 html = tpl.sub('__DATA__') { JSON.generate(active.map(&slim)) }
           .sub('__SNAP__', now.to_s).sub('__ARCHN__') { JSON.generate(archn) }
           .sub('__CFG__') { JSON.generate(pub) }
+          .sub('__THEME__') { JSON.generate((pub['home'] || {})['theme'] || {}) }   # общий стиль — до отрисовки, без мигания
 File.write(File.join(OUT, 'index.html'), html)
 File.write(File.join(OUT, 'arch.js'), "__arch(#{JSON.generate(arch1.map(&slim))});")
 # поиск по описанию: то, чего нет в карточке, — номера объекта, адрес, марка и модель, начало описания

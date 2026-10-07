@@ -250,7 +250,7 @@ begin
     'by_platform', (select json_object_agg(platform, n) from (select platform, count(*) n from lots where status = 'active' and published group by 1) x),
     'merged_by_platform', (select json_object_agg(platform, n) from (select platform, count(*) n from lots where status = 'active' and dup_of is not null group by 1) x),
     'changed_at', (select max(t) from (select max(updated_at) t from overrides union all select max(updated_at) from settings where k not in ('publish_req', 'bot', 'hours', 'min_price', 'cab_stats', 'monitor', 'alert_chat')
-                     union all select max(created_at) from dup_rules union all select max(updated_at) from lot_photos union all select max(updated_at) from news) x),
+                     union all select max(created_at) from dup_rules union all select max(updated_at) from lot_photos union all select max(updated_at) from news union all select max(updated_at) from site_media) x),
     'last_build', (select max(at) from runs),
     'github', exists (select 1 from vault.secrets where name = 'github_token')
   ) into r;
@@ -750,4 +750,16 @@ begin
           left(trim(p_msg), 2000), nullif(left(trim(coalesce(p_contact, '')), 200), ''), cur_user());
 end $$;
 grant execute on function report_lot(text, text, text, text, text, text) to anon, authenticated;
+
+
+-- ── конструктор главной (07.10.2026): картинки блоков ──
+create table if not exists site_media (
+  id text primary key,
+  data text not null,
+  name text,
+  updated_at timestamptz not null default now()
+);
+alter table site_media enable row level security;
+drop policy if exists admin_all on site_media;
+create policy admin_all on site_media for all using ((select is_admin())) with check ((select is_admin()));
 

@@ -6,6 +6,41 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'">
 <title>МониТорг — торги Беларуси</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Onest:wght@600;700;800&family=PT+Mono&display=swap">
+<script>
+/* Общий стиль из админки («Главная страница» → «Общий стиль»): фирменный цвет, скругление углов, шрифт заголовков.
+   Стоит до основных стилей, поэтому селекторы сильнее (html:root) — иначе основные перекрыли бы. Тот же код — в предпросмотре админки */
+window.THEME = __THEME__;
+const HEAD_FONTS = { 'Onest':'Onest', 'Golos Text':'Golos+Text', 'Manrope':'Manrope', 'Montserrat':'Montserrat', 'Unbounded':'Unbounded', 'PT Serif':'PT+Serif' };
+function themeCss(t){
+  t = t || {}; let css = '';
+  const c = /^#[0-9a-f]{6}$/i.test(t.color || '') ? t.color.toLowerCase() : '';
+  if(c && c !== '#f4511e'){
+    const rgb = h => [1,3,5].map(i=>parseInt(h.substr(i,2), 16));
+    const mix = (a, b, k) => '#' + rgb(a).map((v,i)=>Math.round(v*(1-k) + rgb(b)[i]*k).toString(16).padStart(2,'0')).join('');   // k — доля второго цвета
+    const L = `--brand:${c};--accent:${c};--sky:${c};--brand-d:${mix(c,'#000000',.2)};--brand-l:${mix(c,'#ffffff',.92)};--accent-l:${mix(c,'#ffffff',.9)};`
+      + `--accent-h:${mix(c,'#ffffff',.15)};--hero:linear-gradient(180deg,${mix(c,'#ffffff',.95)} 0%,${mix(c,'#ffffff',.86)} 100%)`;
+    const D = `--brand:${c};--accent:${c};--sky:${mix(c,'#ffffff',.35)};--brand-d:${mix(c,'#ffffff',.35)};--brand-l:${mix(c,'#141416',.85)};`
+      + `--accent-l:${mix(c,'#141416',.83)};--accent-h:${mix(c,'#ffffff',.15)};--hero:linear-gradient(180deg,${mix(c,'#141416',.88)} 0%,#141416 100%)`;
+    css += `html:root{${L}}@media (prefers-color-scheme:dark){html:root:not([data-theme="light"]){${D}}}html:root[data-theme="dark"]{${D}}`;
+  }
+  const R = { sharp:['4px','4px'], round:['24px','999px'] }[t.radius];
+  if(R) css += `html .lot,html .ncard,html .panel,html .stile,html .adv .it,html .how>div,html .helpband,html .mkt,html .land-search,html .hbn>a,html .hbn>div,html .htx img,html .faq details{border-radius:${R[0]}}`
+    + `html .btn,html .land-search button{border-radius:${R[1]}}`;
+  if(HEAD_FONTS[t.font] && t.font !== 'Onest') css += `html:root{--head:"${t.font}","Onest","Inter",system-ui,sans-serif}`;
+  return css;
+}
+function applyTheme(t){
+  let s = document.getElementById('theme-x');
+  if(!s){ s = document.createElement('style'); s.id = 'theme-x'; document.head.appendChild(s); }
+  s.textContent = themeCss(t);
+  const f = (t || {}).font; let l = document.getElementById('theme-f');
+  if(HEAD_FONTS[f] && f !== 'Onest'){
+    if(!l){ l = document.createElement('link'); l.id = 'theme-f'; l.rel = 'stylesheet'; document.head.appendChild(l); }
+    l.href = 'https://fonts.googleapis.com/css2?family=' + HEAD_FONTS[f] + ':wght@600;700;800&display=swap';
+  } else if(l) l.remove();
+}
+applyTheme(window.THEME);
+</script>
 <style>
   :root{
     --brand:#f4511e; --brand-d:#c73a12; --brand-l:#fff1ea;
@@ -144,6 +179,68 @@
   .lede{color:var(--ink-2);margin:0 0 20px;max-width:70ch}
   .panel{background:var(--card);border:1px solid var(--hair);border-radius:12px;box-shadow:var(--sh)}
   .sec{margin-top:34px}
+  /* ── главная из блоков (конструктор в админке) ── */
+  .hb{padding:17px 0}
+  .land + .hb{padding-top:34px}
+  .hb.pad-compact{padding:6px 0}
+  .hb.pad-wide{padding:34px 0}
+  .hb[class*=" bg-"]{padding:34px 0;margin:17px 0}
+  .hb .helpband{margin-top:0}
+  .hb.bg-soft{background:var(--brand-l)}
+  .hb.bg-dark{background:var(--navy);color:#fff}
+  .hb.bg-brand{background:var(--brand);color:#fff}
+  .hb.bg-dark h2,.hb.bg-brand h2{color:#fff}
+  .hb.bg-dark .sec-sub,.hb.bg-dark .lede,.hb.bg-dark .htx p,.hb.bg-brand .sec-sub,.hb.bg-brand .lede,.hb.bg-brand .htx p{color:rgba(255,255,255,.82)}
+  .hb.bg-dark .sec-h>a:not(.btn),.hb.bg-dark>.wrap>p a{color:#ffab91}
+  .hb.bg-brand .sec-h>a:not(.btn),.hb.bg-brand>.wrap>p a{color:#fff;text-decoration:underline}
+  .hb.bg-brand .htx .btn.pri{background:#fff;border-color:#fff;color:var(--brand-d)}
+  @media (min-width:901px){
+    .hb.c2 .stiles,.hb.c2 .adv,.hb.c2 .how{grid-template-columns:repeat(2,1fr)}
+    .hb.c3 .how{grid-template-columns:repeat(3,1fr)}
+    .hb.c4 .stiles,.hb.c4 .adv{grid-template-columns:repeat(4,1fr)}
+  }
+  .helpband.st-brand{background:var(--brand)}
+  .helpband.st-brand .btn.pri{background:#fff;border-color:#fff;color:var(--brand-d)}
+  .helpband.st-brand p{color:rgba(255,255,255,.88)}
+  .helpband.st-soft{background:var(--brand-l);color:var(--ink)}
+  .helpband.st-soft h2{color:var(--ink)}
+  .helpband.st-soft p{color:var(--ink-2)}
+  /* текст с картинкой */
+  .htx{display:flex;gap:28px;align-items:center}
+  .htx img{width:46%;max-width:540px;aspect-ratio:4/3;object-fit:cover;border-radius:16px;flex:none;display:block}
+  .htx.side-right img{order:2}
+  .htx.side-top{flex-direction:column;align-items:stretch}
+  .htx.side-top img{width:100%;max-width:none;aspect-ratio:16/6}
+  .htx-t{flex:1;min-width:0}
+  .htx-t h2{margin:0 0 10px}
+  .htx-t p{margin:0 0 12px;color:var(--ink-2);line-height:1.6;max-width:70ch}
+  .htx-t .btn{margin-top:4px}
+  @media (max-width:760px){ .htx{flex-direction:column;align-items:stretch} .htx img{width:100%;max-width:none;order:0 !important} }
+  /* баннеры: форматы под рекламу — полоса, большой, 2/3/4 в ряд */
+  .hbn{display:grid;gap:14px}
+  .hbn.f-wide,.hbn.f-big{grid-template-columns:1fr}
+  .hbn.f-2{grid-template-columns:repeat(2,1fr)}
+  .hbn.f-3{grid-template-columns:repeat(3,1fr)}
+  .hbn.f-4{grid-template-columns:repeat(4,1fr)}
+  .hbn>a,.hbn>div{position:relative;display:block;border-radius:16px;overflow:hidden;background:var(--hair);border:1px solid var(--hair)}
+  .hbn img{display:block;width:100%;object-fit:cover}
+  .hbn.f-wide img{aspect-ratio:6/1}
+  .hbn.f-big img{aspect-ratio:3/1}
+  .hbn.f-2 img{aspect-ratio:2/1}
+  .hbn.f-3 img{aspect-ratio:3/2}
+  .hbn.f-4 img{aspect-ratio:1/1}
+  .hbn .adl{position:absolute;right:8px;top:8px;font-size:11px;line-height:1.4;background:rgba(0,0,0,.55);color:#fff;padding:2px 7px;border-radius:6px}
+  @media (max-width:760px){ .hbn.f-3,.hbn.f-4{grid-template-columns:1fr 1fr} .hbn.f-2{grid-template-columns:1fr} .hbn.f-wide img{aspect-ratio:4/1} }
+  @media (max-width:480px){ .hbn.f-3{grid-template-columns:1fr} }
+  /* вопросы и ответы */
+  .faq{display:flex;flex-direction:column;gap:8px;max-width:860px;margin-top:6px}
+  .faq details{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:0 16px}
+  .faq summary{cursor:pointer;padding:14px 0;font-weight:600;list-style:none;display:flex;justify-content:space-between;gap:12px}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:'+';color:var(--brand);font-size:20px;line-height:1;flex:none}
+  .faq details[open] summary::after{content:'–'}
+  .faq details>div{padding:0 0 12px;color:var(--ink-2)}
+  .faq details p{margin:0 0 8px}
   /* новости: карточки как у лотов — рамка в покое, тень при наведении */
   .news{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   @media (max-width:900px){ .news{grid-template-columns:1fr 1fr} }
@@ -2262,14 +2359,55 @@ function sectionTiles(){
 
 /* ───────── ленты на главной ───────── */
 const isSoon = l => l.req_to*1000 > Date.now() && l.req_to*1000 - Date.now() <= 3*86400000;
-function carousel(title, sub, list, all){
+/* ───────── главная из блоков ─────────
+   Порядок, видимость и настройки блоков, общий стиль — в админке («Главная страница»), CFG.home. Нет настроек — как раньше.
+   Свои блоки: «Текст с картинкой», «Баннеры» (в том числе рекламные: пометка «Реклама», показ по датам), «Вопросы и ответы». */
+const HOME_DEF = ['hero','tiles','how','band','pins','soon','fresh','why','cal','news'].map(t=>({ id:t, type:t }));
+const homeBlocks = () => { const h = CFG.home && Array.isArray(CFG.home.blocks) && CFG.home.blocks.length ? CFG.home.blocks : HOME_DEF;
+  return h.filter(b=>b && b.on !== false); };
+const safeUrl = u => { u = String(u||'').trim(); return /^(https?:\/\/|#\/)/i.test(u) ? u : ''; };
+const extAttr = u => /^https?:/i.test(u) ? ' target="_blank" rel="noopener"' : '';
+const todayKey = () => { const d = new Date(); return d.getFullYear() + '-' + p2(d.getMonth()+1) + '-' + p2(d.getDate()); };
+const paras = t => String(t||'').split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean).map(p=>`<p>${esc(p)}</p>`).join('');
+const head2 = (b, def, link) => `<div class="sec-h"><div><h2>${esc(b.title || def)}</h2>${b.sub ? `<div class="sec-sub">${esc(b.sub)}</div>` : ''}</div>${link || ''}</div>`;
+// лента или сетка лотов: сколько показывать — в настройках блока (до 20)
+function lotsHtml(b, list, def, sub, all){
+  list = list.slice(0, Math.max(1, Math.min(20, +b.count || 20)));
   if(!list.length) return '';
-  return `<div class="sec"><div class="sec-h"><div><h2>${title}</h2><div class="sec-sub">${sub}</div></div>
-      <a class="btn" href="${all}">Посмотреть все</a></div>
-    <div class="car"><button class="car-b prev" type="button" aria-label="Назад">‹</button>
+  const head = `<div class="sec-h"><div><h2>${esc(b.title || def)}</h2><div class="sec-sub">${esc(b.sub || sub)}</div></div><a class="btn" href="${all}">Посмотреть все</a></div>`;
+  return b.view === 'grid' ? head + `<div class="grid">${list.map(lotCard).join('')}</div>`
+    : head + `<div class="car"><button class="car-b prev" type="button" aria-label="Назад">‹</button>
       <div class="car-track">${list.map(lotCard).join('')}</div>
-      <button class="car-b next" type="button" aria-label="Вперёд">›</button></div></div>`;
+      <button class="car-b next" type="button" aria-label="Вперёд">›</button></div>`;
 }
+const HB = {
+  tiles: b => head2(b, 'Что продаётся на торгах', '<a href="#/catalog">Весь каталог →</a>') + sectionTiles(),
+  how: b => head2(b, 'Как это работает') + `<div class="how">${howList().map(([t,d],i)=>`<div><span class="hn">${i+1}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>`,
+  band: b => `<div class="helpband st-${esc(b.style || 'dark')}"><div><h2>${esc(TX('band_title','Первый раз на торгах?'))}</h2>
+      <p>${esc(TX('band_text','Проверим объект до задатка, съездим на осмотр, подскажем разумный предел цены и проведём через аукцион.'))}</p></div>
+      <a class="btn pri big" href="#/help">Оставить заявку</a></div>`,
+  pins: b => lotsHtml(b, DATA.filter(l=>l.pin).sort((a,c)=>a.req_to-c.req_to), 'Рекомендуем', 'Лоты, отобранные специалистами МониТорга', '#/catalog?view=pin'),
+  soon: b => lotsHtml(b, DATA.filter(isSoon).sort((a,c)=>a.req_to-c.req_to), 'Истекающие торги', 'Приём заявок закрывается в ближайшие 3 дня', '#/catalog?view=soon'),
+  fresh: b => lotsHtml(b, DATA.filter(isNew).sort((a,c)=>c.first_seen-a.first_seen), 'Новые лоты', 'Появились на площадках за последние сутки', '#/catalog?view=new'),
+  why: b => head2(b, 'Почему МониТорг') + `<div class="adv">${advList().map(([ic,t,d],i)=>`<div class="it">${b.icons === 'line'
+      ? `<div class="ic">${advIc(ic)}</div>` : `<img class="ic3" src="img/why${i+1}.png" width="64" height="64" alt="" loading="lazy" data-ic="${esc(ic)}" onerror="advFail(this)">`}<h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
+      <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p>`,
+  cal: b => `<div class="sec-h"><h2>${esc(b.title || 'Календарь торгов')}</h2></div>
+      <p class="lede" style="margin:-4px 0 12px">${esc(b.sub || 'Торги всех площадок по датам. Нажмите на день — откроется список лотов.')}</p><div class="cal" id="cal"></div>`,
+  news: b => { const n = newsList().slice(0, +b.count || 3); return n.length ? head2(b, 'Новости', '<a href="#/news">Все новости →</a>') + `<div class="news">${n.map(newsCard).join('')}</div>` : ''; },
+  text: b => { const img = b.img ? `<img src="${esc(b.img)}" alt="" loading="lazy">` : '', u = safeUrl(b.btn_url);
+    if(!b.title && !b.text && !img) return '';
+    return `<div class="htx${img ? ' side-' + esc(b.side || 'right') : ''}">${img}<div class="htx-t">${b.title ? `<h2>${esc(b.title)}</h2>` : ''}${paras(b.text)}
+      ${u && b.btn_text ? `<a class="btn pri" href="${esc(u)}"${extAttr(u)}>${esc(b.btn_text)}</a>` : ''}</div></div>`; },
+  banners: b => { const t = todayKey(), f = ['wide','big','2','3','4'].includes(b.format) ? b.format : '3';
+    const it = (b.items||[]).filter(x=>x && x.img && (!x.from || x.from <= t) && (!x.to || x.to >= t));
+    if(!it.length) return '';
+    return (b.title ? `<div class="sec-h"><h2>${esc(b.title)}</h2></div>` : '') + `<div class="hbn f-${f}">${it.map(x=>{ const u = safeUrl(x.url);
+      const inner = `<img src="${esc(x.img)}" alt="${esc(x.name || '')}" loading="lazy">${x.ad !== false ? `<span class="adl">Реклама${x.adv ? ' · ' + esc(x.adv) : ''}</span>` : ''}`;
+      return u ? `<a href="${esc(u)}"${/^https?:/i.test(u) ? ' target="_blank" rel="sponsored noopener"' : ''}>${inner}</a>` : `<div>${inner}</div>`; }).join('')}</div>`; },
+  faq: b => { const it = (b.items||[]).filter(x=>x && x.q); return it.length ? `<h2>${esc(b.title || 'Вопросы и ответы')}</h2>
+    <div class="faq">${it.map(x=>`<details><summary>${esc(x.q)}</summary><div>${paras(x.a)}</div></details>`).join('')}</div>` : ''; }
+};
 function bindCarousels(){
   document.querySelectorAll('.car').forEach(c=>{
     const t = c.querySelector('.car-track'), p = c.querySelector('.prev'), n = c.querySelector('.next');
@@ -2288,16 +2426,10 @@ function bindCarousels(){
   });
 }
 
-function pageHome(){
-  document.title = 'МониТорг — торги по имуществу должников Беларуси';
-  // ленты: по 20 лотов — истекающие по сроку заявок, новые по времени появления (раздел не важен — решение Артёма 05.10)
-  const pins = DATA.filter(l=>l.pin).sort((a,b)=>a.req_to-b.req_to);
-  const soon = DATA.filter(isSoon).sort((a,b)=>a.req_to-b.req_to).slice(0,20);
-  const fresh = DATA.filter(isNew).sort((a,b)=>b.first_seen-a.first_seen).slice(0,20);
+function heroHtml(b){
   const plats = new Set(DATA.flatMap(l=>[l.platform, ...(l.alt||[]).map(a=>a.platform)])).size;   // склеенные площадки тоже в счёт
-  $('#app').innerHTML = `
-  <section class="land">
-    ${heroArt()}
+  return `<section class="land">
+    ${b.art === false ? '' : heroArt()}
     <div class="wrap land-in">
       <h1>${esc(TX('hero_title','Агрегатор торгов по имуществу со всех площадок Беларуси'))}</h1>
       <p>${esc(TX('hero_text','Недвижимость, автомобили, техника и право аренды в одном месте.'))}</p>
@@ -2308,38 +2440,22 @@ function pageHome(){
       </div>
       <div class="land-live"><b>${nf(DATA.length)}</b> ${plural(DATA.length,'активный лот','активных лота','активных лотов')} с <b>${plats}</b> ${plural(plats,'площадки','площадок','площадок')} · обновлено ${updLabel(SNAP)}</div>
     </div>
-  </section>
-  <div class="wrap">
-    <div class="sec"><div class="sec-h"><h2>Что продаётся на торгах</h2><a href="#/catalog">Весь каталог →</a></div>
-      ${sectionTiles()}</div>
-
-    <div class="sec"><h2>Как это работает</h2>
-      <div class="how">${howList().map(([t,d],i)=>`<div><span class="hn">${i+1}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}
-      </div></div>
-
-    <div class="helpband">
-      <div><h2>${esc(TX('band_title','Первый раз на торгах?'))}</h2>
-        <p>${esc(TX('band_text','Проверим объект до задатка, съездим на осмотр, подскажем разумный предел цены и проведём через аукцион.'))}</p></div>
-      <a class="btn pri big" href="#/help">Оставить заявку</a>
-    </div>
-
-    ${carousel('Рекомендуем', 'Лоты, отобранные специалистами МониТорга', pins, '#/catalog?view=pin')}
-    ${carousel('Истекающие торги', 'Приём заявок закрывается в ближайшие 3 дня', soon, '#/catalog?view=soon')}
-    ${carousel('Новые лоты', 'Появились на площадках за последние сутки', fresh, '#/catalog?view=new')}
-
-    <div class="sec"><h2>Почему МониТорг</h2>
-      <div class="adv">${advList().map(([ic,t,d],i)=>`<div class="it"><img class="ic3" src="img/why${i+1}.png" width="64" height="64" alt="" loading="lazy" data-ic="${esc(ic)}" onerror="advFail(this)"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
-      <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p></div>
-
-    <div class="sec" id="cal-sec"><div class="sec-h"><h2>Календарь торгов</h2></div>
-      <p class="lede" style="margin:-4px 0 12px">Торги всех площадок по датам. Нажмите на день — откроется список лотов.</p>
-      <div class="cal" id="cal"></div></div>
-
-    <div class="sec"><div class="sec-h"><h2>Новости</h2><a href="#/news">Все новости →</a></div>
-      <div class="news">${newsList().slice(0,3).map(newsCard).join('')}</div></div>
-  </div>`;
-  attachSuggest($('#ls-q'), $('#ls-sugg'));
+  </section>`;
+}
+function homeHtml(b){
+  if(b.type === 'hero') return heroHtml(b);
+  const f = HB[b.type]; if(!f) return '';
+  let inner = ''; try{ inner = f(b); }catch(e){ return ''; }   // сломанный блок не роняет всю главную
+  if(!inner) return '';
+  const cls = ['hb', 'hb-' + b.type, b.bg ? 'bg-' + b.bg : '', b.pad ? 'pad-' + b.pad : '', b.cols ? 'c' + b.cols : ''].filter(Boolean).join(' ');
+  return `<section class="${esc(cls)}"${b.type === 'cal' ? ' id="cal-sec"' : ''}><div class="wrap">${inner}</div></section>`;
+}
+function pageHome(){
+  document.title = 'МониТорг — торги по имуществу должников Беларуси';
+  $('#app').innerHTML = homeBlocks().map(homeHtml).join('');
+  if($('#ls-q')) attachSuggest($('#ls-q'), $('#ls-sugg'));
   bindCarousels();
+  if(!$('#cal')) return;
   drawCal();
   // прошедшие и уже закрывшие приём заявок торги — в свежем архиве (arch.js, ≈ 2 МБ): грузим, когда календарь близко к экрану
   if(!ARCH1 && 'IntersectionObserver' in window){
@@ -2347,6 +2463,9 @@ function pageHome(){
     io.observe($('#cal'));
   } else if(!ARCH1) loadArch1().then(()=>{ if($('#cal')) drawCal(); });
 }
+// предпросмотр из админки: сайт открыт в окне админки, та передаёт черновик главной (картинки — данными, ещё не опубликованы)
+window.previewHome = home => { CFG.home = home; applyTheme(home.theme); $('#ck').hidden = true;
+  if((location.hash || '#/') === '#/') pageHome(); else location.hash = '#/'; };
 
 /* ───────── календарь торгов (главная, внизу) ─────────
    Дата торгов лота (torgAt: у площадок без даты торгов — следующий день после заявок, «ориентировочно») → день месяца.

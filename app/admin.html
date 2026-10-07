@@ -133,6 +133,32 @@
   .ctab td input,.ctab td textarea{width:100%}
   .ctab td{min-width:90px}
   .saverow{display:flex;gap:10px;align-items:center;margin-top:8px}
+  /* конструктор главной */
+  .hgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+  @media (max-width:1100px){ .hgrid{grid-template-columns:1fr} }
+  .hbr{display:flex;align-items:center;gap:8px;padding:7px 8px;border:1px solid transparent;border-radius:9px;background:var(--card)}
+  .hbr + .hbr{margin-top:4px}
+  .hbr:hover{border-color:var(--hair)}
+  .hbr.on{border-color:var(--accent);background:var(--accent-l)}
+  .hbr.off .hbn-t{opacity:.45}
+  .hbr.over{border-color:var(--accent);border-style:dashed}
+  .hbr.drag{opacity:.4}
+  .hbr .hdl{cursor:grab;color:var(--ink-3);letter-spacing:-2px;user-select:none}
+  .hbr .hbn-t{flex:1;min-width:0;display:flex;flex-direction:column}
+  .hbr .hbn-t small{color:var(--ink-3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hbr .btn{padding:4px 9px;font-size:12.5px}
+  .swl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .swl .sw{width:28px;height:28px;border-radius:50%;border:2px solid var(--card);box-shadow:0 0 0 1px var(--hair-2);cursor:pointer;padding:0}
+  .swl .sw.on{box-shadow:0 0 0 2px var(--ink)}
+  .swl input[type=color]{width:36px;height:30px;border:1px solid var(--hair-2);border-radius:8px;padding:2px;background:var(--card)}
+  .himg{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+  .himg img{width:180px;max-height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--hair)}
+  .hitem{padding:12px;margin-bottom:10px;background:var(--bg)}
+  #h-pv{position:fixed;inset:0;z-index:300;background:rgba(10,15,22,.6);display:flex;flex-direction:column}
+  #h-pv .pvbar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;background:var(--card)}
+  #h-pv .pvbar span{display:flex;gap:8px}
+  #h-pv .pvwrap{flex:1;overflow:auto;display:flex;justify-content:center;padding:12px}
+  #h-pv iframe{width:100%;height:100%;border:0;border-radius:10px;background:#fff;transition:width .2s}
 
   /* карточка лота (шторка) */
   .drawer{position:fixed;inset:0;background:rgba(15,25,40,.45);z-index:50;display:flex;justify-content:flex-end}
@@ -292,7 +318,7 @@ async function refreshStats(){
 
 const PAGES = [
   ['dash','Сводка'], ['stats','Аналитика'], ['queue','Проверка'], ['lots','Лоты'], ['dups','Дубли'], ['market','Ориентиры'], ['leads','Заявки'], ['lotrep','Ошибки в лотах'], ['users','Пользователи'],
-  ['sources','Площадки и разделы'], ['calc','Калькулятор'], ['bot','Telegram-бот'], ['services','Услуги'], ['news','Новости'], ['texts','Тексты сайта'], ['access','Доступ']
+  ['sources','Площадки и разделы'], ['calc','Калькулятор'], ['bot','Telegram-бот'], ['home','Главная страница'], ['services','Услуги'], ['news','Новости'], ['texts','Тексты сайта'], ['access','Доступ']
 ];
 function drawNav(){
   const cur = (location.hash.slice(1).split('?')[0]) || 'dash';
@@ -412,7 +438,7 @@ async function route(){
   const params = new URLSearchParams(qs||'');
   drawNav(); RELOAD = () => {};
   V().innerHTML = '<p class="muted">Загрузка…</p>';
-  const fn = { dash:pDash, stats:pStats, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, lotrep:pLotRep, users:pUsers, sources:pSources, calc:pCalc, bot:pBot, services:pServices, news:pNews, texts:pTexts, access:pAccess }[page] || pDash;
+  const fn = { dash:pDash, stats:pStats, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, lotrep:pLotRep, users:pUsers, sources:pSources, calc:pCalc, bot:pBot, home:pHome, services:pServices, news:pNews, texts:pTexts, access:pAccess }[page] || pDash;
   try{ await fn(params); }catch(err){ V().innerHTML = `<div class="empty">Не получилось загрузить: ${esc(err.message)}</div>`; }
 }
 addEventListener('hashchange', route);
@@ -1044,6 +1070,177 @@ async function pLotRep(params){
   V().querySelectorAll('[data-done]').forEach(b=>b.onclick = async ()=>{
     try{ await api(`lot_reports?id=eq.${b.dataset.done}`, { method:'PATCH', body:{ done:b.dataset.v === '1' }, prefer:'return=minimal' });
       await refreshStats(); pLotRep(params); }catch(err){ toast(err.message, true); } });
+}
+
+/* Главная страница — конструктор из блоков (settings.home): порядок (перетаскиванием или ↑↓), показ, настройки блока,
+   свои блоки (текст с картинкой, баннеры, вопросы), общий стиль, предпросмотр живой главной с черновиком. На сайт — при публикации */
+const HB_NAME = { hero:'Первый экран', tiles:'Что продаётся на торгах', how:'Как это работает', band:'Плашка «Первый раз на торгах?»',
+  pins:'Рекомендуем (лоты с отметкой)', soon:'Истекающие торги', fresh:'Новые лоты', why:'Почему МониТорг', cal:'Календарь торгов', news:'Новости',
+  text:'Текст с картинкой', banners:'Баннеры', faq:'Вопросы и ответы' };
+const HB_BASE = ['hero','tiles','how','band','pins','soon','fresh','why','cal','news'];
+const HB_DEFT = { tiles:'Что продаётся на торгах', how:'Как это работает', pins:'Рекомендуем', soon:'Истекающие торги', fresh:'Новые лоты',
+  why:'Почему МониТорг', cal:'Календарь торгов', news:'Новости', faq:'Вопросы и ответы' };
+const BN_FMT = [['wide','Узкая полоса во всю ширину','1200 × 200'],['big','Один большой во всю ширину','1200 × 400'],['2','Два в ряд','600 × 300'],
+  ['3','Три в ряд','600 × 400'],['4','Четыре в ряд','400 × 400']];
+const TH_COLORS = [['#f4511e','Оранжевый (сейчас)'],['#e53935','Красный'],['#d81b60','Малиновый'],['#8e24aa','Фиолетовый'],['#3949ab','Синий'],
+  ['#1e88e5','Голубой'],['#00897b','Бирюзовый'],['#43a047','Зелёный'],['#f9a825','Жёлтый'],['#27272a','Графит']];
+const TH_FONTS = ['Onest','Golos Text','Manrope','Montserrat','Unbounded','PT Serif'];
+let HOME = null, HSEL = -1, HMEDIA = {};
+const homeDefault = () => ({ blocks:HB_BASE.map(t=>({ id:t, type:t })), theme:{} });
+const homeMediaIds = h => h.blocks.flatMap(b=>[b.img, ...(b.items||[]).map(x=>x.img)]).filter(Boolean);
+async function pHome(){
+  await loadSettings();
+  const cur = SET.home && Array.isArray(SET.home.blocks) && SET.home.blocks.length ? SET.home : homeDefault();
+  HOME = JSON.parse(JSON.stringify(cur)); HOME.theme = HOME.theme || {};
+  HB_BASE.forEach(t=>{ if(!HOME.blocks.some(b=>b.type===t)) HOME.blocks.push({ id:t, type:t, on:false }); });   // блок появился в коде позже
+  HMEDIA = {}; const ids = homeMediaIds(HOME);
+  if(ids.length) (await api(`site_media?id=${inq(ids)}&select=id,data`)).forEach(m=>HMEDIA[m.id] = m.data);
+  HSEL = -1; drawHome();
+}
+const hbSummary = b => {
+  const v = [];
+  if(b.title) v.push('«' + b.title + '»');
+  if(b.type==='banners') v.push(((BN_FMT.find(f=>f[0]===(b.format||'3'))||[])[1]||'').toLowerCase() + ', ' + (b.items||[]).length + ' шт.');
+  if(b.type==='faq') v.push((b.items||[]).length + ' вопр.');
+  if(['pins','soon','fresh'].includes(b.type)) v.push(b.view==='grid' ? 'сетка' : 'лента');
+  if(b.bg) v.push({ soft:'светлый фон', dark:'тёмный фон', brand:'фон фирменного цвета' }[b.bg]);
+  return v.join(' · ');
+};
+function drawHome(){
+  const B = HOME.blocks, t = HOME.theme;
+  V().innerHTML = `<h1>Главная страница</h1>
+    <p class="lede">Порядок блоков — перетаскиванием (или стрелками), галочка — показывать ли. «Настроить» — заголовок, вид, фон.
+      Тексты первого экрана, плашки, «Как это работает» и «Почему МониТорг» — в разделе <a href="#texts">«Тексты сайта»</a>. На сайте — после «Сохранить» и публикации.</p>
+    <div class="saverow" style="margin:0 0 14px"><button class="btn pri" id="h-save">Сохранить</button><button class="btn" id="h-prev">Предпросмотр</button>
+      <select id="h-add"><option value="">+ Добавить блок…</option><option value="text">Текст с картинкой</option><option value="banners">Баннеры (в том числе реклама)</option><option value="faq">Вопросы и ответы</option></select>
+      <button class="btn" id="h-def">Вернуть как было</button></div>
+    <div class="hgrid"><div>
+      <div class="panel" style="padding:8px">${B.map((b,i)=>`<div class="hbr${i===HSEL?' on':''}${b.on===false?' off':''}" draggable="true" data-i="${i}">
+        <span class="hdl" title="Перетащите">⋮⋮</span><input type="checkbox" data-on="${i}"${b.on!==false?' checked':''} title="Показывать на сайте">
+        <span class="hbn-t"><b>${esc(HB_NAME[b.type]||b.type)}</b><small>${esc(hbSummary(b))}</small></span>
+        <button class="btn" data-up="${i}" title="Выше"${i?'':' disabled'}>↑</button><button class="btn" data-dn="${i}" title="Ниже"${i<B.length-1?'':' disabled'}>↓</button>
+        <button class="btn" data-ed="${i}">Настроить</button>${HB_BASE.includes(b.type) ? '' : `<button class="btn bad" data-del="${i}" title="Удалить блок">✕</button>`}</div>`).join('')}</div>
+      <div class="panel"><h2>Общий стиль сайта</h2>
+        <div class="fld"><span>Фирменный цвет — кнопки, цены, акценты на всём сайте</span><div class="swl">${TH_COLORS.map(([c,n])=>`<button class="sw${(t.color||'#f4511e')===c?' on':''}" data-c="${c}" title="${n}" style="background:${c}"></button>`).join('')}
+          <input type="color" id="h-col" value="${esc(t.color||'#f4511e')}" title="Свой цвет"></div></div>
+        <div class="grid2"><label class="fld"><span>Углы карточек и кнопок</span><select id="h-rad"><option value="">Средние (сейчас)</option><option value="sharp"${t.radius==='sharp'?' selected':''}>Острые</option><option value="round"${t.radius==='round'?' selected':''}>Круглые</option></select></label>
+          <label class="fld"><span>Шрифт заголовков</span><select id="h-font">${TH_FONTS.map(f=>`<option${(t.font||'Onest')===f?' selected':''}>${f}</option>`).join('')}</select></label></div></div>
+    </div><div id="h-ed">${HSEL >= 0 && B[HSEL] ? '' : '<div class="panel muted">Нажмите «Настроить» у блока — здесь появятся его настройки.</div>'}</div></div>`;
+  if(HSEL >= 0 && B[HSEL]) drawHomeEd();
+  const rows = V().querySelectorAll('.hbr');
+  rows.forEach(r=>{
+    r.ondragstart = e => { e.dataTransfer.setData('text/plain', r.dataset.i); r.classList.add('drag'); };
+    r.ondragend = () => r.classList.remove('drag');
+    r.ondragover = e => { e.preventDefault(); r.classList.add('over'); };
+    r.ondragleave = () => r.classList.remove('over');
+    r.ondrop = e => { e.preventDefault(); const from = +e.dataTransfer.getData('text/plain'), to = +r.dataset.i; hMove(from, to); };
+  });
+  V().querySelectorAll('[data-on]').forEach(c=>c.onchange = () => { B[+c.dataset.on].on = c.checked; drawHome(); });
+  V().querySelectorAll('[data-up]').forEach(x=>x.onclick = () => hMove(+x.dataset.up, +x.dataset.up - 1));
+  V().querySelectorAll('[data-dn]').forEach(x=>x.onclick = () => hMove(+x.dataset.dn, +x.dataset.dn + 1));
+  V().querySelectorAll('[data-ed]').forEach(x=>x.onclick = () => { HSEL = +x.dataset.ed; drawHome(); });
+  V().querySelectorAll('[data-del]').forEach(x=>x.onclick = () => { if(!confirm('Удалить блок «' + (HB_NAME[B[+x.dataset.del].type]) + '»?')) return;
+    B.splice(+x.dataset.del, 1); HSEL = -1; drawHome(); });
+  V().querySelectorAll('.sw').forEach(x=>x.onclick = () => { t.color = x.dataset.c; drawHome(); });
+  $('#h-col').onchange = e => { t.color = e.target.value; drawHome(); };
+  $('#h-rad').onchange = e => { t.radius = e.target.value || undefined; };
+  $('#h-font').onchange = e => { t.font = e.target.value === 'Onest' ? undefined : e.target.value; };
+  $('#h-add').onchange = e => { const ty = e.target.value; if(!ty) return;
+    const b = { id:ty + '-' + Math.random().toString(36).slice(2,8), type:ty };
+    if(ty==='banners'){ b.format = '3'; b.items = []; } if(ty==='faq') b.items = [{ q:'', a:'' }]; if(ty==='text') b.side = 'right';
+    B.splice(Math.max(1, HSEL >= 0 ? HSEL + 1 : B.length), 0, b); HSEL = B.indexOf(b); drawHome(); };
+  $('#h-def').onclick = () => { if(!confirm('Вернуть главную как было: исходный порядок, без своих блоков, стиль по умолчанию? (Сохранится только после «Сохранить»)')) return;
+    HOME = homeDefault(); HSEL = -1; drawHome(); };
+  $('#h-prev').onclick = homePreview;
+  $('#h-save').onclick = async () => {
+    try{
+      await saveSetting('home', HOME);
+      // картинки, которые больше нигде не стоят, — из базы долой
+      const used = new Set(homeMediaIds(HOME)), all = await api('site_media?select=id');
+      const drop = all.map(m=>m.id).filter(id=>!used.has(id));
+      if(drop.length) await api(`site_media?id=${inq(drop)}`, { method:'DELETE' });
+      toast('Сохранено — опубликуйте, чтобы обновить сайт'); refreshStats();
+    }catch(err){ toast(err.message, true); }
+  };
+}
+function hMove(from, to){
+  const B = HOME.blocks; if(to < 0 || to >= B.length || from === to) return;
+  const [b] = B.splice(from, 1); B.splice(to, 0, b);
+  if(HSEL === from) HSEL = to; else if(HSEL >= Math.min(from,to) && HSEL <= Math.max(from,to)) HSEL += from < to ? -1 : 1;
+  drawHome();
+}
+// поле настройки: data-k — ключ блока; изменения сразу в черновик
+const hf = (k, label, v, attrs='', hint='') => `<label class="fld"><span>${label}</span><input data-k="${k}" value="${esc(v ?? '')}" ${attrs}>${hint?`<span class="hint">${hint}</span>`:''}</label>`;
+const hs = (k, label, v, opts) => `<label class="fld"><span>${label}</span><select data-k="${k}">${opts.map(([o,n])=>`<option value="${o}"${String(v ?? '')===o?' selected':''}>${n}</option>`).join('')}</select></label>`;
+const hImg = (key, id) => `<div class="himg">${id && HMEDIA[id] ? `<img src="${HMEDIA[id]}" alt="">` : '<span class="muted">нет картинки</span>'}
+  <input type="file" accept="image/*" data-img="${key}">${id ? `<button class="btn bad" type="button" data-noimg="${key}">Убрать</button>` : ''}</div>`;
+async function hUpload(file){
+  const data = await shrinkPhoto(file), id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  await upsert('site_media', [{ id, data, name:file.name.slice(0,120), updated_at:nowIso() }], 'id');
+  HMEDIA[id] = data; return id;
+}
+function drawHomeEd(){
+  const b = HOME.blocks[HSEL], E = $('#h-ed'), ty = b.type;
+  const bg = hs('bg', 'Фон блока', b.bg, [['','Обычный'],['soft','Светлый оттенок фирменного цвета'],['dark','Тёмный'],['brand','Фирменный цвет']]);
+  const pad = hs('pad', 'Отступы', b.pad, [['','Обычные'],['compact','Компактно'],['wide','Просторно']]);
+  const ttl = HB_DEFT[ty] !== undefined || ['text','banners'].includes(ty) ? hf('title', 'Заголовок блока', b.title, `placeholder="${esc(HB_DEFT[ty] || 'без заголовка')}"`) : '';
+  const sub = ['tiles','how','pins','soon','fresh','why','cal','news'].includes(ty) ? hf('sub', 'Подзаголовок', b.sub, 'placeholder="по умолчанию"') : '';
+  let x = '';
+  if(ty==='hero') x = hs('art', 'Рисунок справа (кварталы)', b.art===false?'0':'', [['','Показывать'],['0','Не показывать']]) + '<p class="muted">Заголовок, текст и кнопки первого экрана — в «Тексты сайта».</p>';
+  if(ty==='tiles') x = hs('cols', 'Плиток в ряд (на компьютере)', b.cols, [['','3'],['2','2'],['4','4']]);
+  if(ty==='how') x = hs('cols', 'Шагов в ряд (на компьютере)', b.cols, [['','4'],['2','2'],['3','3']]) + '<p class="muted">Тексты шагов — в «Тексты сайта».</p>';
+  if(ty==='band') x = hs('style', 'Цвет плашки', b.style, [['','Тёмная (сейчас)'],['brand','Фирменного цвета'],['soft','Светлая']]) + '<p class="muted">Заголовок и текст плашки — в «Тексты сайта».</p>';
+  if(['pins','soon','fresh'].includes(ty)) x = hs('view', 'Вид', b.view, [['','Лента со стрелками'],['grid','Сетка']]) + hf('count', 'Сколько лотов показывать', b.count, 'type="number" min="1" max="20" placeholder="20"');
+  if(ty==='why') x = hs('cols', 'Пунктов в ряд (на компьютере)', b.cols, [['','3'],['2','2'],['4','4']]) + hs('icons', 'Значки', b.icons, [['','Объёмные 3D'],['line','Контурные']]) + '<p class="muted">Тексты пунктов — в «Тексты сайта».</p>';
+  if(ty==='news') x = hs('count', 'Сколько новостей', b.count, [['','3'],['6','6'],['9','9']]);
+  if(ty==='text') x = `<label class="fld"><span>Текст — абзацы через пустую строку</span><textarea data-k="text" rows="6">${esc(b.text||'')}</textarea></label>
+    <div class="fld"><span>Картинка</span>${hImg('img', b.img)}</div>${hs('side', 'Где картинка', b.side, [['right','Справа от текста'],['left','Слева от текста'],['top','Сверху, во всю ширину']])}
+    <div class="grid2">${hf('btn_text', 'Кнопка — текст', b.btn_text, 'placeholder="без кнопки"')}${hf('btn_url', 'Кнопка — куда ведёт', b.btn_url, 'placeholder="#/help или https://…"')}</div>`;
+  if(ty==='banners') x = hs('format', 'Формат', b.format || '3', BN_FMT.map(([v,n,sz])=>[v, n + ' — картинка ' + sz])) +
+    `<p class="muted" style="margin-top:-6px">Картинка обрезается под формат по краям — важное держите ближе к центру. На телефоне баннеры встают по одному-два в ряд.</p>
+    ${(b.items||[]).map((it,i)=>`<div class="panel hitem"><div class="bar" style="justify-content:space-between;margin:0 0 8px"><b>Баннер ${i+1}</b><span>
+        <button class="btn" type="button" data-iup="${i}"${i?'':' disabled'}>↑</button><button class="btn bad" type="button" data-idel="${i}">Удалить</button></span></div>
+      ${hImg('items.' + i + '.img', it.img)}
+      <div class="grid2" style="margin-top:10px">${hf('items.'+i+'.url', 'Куда ведёт', it.url, 'placeholder="https://… или #/раздел"')}${hf('items.'+i+'.name', 'Подпись для поиска и незрячих', it.name)}
+        ${hf('items.'+i+'.adv', 'Рекламодатель', it.adv, 'placeholder="например: ООО «Ромашка»"')}
+        <label class="fld"><span>Пометка «Реклама»</span><select data-k="items.${i}.ad"><option value="">Да</option><option value="0"${it.ad===false?' selected':''}>Нет (свой баннер)</option></select></label>
+        ${hf('items.'+i+'.from', 'Показывать с', it.from, 'type="date"')}${hf('items.'+i+'.to', 'по', it.to, 'type="date"', 'Пусто — без ограничения. По датам удобно продавать размещение.')}</div></div>`).join('')}
+    <button class="btn" type="button" id="h-iadd">+ Добавить баннер</button>`;
+  if(ty==='faq') x = (b.items||[]).map((it,i)=>`<div class="panel hitem">${hf('items.'+i+'.q', 'Вопрос ' + (i+1), it.q)}
+      <label class="fld"><span>Ответ</span><textarea data-k="items.${i}.a" rows="3">${esc(it.a||'')}</textarea></label>
+      <div class="bar" style="margin:0"><button class="btn" type="button" data-iup="${i}"${i?'':' disabled'}>↑</button><button class="btn bad" type="button" data-idel="${i}">Удалить вопрос</button></div></div>`).join('')
+    + '<button class="btn" type="button" id="h-iadd">+ Добавить вопрос</button>';
+  E.innerHTML = `<div class="panel"><div class="bar" style="justify-content:space-between"><h2 style="margin:0">${esc(HB_NAME[ty])}</h2><button class="btn" id="h-close">Закрыть</button></div>
+    ${ttl}${sub}${x}${ty==='hero' ? '' : `<div class="grid2">${ty==='band' ? '' : bg}${pad}</div>`}</div>`;
+  const setK = (k, v) => { const p = k.split('.'); let o = b; for(let i = 0; i < p.length - 1; i++) o = o[p[i]];
+    const last = p[p.length - 1];
+    if(last === 'art') v = v === '0' ? false : undefined;
+    if(last === 'ad') v = v === '0' ? false : undefined;
+    if(last === 'count') v = v ? Math.max(1, Math.min(20, +v)) : undefined;
+    if(v === '' || v === undefined) delete o[last]; else o[last] = v; };
+  E.querySelectorAll('[data-k]').forEach(el=>el.addEventListener(el.tagName==='SELECT' ? 'change' : 'input', () => {
+    setK(el.dataset.k, el.tagName==='SELECT' ? el.value : el.value.trim() === '' ? '' : el.value);
+    if(el.tagName==='SELECT'){ const keep = E.scrollTop; drawHome(); } }));
+  E.querySelectorAll('[data-img]').forEach(inp=>inp.onchange = async () => { const f = inp.files[0]; if(!f) return;
+    try{ setK(inp.dataset.img, await hUpload(f)); drawHome(); toast('Картинка загружена'); }catch(err){ toast(err.message, true); } });
+  E.querySelectorAll('[data-noimg]').forEach(x=>x.onclick = () => { setK(x.dataset.noimg, ''); drawHome(); });
+  E.querySelectorAll('[data-idel]').forEach(x=>x.onclick = () => { b.items.splice(+x.dataset.idel, 1); drawHome(); });
+  E.querySelectorAll('[data-iup]').forEach(x=>x.onclick = () => { const i = +x.dataset.iup; [b.items[i-1], b.items[i]] = [b.items[i], b.items[i-1]]; drawHome(); });
+  const add = $('#h-iadd'); if(add) add.onclick = () => { (b.items = b.items || []).push(ty==='faq' ? { q:'', a:'' } : {}); drawHome(); };
+  $('#h-close').onclick = () => { HSEL = -1; drawHome(); };
+}
+// предпросмотр: живая главная сайта в окне, с черновиком (картинки — данными, ещё не опубликованы)
+function homePreview(){
+  const d = JSON.parse(JSON.stringify(HOME));
+  d.blocks.forEach(b=>{ if(b.img) b.img = HMEDIA[b.img] || ''; (b.items||[]).forEach(x=>{ if(x.img) x.img = HMEDIA[x.img] || ''; }); });
+  let ov = $('#h-pv');
+  if(!ov){ ov = document.createElement('div'); ov.id = 'h-pv'; document.body.appendChild(ov); }
+  ov.innerHTML = `<div class="pvbar"><b>Предпросмотр главной</b><span><button class="btn" data-w="">Компьютер</button><button class="btn" data-w="390">Телефон</button>
+    <button class="btn pri" id="pv-x">Закрыть</button></span></div><div class="pvwrap"><iframe id="pv-f" src="../?preview=${Date.now()}#/"></iframe></div>`;
+  const f = $('#pv-f');
+  f.onload = () => { try{ f.contentWindow.previewHome(d); }catch(e){ toast('Предпросмотр не открылся: ' + e.message, true); } };
+  ov.querySelectorAll('[data-w]').forEach(x=>x.onclick = () => { f.style.width = x.dataset.w ? x.dataset.w + 'px' : '100%'; });
+  $('#pv-x').onclick = () => ov.remove();
 }
 
 /* Доступ */
