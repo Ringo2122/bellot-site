@@ -321,7 +321,7 @@ async function refreshStats(){
 
 const PAGES = [
   ['dash','Сводка'], ['stats','Аналитика'], ['queue','Проверка'], ['lots','Лоты'], ['dups','Дубли'], ['market','Ориентиры'], ['leads','Заявки'], ['lotrep','Ошибки в лотах'], ['users','Пользователи'],
-  ['sources','Площадки и разделы'], ['calc','Калькулятор'], ['bot','Telegram-бот'], ['home','Главная страница'], ['services','Услуги'], ['news','Новости'], ['texts','Тексты сайта'], ['access','Доступ']
+  ['sources','Площадки и разделы'], ['calc','Калькулятор'], ['bot','Telegram-бот'], ['home','Сайт: главная и тексты'], ['services','Услуги'], ['news','Новости'], ['access','Доступ']
 ];
 function drawNav(){
   const cur = (location.hash.slice(1).split('?')[0]) || 'dash';
@@ -441,7 +441,7 @@ async function route(){
   const params = new URLSearchParams(qs||'');
   drawNav(); RELOAD = () => {};
   V().innerHTML = '<p class="muted">Загрузка…</p>';
-  const fn = { dash:pDash, stats:pStats, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, lotrep:pLotRep, users:pUsers, sources:pSources, calc:pCalc, bot:pBot, home:pHome, services:pServices, news:pNews, texts:pTexts, access:pAccess }[page] || pDash;
+  const fn = { dash:pDash, stats:pStats, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, lotrep:pLotRep, users:pUsers, sources:pSources, calc:pCalc, bot:pBot, home:pHome, services:pServices, news:pNews, texts:pHome, access:pAccess }[page] || pDash;
   try{ await fn(params); }catch(err){ V().innerHTML = `<div class="empty">Не получилось загрузить: ${esc(err.message)}</div>`; }
 }
 addEventListener('hashchange', route);
@@ -752,7 +752,8 @@ async function pBot(){
   };
 }
 
-/* Тексты сайта */
+
+/* Тексты сайта по умолчанию (правятся в «Сайт: главная и тексты») */
 const TX_DEF = {
   hero_title:'Агрегатор торгов по имуществу со всех площадок Беларуси',
   hero_text:'Недвижимость, автомобили, техника и право аренды в одном месте.',
@@ -779,45 +780,6 @@ const TX_DEF = {
     ['Сопровождение после победы','Договор, оплата, регистрация права, перерегистрация транспорта, приёмка объекта.'],
     ['Подбор лотов под задачу','Следим за всеми площадками и присылаем варианты под ваш бюджет, регион и цель.']]
 };
-async function pTexts(){
-  await loadSettings();
-  const t = SET.texts||{}, v = k => t[k]!=null && t[k]!=='' ? t[k] : TX_DEF[k];
-  const c = t.contacts||{};
-  const one = (k, label, rows) => `<label class="fld"><span>${label}</span>${rows?`<textarea rows="${rows}" data-k="${k}">${esc(v(k))}</textarea>`:`<input data-k="${k}" value="${esc(v(k))}">`}</label>`;
-  const list = (k, n, price) => { const cur = (t[k]&&t[k].length ? t[k] : TX_DEF[k].map(([a,b])=>({t:a,d:b})));
-    return Array.from({length:n},(_,i)=>{ const x = cur[i]||{}; return `<div class="panel" style="padding:12px;margin-bottom:8px"><div class="grid2">
-      <label class="fld"><span>Заголовок ${i+1}</span><input data-l="${k}" data-i="${i}" data-f="t" value="${esc(x.t||'')}"></label>
-      ${price?`<label class="fld"><span>Цена или срок (необязательно)</span><input data-l="${k}" data-i="${i}" data-f="p" value="${esc(x.p||'')}" placeholder="например: от 150 BYN"></label>`:''}</div>
-      <label class="fld"><span>Текст</span><textarea rows="2" data-l="${k}" data-i="${i}" data-f="d">${esc(x.d||'')}</textarea></label></div>`; }).join(''); };
-  V().innerHTML = `<h1>Тексты сайта</h1><p class="lede">Заголовки и описания на главной, на странице «Помощь в аукционе» и контакты в подвале. На сайте — после публикации.</p>
-    <div class="panel"><h2>Главная — первый экран</h2>${one('hero_title','Заголовок',2)}${one('hero_text','Текст',3)}</div>
-    <div class="panel"><h2>Главная — плашка «Первый раз на торгах?»</h2>${one('band_title','Заголовок')}${one('band_text','Текст',2)}</div>
-    <div class="panel"><h2>Главная — «Как это работает»</h2><p class="muted" style="margin-top:0">Четыре шага. Пустой заголовок — шаг не показывается.</p>${list('how',4)}</div>
-    <div class="panel"><h2>Главная — «Почему МониТорг»</h2><p class="muted" style="margin-top:0">Пустой заголовок — пункт не показывается.</p>${list('adv',6)}</div>
-    <div class="panel"><h2>Помощь в аукционе</h2>${one('help_title','Заголовок')}${one('help_lede','Вступление',3)}<p class="muted">Список услуг — в разделе <a href="#services">«Услуги»</a>.</p></div>
-    <div class="panel"><h2>Плашка о файлах cookie</h2><p class="muted" style="margin-top:0">Показывается внизу сайта, пока посетитель не нажмёт «Понятно». Рядом — ссылка на политику.</p>${one('cookie_text','Текст',3)}</div>
-    <div class="panel"><h2>Политика конфиденциальности</h2><p class="muted" style="margin-top:0">Страница по ссылке в подвале и в плашке cookie. Абзацы — через пустую строку.</p>${one('privacy_text','Текст',14)}</div>
-    <div class="panel"><h2>Контакты в подвале сайта</h2><div class="grid2">
-      <label class="fld"><span>Телефон</span><input data-c="phone" value="${esc(c.phone||'')}" placeholder="+375 29 000-00-00"></label>
-      <label class="fld"><span>Email</span><input data-c="email" value="${esc(c.email||'')}"></label>
-      <label class="fld"><span>Telegram</span><input data-c="telegram" value="${esc(c.telegram||'')}" placeholder="@monitorg"></label>
-      <label class="fld"><span>Адрес</span><input data-c="address" value="${esc(c.address||'')}"></label></div></div>
-    <div class="saverow"><button class="btn pri" id="tsave">Сохранить</button><button class="btn" id="treset">Вернуть тексты по умолчанию</button></div>`;
-  $('#tsave').onclick = async ()=>{
-    const out = { contacts:{} };
-    V().querySelectorAll('[data-k]').forEach(i=>out[i.dataset.k] = i.value.trim());
-    ['adv','how'].forEach(k=>{ out[k] = []; V().querySelectorAll(`[data-l="${k}"]`).forEach(i=>{ (out[k][+i.dataset.i] ||= {})[i.dataset.f] = i.value.trim(); });
-      out[k] = out[k].filter(x=>x && x.t); });
-    if((SET.texts||{}).services) out.services = SET.texts.services;   // услуги правятся в своём разделе
-    if((SET.texts||{}).reg_purposes) out.reg_purposes = SET.texts.reg_purposes;   // варианты регистрации — в «Пользователях»
-    V().querySelectorAll('[data-c]').forEach(i=>{ if(i.value.trim()) out.contacts[i.dataset.c] = i.value.trim(); });
-    try{ await saveSetting('texts', out); toast('Сохранено'); refreshStats(); }catch(err){ toast(err.message, true); }
-  };
-  $('#treset').onclick = async ()=>{ if(!confirm('Вернуть все тексты по умолчанию? Контакты тоже очистятся.')) return;
-    const keep = {}; ['services','reg_purposes'].forEach(k=>{ if((SET.texts||{})[k]) keep[k] = SET.texts[k]; });
-    try{ await saveSetting('texts', keep); toast('Тексты по умолчанию'); refreshStats(); pTexts(); }catch(err){ toast(err.message, true); } };
-}
-
 /* Аналитика — общий модуль stats.js (тот же код в личном кабинете) */
 async function loadAll(path){ const out = []; for(let off = 0; ; off += 1000){ const r = await api(`${path}&limit=1000&offset=${off}`); out.push(...r); if(r.length < 1000) return out; } }
 // данные аналитики держим 5 минут: смена фильтра не перекачивает тысячи лотов
@@ -1088,7 +1050,15 @@ const BN_FMT = [['wide','Узкая полоса во всю ширину','1200
 const TH_COLORS = [['#f4511e','Оранжевый (сейчас)'],['#e53935','Красный'],['#d81b60','Малиновый'],['#8e24aa','Фиолетовый'],['#3949ab','Синий'],
   ['#1e88e5','Голубой'],['#00897b','Бирюзовый'],['#43a047','Зелёный'],['#f9a825','Жёлтый'],['#27272a','Графит']];
 const TH_FONTS = ['Onest','Golos Text','Manrope','Montserrat','Unbounded','PT Serif'];
-let HOME = null, HSEL = -1, HMEDIA = {};
+let HOME = null, HSEL = -1, HMEDIA = {}, TXT = null, HOTHER = false;
+// тексты сайта (settings.texts) правятся здесь же: у блоков главной — в их настройках, остальные — в панели «Тексты других страниц».
+// Пустое поле — текст по умолчанию (TX_DEF). Услуги, варианты регистрации — в своих разделах, сохраняются как есть
+const txv = k => TXT[k] != null && TXT[k] !== '' ? TXT[k] : (TX_DEF[k] || '');
+const txl = k => TXT[k] && TXT[k].length ? TXT[k] : TX_DEF[k].map(([t,d])=>({ t, d }));
+const ht = (k, label, rows) => `<label class="fld"><span>${label}</span>${rows ? `<textarea data-t="${k}" rows="${rows}">${esc(txv(k))}</textarea>` : `<input data-t="${k}" value="${esc(txv(k))}">`}</label>`;
+const htl = (k, n, what) => txl(k).slice(0, n).concat(Array(Math.max(0, n - txl(k).length)).fill({})).map((x,i)=>`<div class="panel hitem">
+    <label class="fld"><span>${what} ${i+1} — заголовок (пусто — не показывается)</span><input data-tl="${k}" data-i="${i}" data-f="t" value="${esc(x.t||'')}"></label>
+    <label class="fld"><span>Текст</span><textarea data-tl="${k}" data-i="${i}" data-f="d" rows="2">${esc(x.d||'')}</textarea></label></div>`).join('');
 const homeDefault = () => ({ blocks:HB_BASE.map(t=>({ id:t, type:t })), theme:{} });
 // все картинки черновика: img и logo, наборы imgs (значки разделов и пунктов), картинки баннеров
 const homeMediaIds = h => { const out = [];
@@ -1111,6 +1081,7 @@ async function pHome(){
   HOME = JSON.parse(JSON.stringify(cur)); HOME.theme = HOME.theme || {};
   HB_BASE.forEach(t=>{ if(!HOME.blocks.some(b=>b.type===t)) HOME.blocks.push({ id:t, type:t, on:false }); });   // блок появился в коде позже
   HOME.blocks.forEach(b=>{ if(b.type === 'banners') (b.items||[]).forEach(x=>{ if(!x.bid) x.bid = newBid(); }); });   // номер для счётчика
+  TXT = JSON.parse(JSON.stringify(SET.texts || {}));
   HMEDIA = {}; const ids = homeMediaIds(HOME);
   if(ids.length) (await api(`site_media?id=${inq(ids)}&select=id,data`)).forEach(m=>HMEDIA[m.id] = m.data);
   HSEL = -1; drawHome();
@@ -1127,8 +1098,8 @@ const hbSummary = b => {
 function drawHome(){
   const B = HOME.blocks, t = HOME.theme;
   V().innerHTML = `<h1>Главная страница</h1>
-    <p class="lede">Порядок блоков — перетаскиванием (или стрелками), галочка — показывать ли. «Настроить» — заголовок, вид, фон.
-      Тексты первого экрана, плашки, «Как это работает» и «Почему МониТорг» — в разделе <a href="#texts">«Тексты сайта»</a>. На сайте — после «Сохранить» и публикации.</p>
+    <p class="lede">Всё о сайте в одном месте. Порядок блоков — перетаскиванием (или стрелками), галочка — показывать ли.
+      «Настроить» — тексты, картинки, вид и фон блока. Тексты других страниц и контакты — в панели ниже. На сайте — после «Сохранить» и публикации.</p>
     <div class="saverow" style="margin:0 0 14px"><button class="btn pri" id="h-save">Сохранить</button><button class="btn" id="h-prev">Предпросмотр</button>
       <select id="h-add"><option value="">+ Добавить блок…</option><option value="text">Текст с картинкой</option><option value="banners">Баннеры (в том числе реклама)</option><option value="faq">Вопросы и ответы</option></select>
       <button class="btn" id="h-def">Вернуть как было</button></div>
@@ -1146,6 +1117,15 @@ function drawHome(){
         <div class="fld"><span>Логотип в шапке — вместо букв «МТ» (квадратная картинка, лучше PNG с прозрачным фоном)</span>
           <div class="himg">${t.logo && HMEDIA[t.logo] ? `<img src="${HMEDIA[t.logo]}" alt="" style="width:56px;height:56px;object-fit:contain">` : '<span class="muted">буквы «МТ»</span>'}
           <input type="file" accept="image/*" id="h-logo">${t.logo ? '<button class="btn bad" type="button" id="h-nologo">Убрать</button>' : ''}</div></div></div>
+      <details class="panel" id="h-other"${HOTHER ? ' open' : ''}><summary><h2 style="display:inline">Тексты других страниц и контакты</h2></summary>
+        <h3>Помощь в аукционе</h3>${ht('help_title','Заголовок')}${ht('help_lede','Вступление',3)}<p class="muted">Список услуг — в разделе <a href="#services">«Услуги»</a>.</p>
+        <h3>Плашка о файлах cookie</h3>${ht('cookie_text','Текст',3)}
+        <h3>Политика конфиденциальности</h3>${ht('privacy_text','Текст — абзацы через пустую строку',10)}
+        <h3>Контакты в подвале сайта</h3><div class="grid2">
+          <label class="fld"><span>Телефон</span><input data-tc="phone" value="${esc((TXT.contacts||{}).phone||'')}" placeholder="+375 29 000-00-00"></label>
+          <label class="fld"><span>Email</span><input data-tc="email" value="${esc((TXT.contacts||{}).email||'')}"></label>
+          <label class="fld"><span>Telegram</span><input data-tc="telegram" value="${esc((TXT.contacts||{}).telegram||'')}" placeholder="@monitorg"></label>
+          <label class="fld"><span>Адрес</span><input data-tc="address" value="${esc((TXT.contacts||{}).address||'')}"></label></div></details>
     </div><div id="h-ed">${HSEL >= 0 && B[HSEL] ? '' : '<div class="panel muted">Нажмите «Настроить» у блока — здесь появятся его настройки.</div>'}</div></div>`;
   if(HSEL >= 0 && B[HSEL]) drawHomeEd();
   const rows = V().querySelectorAll('.hbr');
@@ -1173,11 +1153,14 @@ function drawHome(){
     const b = { id:ty + '-' + Math.random().toString(36).slice(2,8), type:ty };
     if(ty==='banners'){ b.format = '3'; b.items = []; } if(ty==='faq') b.items = [{ q:'', a:'' }]; if(ty==='text') b.side = 'right';
     B.splice(Math.max(1, HSEL >= 0 ? HSEL + 1 : B.length), 0, b); HSEL = B.indexOf(b); drawHome(); };
-  $('#h-def').onclick = () => { if(!confirm('Вернуть главную как было: исходный порядок, без своих блоков, стиль по умолчанию? (Сохранится только после «Сохранить»)')) return;
+  $('#h-def').onclick = () => { if(!confirm('Вернуть главную как было: исходный порядок, без своих блоков, стиль по умолчанию? Тексты не меняются. (Сохранится только после «Сохранить»)')) return;
     HOME = homeDefault(); HSEL = -1; drawHome(); };
   $('#h-prev').onclick = homePreview;
+  bindTexts(V());
+  $('#h-other').ontoggle = e => { HOTHER = e.target.open; };
   $('#h-save').onclick = async () => {
     try{
+      await saveSetting('texts', cleanTexts());
       await saveSetting('home', HOME);
       // картинки, которые больше нигде не стоят, — из базы долой
       const used = new Set(homeMediaIds(HOME)), all = await api('site_media?select=id');
@@ -1186,6 +1169,23 @@ function drawHome(){
       toast('Сохранено — опубликуйте, чтобы обновить сайт'); refreshStats();
     }catch(err){ toast(err.message, true); }
   };
+}
+// поля текстов сайта: data-t — строка, data-tl/i/f — пункт списка (шаги, преимущества), data-tc — контакты
+function bindTexts(root){
+  root.querySelectorAll('[data-t]').forEach(el=>el.oninput = () => { TXT[el.dataset.t] = el.value; });
+  root.querySelectorAll('[data-tl]').forEach(el=>el.oninput = () => { const k = el.dataset.tl;
+    if(!(TXT[k] && TXT[k].length)) TXT[k] = txl(k).map(x=>Object.assign({}, x));
+    while(TXT[k].length <= +el.dataset.i) TXT[k].push({});
+    TXT[k][+el.dataset.i][el.dataset.f] = el.value; });
+  root.querySelectorAll('[data-tc]').forEach(el=>el.oninput = () => { TXT.contacts = Object.assign({}, TXT.contacts); TXT.contacts[el.dataset.tc] = el.value.trim(); });
+}
+// перед сохранением: пустые строки — по умолчанию, пустые пункты списков убираем, пустые контакты не храним
+function cleanTexts(){
+  const out = JSON.parse(JSON.stringify(TXT));
+  Object.keys(out).forEach(k=>{ if(typeof out[k] === 'string'){ out[k] = out[k].trim(); if(!out[k]) delete out[k]; } });
+  ['how','adv'].forEach(k=>{ if(Array.isArray(out[k])) out[k] = out[k].map(x=>({ t:(x.t||'').trim(), d:(x.d||'').trim() })).filter(x=>x.t); });
+  if(out.contacts) Object.keys(out.contacts).forEach(k=>{ if(!out.contacts[k]) delete out.contacts[k]; });
+  return out;
 }
 function hMove(from, to){
   const B = HOME.blocks; if(to < 0 || to >= B.length || from === to) return;
@@ -1211,19 +1211,21 @@ function drawHomeEd(){
   const ttl = HB_DEFT[ty] !== undefined || ['text','banners'].includes(ty) ? hf('title', 'Заголовок блока', b.title, `placeholder="${esc(HB_DEFT[ty] || 'без заголовка')}"`) : '';
   const sub = ['tiles','how','pins','soon','fresh','why','cal','news'].includes(ty) ? hf('sub', 'Подзаголовок', b.sub, 'placeholder="по умолчанию"') : '';
   let x = '';
-  if(ty==='hero') x = `<div class="fld"><span>Своя картинка справа от текста — вместо рисунка с кварталами (горизонтальная, 4:3)</span>${hImg('img', b.img)}</div>`
-    + (b.img ? '' : hs('art', 'Рисунок с кварталами', b.art===false?'0':'', [['','Показывать'],['0','Не показывать']])) + '<p class="muted">Заголовок, текст и кнопки первого экрана — в «Тексты сайта».</p>';
+  if(ty==='hero') x = ht('hero_title', 'Заголовок', 2) + ht('hero_text', 'Текст под заголовком', 3)
+    + `<div class="fld"><span>Своя картинка справа от текста — вместо рисунка с кварталами (горизонтальная, 4:3)</span>${hImg('img', b.img)}</div>`
+    + (b.img ? '' : hs('art', 'Рисунок с кварталами', b.art===false?'0':'', [['','Показывать'],['0','Не показывать']]));
   if(ty==='tiles') x = hs('cols', 'Плиток в ряд (на компьютере)', b.cols, [['','3'],['2','2'],['4','4']])
     + `<div class="fld"><span>Свои значки разделов (квадратные, лучше PNG с прозрачным фоном); пусто — стандартный</span></div>`
     + HB_SECS.map(([k,n])=>`<div class="fld hico"><span>${n}</span>${hImg('imgs.' + k, (b.imgs||{})[k], true)}</div>`).join('');
-  if(ty==='how') x = hs('cols', 'Шагов в ряд (на компьютере)', b.cols, [['','4'],['2','2'],['3','3']]) + '<p class="muted">Тексты шагов — в «Тексты сайта».</p>';
-  if(ty==='band') x = hs('style', 'Цвет плашки', b.style, [['','Тёмная (сейчас)'],['brand','Фирменного цвета'],['soft','Светлая']]) + '<p class="muted">Заголовок и текст плашки — в «Тексты сайта».</p>';
+  if(ty==='how') x = hs('cols', 'Шагов в ряд (на компьютере)', b.cols, [['','4'],['2','2'],['3','3']]) + htl('how', 4, 'Шаг');
+  if(ty==='band') x = ht('band_title', 'Заголовок') + ht('band_text', 'Текст', 2) + hs('style', 'Цвет плашки', b.style, [['','Тёмная (сейчас)'],['brand','Фирменного цвета'],['soft','Светлая']]);
   if(['pins','soon','fresh'].includes(ty)) x = hs('view', 'Вид', b.view, [['','Лента со стрелками'],['grid','Сетка']]) + hf('count', 'Сколько лотов показывать', b.count, 'type="number" min="1" max="20" placeholder="20"');
   if(ty==='why') x = hs('cols', 'Пунктов в ряд (на компьютере)', b.cols, [['','3'],['2','2'],['4','4']]) + hs('icons', 'Значки', b.icons, [['','Объёмные 3D'],['line','Контурные']])
-    + `<div class="fld"><span>Свои значки пунктов (квадратные, лучше PNG с прозрачным фоном); пусто — стандартный</span></div>`
-    + ((SET.texts||{}).adv && SET.texts.adv.length ? SET.texts.adv.map(a=>a.t) : TX_DEF.adv.map(a=>a[0])).slice(0,6)
-        .map((n,i)=>`<div class="fld hico"><span>${i+1}. ${esc(n)}</span>${hImg('imgs.' + i, (b.imgs||[])[i], true)}</div>`).join('')
-    + '<p class="muted">Тексты пунктов — в «Тексты сайта».</p>';
+    + `<div class="fld"><span>Пункты: значок (квадратный, лучше PNG с прозрачным фоном; пусто — стандартный), заголовок и текст</span></div>`
+    + txl('adv').slice(0, 6).concat(Array(Math.max(0, 6 - txl('adv').length)).fill({})).map((a,i)=>`<div class="panel hitem">
+        <div class="fld hico"><span>Значок пункта ${i+1}</span>${hImg('imgs.' + i, (b.imgs||[])[i], true)}</div>
+        <label class="fld"><span>Заголовок (пусто — пункт не показывается)</span><input data-tl="adv" data-i="${i}" data-f="t" value="${esc(a.t||'')}"></label>
+        <label class="fld"><span>Текст</span><textarea data-tl="adv" data-i="${i}" data-f="d" rows="2">${esc(a.d||'')}</textarea></label></div>`).join('');
   if(ty==='news') x = hs('count', 'Сколько новостей', b.count, [['','3'],['6','6'],['9','9']]);
   if(ty==='text') x = `<label class="fld"><span>Текст — абзацы через пустую строку</span><textarea data-k="text" rows="6">${esc(b.text||'')}</textarea></label>
     <div class="fld"><span>Картинка</span>${hImg('img', b.img)}</div>${hs('side', 'Где картинка', b.side, [['right','Справа от текста'],['left','Слева от текста'],['top','Сверху, во всю ширину']])}
@@ -1245,6 +1247,7 @@ function drawHomeEd(){
     + '<button class="btn" type="button" id="h-iadd">+ Добавить вопрос</button>';
   E.innerHTML = `<div class="panel"><div class="bar" style="justify-content:space-between"><h2 style="margin:0">${esc(HB_NAME[ty])}</h2><button class="btn" id="h-close">Закрыть</button></div>
     ${ttl}${sub}${x}${ty==='hero' ? '' : `<div class="grid2">${ty==='band' ? '' : bg}${pad}</div>`}</div>`;
+  bindTexts(E);
   const setK = (k, v) => { const p = k.split('.'); let o = b;
     for(let i = 0; i < p.length - 1; i++){ if(o[p[i]] == null) o[p[i]] = /^\d+$/.test(p[i+1]) ? [] : {}; o = o[p[i]]; }
     const last = p[p.length - 1];
@@ -1290,7 +1293,7 @@ function homePreview(){
   ov.innerHTML = `<div class="pvbar"><b>Предпросмотр главной</b><span><button class="btn" data-w="">Компьютер</button><button class="btn" data-w="390">Телефон</button>
     <button class="btn pri" id="pv-x">Закрыть</button></span></div><div class="pvwrap"><iframe id="pv-f" src="../?preview=${Date.now()}#/"></iframe></div>`;
   const f = $('#pv-f');
-  f.onload = () => { try{ f.contentWindow.previewHome(d); }catch(e){ toast('Предпросмотр не открылся: ' + e.message, true); } };
+  f.onload = () => { try{ f.contentWindow.previewHome(d, cleanTexts()); }catch(e){ toast('Предпросмотр не открылся: ' + e.message, true); } };
   ov.querySelectorAll('[data-w]').forEach(x=>x.onclick = () => { f.style.width = x.dataset.w ? x.dataset.w + 'px' : '100%'; });
   $('#pv-x').onclick = () => ov.remove();
 }

@@ -2502,7 +2502,7 @@ function pageHome(){
   } else if(!ARCH1) loadArch1().then(()=>{ if($('#cal')) drawCal(); });
 }
 // предпросмотр из админки: сайт открыт в окне админки, та передаёт черновик главной (картинки — данными, ещё не опубликованы)
-window.previewHome = home => { CFG.home = home; applyTheme(home.theme); applyLogo(home.theme); $('#ck').hidden = true;
+window.previewHome = (home, texts) => { CFG.home = home; if(texts) CFG.texts = texts; applyTheme(home.theme); applyLogo(home.theme); $('#ck').hidden = true;
   if((location.hash || '#/') === '#/') pageHome(); else location.hash = '#/'; };
 
 /* ───────── календарь торгов (главная, внизу) ─────────
