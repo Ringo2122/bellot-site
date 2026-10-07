@@ -291,12 +291,12 @@ async function refreshStats(){
 }
 
 const PAGES = [
-  ['dash','Сводка'], ['stats','Аналитика'], ['queue','Проверка'], ['lots','Лоты'], ['dups','Дубли'], ['market','Ориентиры'], ['leads','Заявки'], ['users','Пользователи'],
+  ['dash','Сводка'], ['stats','Аналитика'], ['queue','Проверка'], ['lots','Лоты'], ['dups','Дубли'], ['market','Ориентиры'], ['leads','Заявки'], ['lotrep','Ошибки в лотах'], ['users','Пользователи'],
   ['sources','Площадки и разделы'], ['calc','Калькулятор'], ['bot','Telegram-бот'], ['services','Услуги'], ['news','Новости'], ['texts','Тексты сайта'], ['access','Доступ']
 ];
 function drawNav(){
   const cur = (location.hash.slice(1).split('?')[0]) || 'dash';
-  const badge = { queue: STATS.queue, leads: STATS.leads_new };
+  const badge = { queue: STATS.queue, leads: STATS.leads_new, lotrep: STATS.lot_reports };
   $('#nav').innerHTML = PAGES.map(([k,t])=>`<a href="#${k}" class="${k===cur?'on':''}">${t}${badge[k]?`<span class="n">${badge[k]}</span>`:''}</a>`).join('');
 }
 function drawPubbar(){
@@ -412,7 +412,7 @@ async function route(){
   const params = new URLSearchParams(qs||'');
   drawNav(); RELOAD = () => {};
   V().innerHTML = '<p class="muted">Загрузка…</p>';
-  const fn = { dash:pDash, stats:pStats, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, users:pUsers, sources:pSources, calc:pCalc, bot:pBot, services:pServices, news:pNews, texts:pTexts, access:pAccess }[page] || pDash;
+  const fn = { dash:pDash, stats:pStats, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, lotrep:pLotRep, users:pUsers, sources:pSources, calc:pCalc, bot:pBot, services:pServices, news:pNews, texts:pTexts, access:pAccess }[page] || pDash;
   try{ await fn(params); }catch(err){ V().innerHTML = `<div class="empty">Не получилось загрузить: ${esc(err.message)}</div>`; }
 }
 addEventListener('hashchange', route);
@@ -1026,6 +1026,24 @@ async function pNewsEdit(slug){
   if(del) del.onclick = async () => { if(!confirm('Удалить статью «' + (n.title||'') + '»?')) return;
     try{ await api(`news?slug=eq.${enc(slug)}`, { method:'DELETE' }); await saveSetting('news_rev', { at:nowIso() });   // удаление тоже «изменение для публикации»
       toast('Удалено — опубликуйте, чтобы обновить сайт'); refreshStats(); location.hash = 'news'; }catch(err){ toast(err.message, true); } };
+}
+
+/* Ошибки в лотах: сообщения посетителей из карточки лота («Сообщить об ошибке в лоте») */
+async function pLotRep(params){
+  const all = params.get('all') === '1';
+  const rows = await api(`lot_reports?select=*${all ? '' : '&done=is.false'}&order=created_at.desc&limit=300`);
+  V().innerHTML = `<h1>Ошибки в лотах</h1><p class="lede">Сообщения посетителей из карточки лота. Исправьте лот в разделе «Лоты» (или проверьте на площадке) и отметьте «Готово».</p>
+    <div class="saverow" style="margin:0 0 14px">${all ? '<a class="btn" href="#lotrep">Только новые</a>' : '<a class="btn" href="#lotrep?all=1">Показать все, включая разобранные</a>'}</div>
+    ${rows.length ? `<div class="panel tw"><table><tr><th>Когда</th><th>Лот</th><th>Сообщение</th><th>Контакт</th><th></th></tr>
+      ${rows.map(r=>`<tr${r.done?' style="opacity:.55"':''}><td style="white-space:nowrap">${dt(r.created_at)}</td>
+        <td><a href="../#/lot/${enc(r.lot)}" target="_blank" rel="noopener">${esc((r.lot_name || r.lot).slice(0,70))}</a>
+          <br><span class="muted">${esc(r.platform || '')}${r.url ? ` · <a href="${esc(r.url)}" target="_blank" rel="noopener">на площадке ↗</a>` : ''}</span></td>
+        <td style="white-space:pre-wrap">${esc(r.msg)}</td><td>${esc(r.contact || '—')}</td>
+        <td><button class="btn" data-done="${r.id}" data-v="${r.done ? '0' : '1'}">${r.done ? 'Вернуть' : 'Готово'}</button></td></tr>`).join('')}</table></div>`
+      : `<div class="panel empty">${all ? 'Сообщений пока не было.' : 'Новых сообщений нет.'}</div>`}`;
+  V().querySelectorAll('[data-done]').forEach(b=>b.onclick = async ()=>{
+    try{ await api(`lot_reports?id=eq.${b.dataset.done}`, { method:'PATCH', body:{ done:b.dataset.v === '1' }, prefer:'return=minimal' });
+      await refreshStats(); pLotRep(params); }catch(err){ toast(err.message, true); } });
 }
 
 /* Доступ */

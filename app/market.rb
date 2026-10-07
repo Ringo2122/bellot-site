@@ -16,11 +16,16 @@ DIR   = File.dirname(File.expand_path(__FILE__))
 MIN_N = 3
 CAT   = { 'avto' => '2010' }   # легковые авто на Kufar; остальное ищем текстом
 
-def kufar(query, cat)
+# годы «±2» в формате Kufar (rgd=r:2008,2012) — и для поиска, и для ссылки «посмотреть похожие»
+def years_param(yr)
+  yr ? '&rgd=' + ERB::Util.url_encode("r:#{yr - 2},#{yr + 2}") : ''
+end
+
+def kufar(query, cat, yr = nil)
   # ERB::Util.url_encode, а не Shellwords: кириллицу и пробелы надо кодировать
   # процентами, иначе Kufar игнорирует запрос и отдаёт выдачу по умолчанию.
   url = 'https://api.kufar.by/search-api/v2/search/rendered-paginated?size=40&query=' +
-        ERB::Util.url_encode(query)
+        ERB::Util.url_encode(query) + years_param(yr)
   url += "&cat=#{cat}" if cat
   raw = `curl -sS --compressed -m 25 -A #{Shellwords.escape(UA)} #{Shellwords.escape(url)} 2>/dev/null`
   JSON.parse(raw.to_s.force_encoding('UTF-8'))
@@ -56,8 +61,11 @@ def query_of(l)
   rows = (l['details'] || Store.details(l['key'])).flat_map { |s| s['rows'] }
   yr = ((rows.find { |k, _| k =~ /^Год/ } || [])[1].to_s[/\d{4}/] || l['name'][/\b(19[89]\d|20[0-2]\d)\b/])&.to_i
   mark = (rows.find { |k, _| k == 'Марка' } || [])[1]
+  model = (rows.find { |k, _| k == 'Модель' } || [])[1]
+  # марка вместе с моделью: по одной марке («Claas», «Renault») Kufar отдаёт запчасти и машины любых лет.
   # ИПМ: «Легковой седан VOLKSWAGEN PASSAT, 4700 ВР-1 (…)» — марка и модель латиницей
-  q = mark ? mark.strip : l['name'][/\b[A-Z][A-Za-z\-]+(?:\s+[A-Za-z0-9\-]+)?/].to_s
+  q = mark ? [mark, model].compact.join(' ') : l['name'][/\b[A-Z][A-Za-z\-]+(?:\s+[A-Za-z0-9\-]+)?/].to_s
+  q = q.gsub(/\s+/, ' ').strip.split.first(3).join(' ')
   # без года медиана смешает машины разных поколений — такой ориентир хуже, чем никакого
   yr ? [q, yr] : ['', nil]
 end
@@ -76,9 +84,14 @@ require_relative 'store'
 # Считаем только активные лоты без свежего ориентира: новые и те, что проверялись
 # больше REFRESH_DAYS назад. Иначе каждый прогон — сотни запросов к Kufar.
 REFRESH_DAYS = 14
+# MV — версия правил подбора: ориентиры, посчитанные по старым правилам, пересчитываем (не больше CAP за прогон —
+# у каждого запроса пауза, чтобы не нагружать Kufar)
+MV = 2
+CAP = 250
 NOW = Time.now.to_i
 lots = Store.load
 found = 0
+checked = 0
 
 # "Погрузчик электрический" сравнивать не с чем: такие слова подтягивают
 # всю категорию. Нужен опознавательный признак модели — латиница или цифры.
@@ -88,12 +101,19 @@ end
 
 lots.each_with_index do |l, i|
   next if %w[nedvizhimost arenda].include?(l['section']) || l['status'] != 'active'
-  next if l['market_at'].to_i > NOW - REFRESH_DAYS * 86_400
+  next if l['market_at'].to_i > NOW - REFRESH_DAYS * 86_400 && l['market_v'] == MV
+  break if checked >= CAP
+  checked += 1
   l['market_at'] = NOW
+  l['market_v'] = MV
   q, yr = query_of(l)
-  next if q.length < 4 || !specific?(q)
+  # нужны марка и модель (два слова) с латиницей или цифрами; иначе ориентира нет — и старый убираем
+  if q.length < 4 || q.split.size < 2 || !specific?(q)
+    l.delete('market')
+    next
+  end
 
-  res = kufar(q, CAT[l['section']])
+  res = kufar(q, CAT[l['section']], yr)
   ads = res['ads'] || []
 
   key = q.split(/\s+/).first(2)                    # марка и модель должны быть в заголовке
@@ -102,7 +122,7 @@ lots.each_with_index do |l, i|
     byn = a['price_byn'].to_i / 100.0
     next nil if byn < 100 || byn > 5_000_000
     ay = year_of(a)
-    next nil if yr && ay && (ay - yr).abs > 2      # держимся в пределах двух лет
+    next nil if yr && (ay.nil? || (ay - yr).abs > 2)   # только с годом и в пределах двух лет: у запчастей года нет
     byn
   end.compact
 
@@ -116,9 +136,13 @@ lots.each_with_index do |l, i|
       'query' => q,
       'year' => yr,
       'source' => 'kufar.by',
-      'link' => 'https://www.kufar.by/l?query=' + q.gsub(' ', '%20')
+      # та же модель в тех же годах; Kufar перенаправляет на свой раздел с этими фильтрами
+      'link' => 'https://www.kufar.by/l?' + (CAT[l['section']] ? "cat=#{CAT[l['section']]}&" : '') +
+                'query=' + ERB::Util.url_encode(q) + years_param(yr)
     }
     found += 1
+  else
+    l.delete('market')                               # похожих мало — лучше без ориентира, чем с цифрой с потолка
   end
   STDERR.print "\r#{i + 1}/#{lots.size}, ориентиров #{found}"
   sleep 0.6

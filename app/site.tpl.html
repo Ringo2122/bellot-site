@@ -631,6 +631,16 @@
   #ubox .ucta svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;flex:none}
   #ubox .ucta .btn.on{border-color:var(--accent);color:var(--accent)}
   #ubox .ucta .btn.on svg{fill:currentColor}
+  .rep{margin-top:12px}
+  .rep .lnk{margin:0;color:var(--ink-3);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+  .rep .lnk:hover{color:var(--brand)}
+  .rep form{margin-top:4px}
+  .rep label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+  .rep textarea,.rep input{width:100%;padding:8px 10px;border:1px solid var(--hair-2);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;margin-bottom:8px}
+  .rep-b{display:flex;gap:8px}.rep-b .btn{padding:7px 14px;font-size:13.5px}
+  .rep-ok{color:var(--ok)}
+  .beta{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:var(--accent-l);color:var(--brand-d);
+    font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;vertical-align:middle}
   .uhint{font-size:12.5px;color:var(--ink-3);margin:9px 0 0}
   .unote{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--hair)}
   .unote label{display:grid;gap:4px;font-size:12px;color:var(--ink-3);font-weight:700}
@@ -1420,7 +1430,7 @@ function marketBlock(l){
     <div class="warn">Оценка специалиста БелЛот по рынку — ориентир, а не гарантия выгоды.</div></div>`;
   const pos = Math.max(0, Math.min(100, Math.round(l.price / m.median * 100)));
   return `<div class="mkt">
-    <div class="hd">Рыночный ориентир</div>
+    <div class="hd">Рыночный ориентир <span class="beta" title="Функция в тестировании: подбор похожих объявлений ещё дорабатываем">тестовая функция</span></div>
     <div class="mval">${nf(m.median)} BYN</div>
     <div class="sub">медиана ${m.n} похожих предложений на ${esc(m.source)}${m.year?`, ${m.year} год`:''}</div>
     <div class="bar"><span>${nf(m.low)}</span><span class="track"><span class="fill" style="width:${pos}%"></span></span><span>${nf(m.high)}</span></div>
@@ -1834,6 +1844,24 @@ function lightbox(pics, start){
   v.show(start);
 }
 
+// «Сообщить об ошибке в лоте» → rpc report_lot → админка, раздел «Ошибки в лотах»
+function bindLotReport(l){
+  const open = $('#rep-open'), f = $('#rep-form'); if(!open || !f) return;
+  open.onclick = () => { open.hidden = true; f.hidden = false; $('#rep-msg').focus(); };
+  $('#rep-cancel').onclick = () => { f.hidden = true; open.hidden = false; $('#rep-err').textContent = ''; };
+  f.addEventListener('submit', async e => {
+    e.preventDefault();
+    const msg = $('#rep-msg').value.trim(), b = f.querySelector('button[type=submit]');
+    if(msg.length < 3){ $('#rep-err').textContent = 'Опишите, что не так'; return; }
+    if(!UB){ f.outerHTML = '<p class="note">Спасибо! Сообщение принято.</p>'; return; }   // локальная сборка без базы
+    b.disabled = true; b.textContent = 'Отправляем…';
+    try{
+      await urpc('report_lot', { p_lot:l.id, p_msg:msg, p_contact:$('#rep-contact').value.trim() || null,
+        p_name:l.name, p_platform:l.platform, p_url:l.url });
+      f.outerHTML = '<p class="note rep-ok">Спасибо! Сообщение отправлено — проверим и исправим.</p>';
+    }catch(err){ b.disabled = false; b.textContent = 'Отправить'; $('#rep-err').textContent = err.message; }
+  });
+}
 function pageLot(id){
   let l = byId(id);
   if(!l && !ARCH){   // сначала свежий архив, не нашёлся — весь
@@ -1871,10 +1899,16 @@ function pageLot(id){
             <dt>${l.section==='arenda' ? 'Арендодатель' : ['minskestate.by','mgcn.by'].includes(l.platform) ? 'Продавец' : 'Должник'}</dt><dd>${esc(l.debtor||'—')}</dd>
           </dl>
           <div class="cta">
-            <a class="btn pri" href="${esc(l.url)}" target="_blank" rel="noopener">На площадке ↗</a>
-            <a class="btn" href="#/help?lot=${encodeURIComponent(l.art)}&id=${encodeURIComponent(l.id)}">Помощь с этим лотом</a>
+            <a class="btn" href="${esc(l.url)}" target="_blank" rel="noopener">На площадке ↗</a>
+            <a class="btn pri" href="#/help?lot=${encodeURIComponent(l.art)}&id=${encodeURIComponent(l.id)}">Помощь с этим лотом</a>
           </div>
           <div id="ubox"></div>
+          ${arch ? '' : `<div class="rep"><button class="lnk" type="button" id="rep-open">Сообщить об ошибке в лоте</button>
+            <form id="rep-form" hidden novalidate><label for="rep-msg">Что не так с лотом?</label>
+              <textarea id="rep-msg" rows="3" maxlength="2000" placeholder="Например: неверная цена, другой адрес, лот уже снят с торгов"></textarea>
+              <input id="rep-contact" maxlength="200" placeholder="Как с вами связаться — необязательно">
+              <div class="ferr" id="rep-err"></div>
+              <div class="rep-b"><button class="btn pri" type="submit">Отправить</button><button class="btn" type="button" id="rep-cancel">Отмена</button></div></form></div>`}
         </aside>
         ${arch && l.why!=='removed' ? resultBlock(l) : ''}
         ${l.alt?multiBlock(l):''}
@@ -1888,6 +1922,7 @@ function pageLot(id){
       <div class="grid">${DATA.filter(x=>x.section===l.section&&x.id!==l.id).slice(0,4).map(lotCard).join('')}</div></div>`}
   </div>`;
   bindLotUser(l);
+  bindLotReport(l);
   loadDet(l).then(det=>{
     if(CUR!=='/lot/'+encodeURIComponent(id)) return;
     // лота нет в пачке подробностей — страница устарела (сайт пересобрали, браузер держит старую): перезагружаемся один раз
