@@ -10,6 +10,7 @@
 require 'json'
 require 'time'
 require 'uri'
+require 'net/http'
 require_relative 'sb'
 
 TOKEN = ENV['ALERT_TG_TOKEN'].to_s
@@ -125,16 +126,29 @@ gone = open.values.reject { |a| found.any? { |p| p['fp'] == a['fp'] } }
 mon = Sb.settings['monitor'] || {}
 cur = mon['client_err_id'].to_i
 errs = Sb.get("client_errors?id=gt.#{cur}&select=id,at,msg,src,url,ua&order=id&limit=200")
-# «не загрузился файл» у одного посетителя — почти всегда его блокировщик рекламы или плохая связь: в Telegram не шлём.
-# Пишем, если файл не загрузился за сутки у 5+ разных посещений (браузер + полчаса), и про один файл — не чаще раза в сутки.
-# Ошибки в коде сайта — сразу. Всё остальное по-прежнему лежит в базе (client_errors).
+# «Не загрузился файл» у посетителя — почти всегда не поломка сайта: блокировщик рекламы, плохая связь или старая копия
+# страницы в открытой вкладке (iPhone держит вкладки в памяти и показывает их без перезагрузки — такая страница
+# ищет уже переименованные файлы). Поэтому перед сообщением проверяем сам сайт: пишем, только если файл действительно
+# не отдаётся (ошибка сервера или 404) И нынешняя версия сайта на него ссылается. Про один файл — не чаще раза в сутки.
+# Ошибки в коде сайта — сразу. Всё по-прежнему лежит в базе (client_errors).
 file_err = ->(e) { e['src'].to_s.end_with?('файл') }
-day_ago = (now - 86_400).utc.iso8601
 fsent = (mon['files'] || {}).select { |_, at| now - Time.parse(at) < 86_400 }
-files = errs.select(&file_err).map { |e| e['msg'] }.uniq.reject { |m| fsent[m] }.select do |m|
-  Sb.get("client_errors?msg=eq.#{URI.encode_www_form_component(m).gsub("+", "%20")}&at=gt.#{day_ago}&select=ua,at")
-    .map { |r| [r['ua'], Time.parse(r["at"]).to_i / 1800] }.uniq.size >= 5
+site_html = {}
+file_broken = lambda do |e|
+  path = e['msg'].to_s.sub(/\AНе загрузился файл:\s*/, '').strip.sub(/\?.*\z/, '')
+  origin = e['url'].to_s[%r{\Ahttps://[^/]+}] or return false
+  u = URI(origin + path)
+  code = begin
+    Net::HTTP.start(u.host, u.port, use_ssl: true, open_timeout: 10, read_timeout: 20) { |h| h.head(u.request_uri).code.to_i }
+  rescue StandardError
+    0                                                  # сайт не ответил — это поймает проверка страниц монитора
+  end
+  return false unless code >= 400
+  home = e['url'].to_s.sub(/#.*\z/, '')
+  site_html[home] ||= (Net::HTTP.get(URI(home)).force_encoding('UTF-8') rescue '')
+  site_html[home].include?(File.basename(path))        # старая копия страницы ищет файл, которого в новой нет — не поломка
 end
+files = errs.select(&file_err).uniq { |e| e['msg'] }.reject { |e| fsent[e['msg']] }.select { |e| file_broken.(e) }.map { |e| e['msg'] }
 shown = errs.reject(&file_err) + errs.select { |e| files.include?(e['msg']) }
 client = shown.group_by { |e| e['msg'] }.first(6).map do |msg, es|
   e = es.first
