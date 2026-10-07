@@ -187,7 +187,7 @@
   .mkt .sub{font-size:13px;color:var(--ink-2);margin-top:3px}
   .mkt .bar{display:flex;align-items:center;gap:9px;margin-top:11px;font-size:12px;color:var(--ink-3)}
   .mkt .track{flex:1;height:6px;border-radius:6px;background:var(--hair);position:relative;overflow:hidden}
-  .mkt .fill{position:absolute;inset:0 auto 0 0;background:var(--ink-3);border-radius:6px}
+  .mkt .fill{position:absolute;inset:0 auto 0 0;background:var(--brand);border-radius:6px}
   .mkt .warn{font-size:12px;color:var(--ink-3);margin-top:10px;line-height:1.5}
   .mkt .mft{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px;font-size:12px;font-weight:600}
   .mkt .mft a,.mkt .mft .beta{color:var(--brand-d)}
@@ -1440,7 +1440,7 @@ function marketBlock(l){
       на рынке <b>${nf(m.sqm)} BYN/м²</b> по ${m.sqm_n} объявлениям с указанной площадью.</div>`:''}
     <div class="warn">Состояние объекта не учитывается: на торгах имущество часто требует ремонта, а в сравнении участвуют обычные объявления. Ориентир показывает порядок цен, а не гарантию выгоды.
       </div>
-    <div class="mft"><a href="${esc(m.link)}" target="_blank" rel="noopener">Посмотреть похожие предложения ↗</a><span class="beta" title="Функция в тестировании: подбор похожих объявлений ещё дорабатываем">тестовая функция</span></div>
+    <div class="mft"><a href="${esc(m.link)}" target="_blank" rel="noopener">Посмотреть похожие предложения ↗</a><span class="beta" title="Функция в тестировании: подбор похожих объявлений ещё дорабатываем">Тестовая функция</span></div>
   </div>`;
 }
 
