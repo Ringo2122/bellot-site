@@ -80,8 +80,19 @@ end
 runs = Sb.get('runs?select=id,kind,at,finished_at,ok,stats&order=at.desc&limit=30')
 last_c = runs.find { |r| r['kind'] == 'collect' && r['finished_at'] }
 if last_c
+  # обход — по расписанию из админки (часы по Минску). Тревога — если после часа обхода, прошедшего больше 2 ч назад, обхода
+  # так и не было. Ночной перерыв между вечерним и утренним обходом — норма (раньше порог «14 ч» срабатывал каждое утро),
+  # а GitHub иногда запускает по расписанию с опозданием на час-полтора.
   age = now - Time.parse(last_c['at'])
-  found << { 'fp' => 'robot-stale', 'title' => 'Робот давно не обходил площадки', 'detail' => "последний обход #{(age / 3600).round} ч назад" } if age > 14 * 3600
+  hours = Array(Sb.settings['hours']).map(&:to_i).select { |h| h.between?(0, 23) }
+  hours = [9, 11, 14, 18] if hours.empty?
+  mn = now.getlocal('+03:00')
+  due = (0..2).flat_map { |d| day = mn - d * 86_400; hours.map { |h| Time.new(day.year, day.month, day.day, h, 0, 0, '+03:00') } }
+             .select { |t| t <= now - 2 * 3600 }.max
+  if due && Time.parse(last_c['at']) < due
+    found << { 'fp' => 'robot-stale', 'title' => 'Робот не обошёл площадки по расписанию',
+               'detail' => "обхода в #{due.getlocal('+03:00').strftime('%H:%M')} не было; последний — #{(age / 3600).round} ч назад" }
+  end
   found << { 'fp' => 'robot-failed', 'title' => 'Последний обход площадок завершился с ошибкой', 'detail' => 'подробности — в админке, раздел «Сводка»' } if last_c['ok'] == false
   (last_c.dig('stats', 'update', 'unread') || []).each do |src|
     found << { 'fp' => "unread|#{src}", 'title' => "Не читается список площадки: #{src}", 'detail' => 'в последнем обходе — 0 лотов; возможно, площадка сменила вёрстку' }
