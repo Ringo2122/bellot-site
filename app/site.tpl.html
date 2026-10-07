@@ -180,15 +180,17 @@
   .flag.disc{top:auto;bottom:8px;left:8px;background:var(--ok);color:#fff}
 
   /* ── рыночный ориентир ── */
-  .mkt{border:1px solid var(--ok);background:var(--ok-l);border-radius:10px;padding:13px 15px;margin-top:15px}
-  .mkt .hd{font-size:12px;font-weight:700;color:var(--ok);text-transform:uppercase;letter-spacing:.05em}
-  .mkt .mval{font-size:23px;font-weight:700;letter-spacing:-.02em;margin-top:5px}
+  /* рыночный ориентир: спокойная карточка — чёрный текст, серые пояснения, один цвет ссылок (как на всём сайте) */
+  .mkt{border:1px solid var(--hair);background:var(--card);border-radius:12px;padding:14px 16px;margin-top:15px}
+  .mkt .hd{font-size:13px;font-weight:600;color:var(--ink)}
+  .mkt .mval{font-size:22px;font-weight:700;letter-spacing:-.02em;margin-top:4px;color:var(--ink)}
   .mkt .sub{font-size:13px;color:var(--ink-2);margin-top:3px}
-  .mkt .bar{display:flex;align-items:center;gap:9px;margin-top:11px;font-size:12.5px;color:var(--ink-2)}
-  .mkt .track{flex:1;height:7px;border-radius:6px;background:var(--hair);position:relative;overflow:hidden}
-  .mkt .fill{position:absolute;inset:0 auto 0 0;background:var(--ok);border-radius:6px}
+  .mkt .bar{display:flex;align-items:center;gap:9px;margin-top:11px;font-size:12px;color:var(--ink-3)}
+  .mkt .track{flex:1;height:6px;border-radius:6px;background:var(--hair);position:relative;overflow:hidden}
+  .mkt .fill{position:absolute;inset:0 auto 0 0;background:var(--ink-3);border-radius:6px}
   .mkt .warn{font-size:12px;color:var(--ink-3);margin-top:10px;line-height:1.5}
-  .mkt a{font-weight:700}
+  .mkt .mft{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px;font-size:12px;font-weight:600}
+  .mkt .mft a,.mkt .mft .beta{color:var(--brand-d)}
   .lot .body{padding:12px 13px;display:flex;flex-direction:column;gap:7px;flex:1}
   .lot .nm{font-weight:700;font-size:14.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
     -webkit-box-orient:vertical;overflow:hidden;min-height:2.6em}
@@ -639,8 +641,6 @@
   .rep textarea,.rep input{width:100%;padding:8px 10px;border:1px solid var(--hair-2);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;margin-bottom:8px}
   .rep-b{display:flex;gap:8px}.rep-b .btn{padding:7px 14px;font-size:13.5px}
   .rep-ok{color:var(--ok)}
-  /* «тестовая функция» — как ссылка «Посмотреть похожие» внизу блока: мелкий жирный текст, без плашки */
-  .beta{margin-left:8px;font-size:12px;font-weight:700;color:var(--brand);letter-spacing:0;text-transform:none}
   .uhint{font-size:12.5px;color:var(--ink-3);margin:9px 0 0}
   .unote{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--hair)}
   .unote label{display:grid;gap:4px;font-size:12px;color:var(--ink-3);font-weight:700}
@@ -1430,7 +1430,7 @@ function marketBlock(l){
     <div class="warn">Оценка специалиста БелЛот по рынку — ориентир, а не гарантия выгоды.</div></div>`;
   const pos = Math.max(0, Math.min(100, Math.round(l.price / m.median * 100)));
   return `<div class="mkt">
-    <div class="hd">Рыночный ориентир <span class="beta" title="Функция в тестировании: подбор похожих объявлений ещё дорабатываем">тестовая функция</span></div>
+    <div class="hd">Рыночный ориентир</div>
     <div class="mval">${nf(m.median)} BYN</div>
     <div class="sub">медиана ${m.n} похожих предложений на ${esc(m.source)}${m.year?`, ${m.year} год`:''}</div>
     <div class="bar"><span>${nf(m.low)}</span><span class="track"><span class="fill" style="width:${pos}%"></span></span><span>${nf(m.high)}</span></div>
@@ -1439,7 +1439,8 @@ function marketBlock(l){
     ${m.sqm?`<div class="sub" style="margin-top:7px">За квадратный метр: у лота <b>${nf(m.lot_sqm)} BYN/м²</b>,
       на рынке <b>${nf(m.sqm)} BYN/м²</b> по ${m.sqm_n} объявлениям с указанной площадью.</div>`:''}
     <div class="warn">Состояние объекта не учитывается: на торгах имущество часто требует ремонта, а в сравнении участвуют обычные объявления. Ориентир показывает порядок цен, а не гарантию выгоды.
-      <br><a href="${esc(m.link)}" target="_blank" rel="noopener">Посмотреть похожие предложения ↗</a></div>
+      </div>
+    <div class="mft"><a href="${esc(m.link)}" target="_blank" rel="noopener">Посмотреть похожие предложения ↗</a><span class="beta" title="Функция в тестировании: подбор похожих объявлений ещё дорабатываем">тестовая функция</span></div>
   </div>`;
 }
 
