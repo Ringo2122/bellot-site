@@ -59,7 +59,7 @@ end
 # ── разовое событие ──
 if ARGV[0] == '--event'
   text = ARGV[1].to_s
-  send_text("🔴 БелЛот: #{text}#{RUN_URL ? "\n#{RUN_URL}" : ''}")
+  send_text("🔴 МониТорг: #{text}#{RUN_URL ? "\n#{RUN_URL}" : ''}")
   exit 0
 end
 
@@ -167,7 +167,7 @@ ok = if parts.empty?
        puts "проблем нет (страниц проверено: #{(JSON.parse(File.read(ARGV[0])) rescue {})['checked'] if ARGV[0] && File.exist?(ARGV[0])})"
        false
      else
-       send_text("БелЛот — мониторинг\n\n#{parts.join("\n\n")}#{RUN_URL && (fresh.any? || remind.any?) ? "\n\n#{RUN_URL}" : ''}")
+       send_text("МониТорг — мониторинг\n\n#{parts.join("\n\n")}#{RUN_URL && (fresh.any? || remind.any?) ? "\n\n#{RUN_URL}" : ''}")
      end
 
 # ── запомнить ──

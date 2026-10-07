@@ -139,7 +139,7 @@ lots.each do |l|
     if m['off']
       l.delete('market')
     elsif m['median'].to_f.positive?
-      l['market'] = { 'median' => m['median'].to_f, 'manual' => true, 'note' => m['note'].to_s, 'source' => 'оценка БелЛот' }
+      l['market'] = { 'median' => m['median'].to_f, 'manual' => true, 'note' => m['note'].to_s, 'source' => 'оценка МониТорга' }
     end
   end
   # срок поправлен вручную — статус считаем по нему
@@ -359,7 +359,7 @@ File.write(File.join(OUT, '.nojekyll'), '')
 adm = File.read(File.join(__dir__, 'admin.html'), encoding: 'UTF-8')
 FileUtils.cp(File.join(__dir__, 'stats.js'), File.join(OUT, 'stats.js'))   # аналитика: общая для админки и кабинета
 FileUtils.cp_r(File.join(__dir__, 'noph'), File.join(OUT, 'noph'))   # заглушки «нет фото» по разделам (tools/noph.rb)
-FileUtils.cp_r(File.join(__dir__, 'img'), File.join(OUT, 'img'))     # картинки сайта: 3D-значки «Почему БелЛот» (Fluent Emoji, MIT)
+FileUtils.cp_r(File.join(__dir__, 'img'), File.join(OUT, 'img'))     # картинки сайта: 3D-значки «Почему МониТорг» (Fluent Emoji, MIT)
 File.write(File.join(OUT, 'admin', 'index.html'),
            adm.sub('__SB_URL__') { ENV['SB_URL'].to_s }.sub('__SB_KEY__') { ENV['SB_KEY'].to_s }.sub('__BUILD__', now.to_s))
 

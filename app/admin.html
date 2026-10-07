@@ -8,7 +8,7 @@
      Если в страницу всё же попадёт чужой код, ключ сессии админа он никуда не отправит -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://raw.githubusercontent.com; object-src 'none'; base-uri 'none'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
-<title>Админка БелЛот</title>
+<title>Админка МониТорг</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Onest:wght@600;700;800&display=swap">
 <style>
   :root{
@@ -171,7 +171,7 @@
 
 <div id="login" hidden>
   <form id="lf" autocomplete="on">
-    <h1>БелЛот · админка</h1>
+    <h1>МониТорг · админка</h1>
     <label for="l-u">Логин</label><input id="l-u" autocomplete="username" required>
     <label for="l-p">Пароль</label><input id="l-p" type="password" autocomplete="current-password" required>
     <button class="btn pri" type="submit">Войти</button>
@@ -181,7 +181,7 @@
 
 <div id="shell" hidden>
   <aside class="side">
-    <div class="brand">БелЛот<small>админка</small></div>
+    <div class="brand">МониТорг<small>админка</small></div>
     <nav id="nav"></nav>
     <div class="side-f"><a href="../" target="_blank" rel="noopener">Открыть сайт ↗</a><a href="#" id="logout">Выйти</a></div>
   </aside>
@@ -613,7 +613,7 @@ async function pMarket(params){
     $('#mlist').innerHTML = list.length ? `<p class="muted">${nf(list.length)} ${plural(list.length,'лот','лота','лотов')}</p>` + list.slice(0,300).map(([l,d])=>lotRow(l, acts, info(l,d))).join('')
       : '<div class="empty">Нет лотов для проверки.</div>';
   };
-  V().innerHTML = `<h1>Рыночные ориентиры</h1><p class="lede">Робот сравнивает лот с похожими объявлениями на Kufar. Если сравнение неудачное (другая модель, развалюха против нового), отключите ориентир или впишите свою оценку — на сайте она покажется как «Оценка БелЛот».</p>
+  V().innerHTML = `<h1>Рыночные ориентиры</h1><p class="lede">Робот сравнивает лот с похожими объявлениями на Kufar. Если сравнение неудачное (другая модель, развалюха против нового), отключите ориентир или впишите свою оценку — на сайте она покажется как «Оценка МониТорга».</p>
     <div class="tabs"><a href="#market" class="${only==='odd'?'on':''}">Подозрительные (дисконт от 50% или цена выше рынка)</a><a href="#market?f=all" class="${only==='all'?'on':''}">Все с ориентиром</a></div>
     <div id="mlist"><p class="muted">Загрузка…</p></div>`;
   await RELOAD();
@@ -732,7 +732,7 @@ const TX_DEF = {
     ['Считаете покупку','Калькулятор в карточке знает правила площадки: задаток, шаг, сборы организатора, сроки оплаты.'],
     ['Покупаете с нами','Проверим объект, съездим на осмотр, проведём через торги и сделку — если нужна помощь.']],
   cookie_text:'Сайт использует файлы cookie: они нужны для работы сайта и личного кабинета. Продолжая пользоваться сайтом, вы соглашаетесь с этим.',
-  privacy_text:'Здесь будет политика обработки персональных данных БелЛот: какие данные мы получаем (контакты из заявок на помощь, данные личного кабинета, файлы cookie), зачем, сколько храним и как их удалить.\n\nТекст готовится. По вопросам обработки данных пишите по контактам из подвала сайта.',
+  privacy_text:'Здесь будет политика обработки персональных данных МониТорга: какие данные мы получаем (контакты из заявок на помощь, данные личного кабинета, файлы cookie), зачем, сколько храним и как их удалить.\n\nТекст готовится. По вопросам обработки данных пишите по контактам из подвала сайта.',
   band_title:'Первый раз на торгах?',
   band_text:'Проверим объект до задатка, съездим на осмотр, подскажем разумный предел цены и проведём через аукцион.',
   help_title:'Помощь в покупке на торгах',
@@ -764,14 +764,14 @@ async function pTexts(){
     <div class="panel"><h2>Главная — первый экран</h2>${one('hero_title','Заголовок',2)}${one('hero_text','Текст',3)}</div>
     <div class="panel"><h2>Главная — плашка «Первый раз на торгах?»</h2>${one('band_title','Заголовок')}${one('band_text','Текст',2)}</div>
     <div class="panel"><h2>Главная — «Как это работает»</h2><p class="muted" style="margin-top:0">Четыре шага. Пустой заголовок — шаг не показывается.</p>${list('how',4)}</div>
-    <div class="panel"><h2>Главная — «Почему БелЛот»</h2><p class="muted" style="margin-top:0">Пустой заголовок — пункт не показывается.</p>${list('adv',6)}</div>
+    <div class="panel"><h2>Главная — «Почему МониТорг»</h2><p class="muted" style="margin-top:0">Пустой заголовок — пункт не показывается.</p>${list('adv',6)}</div>
     <div class="panel"><h2>Помощь в аукционе</h2>${one('help_title','Заголовок')}${one('help_lede','Вступление',3)}<p class="muted">Список услуг — в разделе <a href="#services">«Услуги»</a>.</p></div>
     <div class="panel"><h2>Плашка о файлах cookie</h2><p class="muted" style="margin-top:0">Показывается внизу сайта, пока посетитель не нажмёт «Понятно». Рядом — ссылка на политику.</p>${one('cookie_text','Текст',3)}</div>
     <div class="panel"><h2>Политика конфиденциальности</h2><p class="muted" style="margin-top:0">Страница по ссылке в подвале и в плашке cookie. Абзацы — через пустую строку.</p>${one('privacy_text','Текст',14)}</div>
     <div class="panel"><h2>Контакты в подвале сайта</h2><div class="grid2">
       <label class="fld"><span>Телефон</span><input data-c="phone" value="${esc(c.phone||'')}" placeholder="+375 29 000-00-00"></label>
       <label class="fld"><span>Email</span><input data-c="email" value="${esc(c.email||'')}"></label>
-      <label class="fld"><span>Telegram</span><input data-c="telegram" value="${esc(c.telegram||'')}" placeholder="@bellot"></label>
+      <label class="fld"><span>Telegram</span><input data-c="telegram" value="${esc(c.telegram||'')}" placeholder="@monitorg"></label>
       <label class="fld"><span>Адрес</span><input data-c="address" value="${esc(c.address||'')}"></label></div></div>
     <div class="saverow"><button class="btn pri" id="tsave">Сохранить</button><button class="btn" id="treset">Вернуть тексты по умолчанию</button></div>`;
   $('#tsave').onclick = async ()=>{
@@ -840,13 +840,13 @@ async function pUsers(params){
   const purp = u => u.purpose ? esc(u.purpose) + (u.purpose_note ? `<br><span class="muted">${esc(u.purpose_note)}</span>` : '') : '<span class="muted">—</span>';
   const kind = u => u.login === 'guest' ? 'гостевой вход' : !u.auth_id ? 'вход по логину' : u.confirmed_at ? '' : '<span style="color:var(--bad)">почта не подтверждена</span>';
   V().innerHTML = `<h1>Пользователи</h1><p class="lede">Личные кабинеты посетителей сайта: регистрация по почте с кодом подтверждения. Гостевой вход guest/guest пока тоже работает — его данные видят все, кто им входит.</p>
-    <div class="panel tw"><table><tr><th>Пользователь</th><th>Для чего БелЛот</th><th>Контакты</th><th>Избранное</th><th>Следит</th><th>Поиски</th><th>Заявки</th><th>Отчёты</th><th>Заходил</th></tr>
+    <div class="panel tw"><table><tr><th>Пользователь</th><th>Для чего МониТорг</th><th>Контакты</th><th>Избранное</th><th>Следит</th><th>Поиски</th><th>Заявки</th><th>Отчёты</th><th>Заходил</th></tr>
     ${users.map(u=>`<tr class="click" data-u="${u.id}"><td><b>${esc(u.name||u.login)}</b><br><span class="muted">${esc(u.login)} · с ${dt(u.created_at).slice(0,10)}</span>${kind(u)?'<br><small>'+kind(u)+'</small>':''}</td>
       <td>${purp(u)}</td>
       <td>${[u.phone,u.auth_id?'':u.email,u.telegram].filter(Boolean).map(esc).join('<br>')||'<span class="muted">—</span>'}</td>
       <td>${c(ul,u.id,x=>x.fav)}</td><td>${c(ul,u.id,x=>x.watch)}</td><td>${c(ss,u.id)}</td><td>${c(ld,u.id)}</td><td>${c(rp,u.id)}</td><td>${u.last_seen?dt(u.last_seen):'—'}</td></tr>`).join('')}</table></div>
     <p class="muted">Нажмите на строку — избранное пользователя, его заявки и отправка отчёта по объекту.</p>
-    <div class="panel"><h2>Варианты «Для чего вам БелЛот» при регистрации</h2>
+    <div class="panel"><h2>Варианты «Для чего вам МониТорг» при регистрации</h2>
       <p class="muted" style="margin-top:0">Обязательное поле в форме регистрации. Вариант «Другое» с полем «Уточните» есть всегда, последним. На сайте — после публикации.</p>
       <div id="rp-list"></div>
       <div class="saverow"><button class="btn" id="rp-add">+ Добавить вариант</button><button class="btn pri" id="rp-save">Сохранить</button><button class="btn" id="rp-def">Вернуть по умолчанию</button></div></div>`;
@@ -882,7 +882,7 @@ async function pUser(id, params){
   const opts = [...new Set([...ul.filter(x=>x.fav||x.watch).map(x=>x.lot), ...ld.map(x=>x.lot_id).filter(Boolean)])].filter(x=>lots[x]);
   V().innerHTML = `<p><a href="#users">← Все пользователи</a></p><h1>${esc(u.name||u.login)}</h1>
     <p class="lede">Логин ${esc(u.login)} · ${[u.phone,u.auth_id?'':u.email,u.telegram].filter(Boolean).map(esc).join(' · ')||'контакты не указаны'} · в кабинете с ${dt(u.created_at).slice(0,10)}</p>
-    ${u.auth_id ? `<p>Для чего БелЛот: <b>${esc(u.purpose||'—')}</b>${u.purpose_note?' — '+esc(u.purpose_note):''} ·
+    ${u.auth_id ? `<p>Для чего МониТорг: <b>${esc(u.purpose||'—')}</b>${u.purpose_note?' — '+esc(u.purpose_note):''} ·
       ${u.confirmed_at ? 'почта подтверждена ' + dt(u.confirmed_at).slice(0,10) : '<span style="color:var(--bad)">почта не подтверждена</span>'} ·
       ${u.consent_at ? 'согласие на обработку данных ' + dt(u.consent_at).slice(0,10) : 'согласия на обработку данных нет'}</p>` : ''}
     <div class="panel"><h2>Отправить отчёт по объекту</h2>
@@ -996,7 +996,7 @@ async function pNewsEdit(slug){
       <div class="bar" style="margin-top:10px"><input type="file" id="n-file" accept="image/*"><button class="btn bad" id="n-noph" type="button">Убрать фото</button></div></div>
     <div class="panel"><h2>Источник и кнопка</h2>
       <div class="grid2">${f('n-src', 'Ссылка на источник', n.src, 'placeholder="https://…"')}${f('n-srcn', 'Название источника', n.src_name, 'placeholder="например: Myfin.by"')}
-        ${f('n-ctat', 'Кнопка под статьёй — текст', n.cta_text, 'placeholder="например: Земельные участки на БелЛот"')}${f('n-ctau', 'Кнопка — куда ведёт', n.cta_url, 'placeholder="#/s/nedvizhimost или https://…"')}</div>
+        ${f('n-ctat', 'Кнопка под статьёй — текст', n.cta_text, 'placeholder="например: Земельные участки на МониТорг"')}${f('n-ctau', 'Кнопка — куда ведёт', n.cta_url, 'placeholder="#/s/nedvizhimost или https://…"')}</div>
       <label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="n-pub"${n.published!==false?' checked':''}> Показывать на сайте</label></div>
     <div class="saverow"><button class="btn pri" id="n-save">Сохранить</button>${isNew ? '' : '<button class="btn bad" id="n-del">Удалить статью</button>'}</div>`;
   const drawPh = () => { $('#n-ph').innerHTML = photo ? `<img src="${esc(newsImg(photo))}" alt="" style="max-width:420px;width:100%;border-radius:10px;display:block">` : '<div class="muted">Фото нет — карточка будет без картинки.</div>'; };

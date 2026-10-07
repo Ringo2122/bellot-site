@@ -16,7 +16,7 @@ module Geo
   module_function
 
   CACHE = File.join(Store::DATA, 'geo.json')
-  UA = 'BelLot/1.0 (+https://ringo2122.github.io/bellot-site/)'
+  UA = 'MoniTorg/1.0 (+https://ringo2122.github.io/bellot-site/)'
   CAP = (ENV['GEO_CAP'] || 900).to_i   # запросов к сервису за прогон
   ST = { 'ул' => 'улица', 'улица' => 'улица', 'пр-т' => 'проспект', 'просп' => 'проспект', 'проспект' => 'проспект', 'пр' => 'проспект',
          'пер' => 'переулок', 'переулок' => 'переулок', 'бул' => 'бульвар', 'б-р' => 'бульвар', 'ш' => 'шоссе', 'шоссе' => 'шоссе',

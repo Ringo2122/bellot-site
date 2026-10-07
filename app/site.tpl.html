@@ -4,7 +4,7 @@
 <meta name="robots" content="noindex, nofollow">
 <!-- Политика безопасности: скрипты — свои и карта Leaflet с cdnjs, запросы — только в базу Supabase; фото площадок — с их сайтов -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'">
-<title>БелЛот — торги Беларуси</title>
+<title>МониТорг — торги Беларуси</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Onest:wght@600;700;800&family=PT+Mono&display=swap">
 <style>
   :root{
@@ -839,8 +839,8 @@
 
 <header class="main"><div class="wrap hrow">
   <a class="logo" href="#/">
-    <span class="mark">БЛ</span>
-    <span><span class="nm">БелЛот</span><br><span class="sub">агрегатор торгов Беларуси</span></span>
+    <span class="mark">МТ</span>
+    <span><span class="nm">МониТорг</span><br><span class="sub">агрегатор торгов Беларуси</span></span>
   </a>
 <div class="hsearch" id="hs">
   <button class="hs-btn" id="hs-open" type="button" aria-label="Поиск по лотам"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg></button>
@@ -866,7 +866,7 @@
 <footer class="main"><div class="wrap">
   <div class="fcols">
     <div>
-      <h4>БелЛот</h4>
+      <h4>МониТорг</h4>
       <p style="margin:0;color:#a1a1aa">Агрегатор торгов по имуществу должников: банкротство, исполнительное производство, залог и конфискат.</p>
       <div id="fcont"></div>
     </div>
@@ -1336,7 +1336,7 @@ function pageCatalog(section, params){
     ${crumbs(section?[[title]]:[[title]])}
     <div class="cat-head"><h1>${section?`<span class="hico s-${section}">${ICON[section]}</span>`:''}${esc(title)}</h1><p class="lede" id="c-lede"></p></div>
     <div class="layout"><div id="fwrap"></div><div><div class="toolbar" id="tb"></div><div id="res"></div></div></div></div>`;
-  document.title = title + ' — БелЛот';
+  document.title = title + ' — МониТорг';
 
   const closeDrawer = () => { $('#fp')?.classList.remove('open'); $('#ov').classList.remove('open'); };
   const read = () => {
@@ -1381,7 +1381,7 @@ function pageCatalog(section, params){
     if(more!==true) show = STEP;
     const arch = FSTATE.st==='arch';
     // «Активные / Архив» и поиск меняют заголовок: «Все лоты», «Архив торгов», «Поиск по каталогу»
-    if(!section && document.title !== titleOf() + ' — БелЛот'){ const t = titleOf(); document.title = t + ' — БелЛот';
+    if(!section && document.title !== titleOf() + ' — МониТорг'){ const t = titleOf(); document.title = t + ' — МониТорг';
       $('.cat-head h1').textContent = t; $('#app .crumbs').outerHTML = crumbs([[t]]); }
     $('#c-lede').textContent = arch
       ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним год — для истории цен, похожих торгов и аналитики.'
@@ -1423,11 +1423,11 @@ function pageCatalog(section, params){
 function marketBlock(l){
   const m = l.market;
   const dc = discount(l);
-  if(m.manual) return `<div class="mkt"><div class="hd">Оценка БелЛот</div>
+  if(m.manual) return `<div class="mkt"><div class="hd">Оценка МониТорга</div>
     <div class="mval">${nf(m.median)} BYN</div>
     <div class="sub">Стартовая цена лота <b>${nf(l.price)} BYN</b> — ${dc>=0?`на <b>${dc}%</b> ниже`:`на <b>${-dc}%</b> выше`} рыночной оценки.</div>
     ${m.note?`<div class="sub" style="margin-top:7px">${esc(m.note)}</div>`:''}
-    <div class="warn">Оценка специалиста БелЛот по рынку — ориентир, а не гарантия выгоды.</div></div>`;
+    <div class="warn">Оценка специалиста МониТорга по рынку — ориентир, а не гарантия выгоды.</div></div>`;
   const pos = Math.max(0, Math.min(100, Math.round(l.price / m.median * 100)));
   return `<div class="mkt">
     <div class="hd">Рыночный ориентир</div>
@@ -1870,9 +1870,9 @@ function pageLot(id){
     (ARCH1 ? loadArch() : loadArch1()).then(()=>{ if(CUR==='/lot/'+encodeURIComponent(id)){ pageLot(id); paint(); } });
     return;
   }
-  if(!l){ document.title = 'Лот не найден — БелЛот'; $('#app').innerHTML = `<div class="wrap">${crumbs([['Лот не найден']])}<div class="panel empty">Лот не найден — возможно, он уже удалён из архива.</div></div>`; return; }
+  if(!l){ document.title = 'Лот не найден — МониТорг'; $('#app').innerHTML = `<div class="wrap">${crumbs([['Лот не найден']])}<div class="panel empty">Лот не найден — возможно, он уже удалён из архива.</div></div>`; return; }
   const arch = l.status==='archive', d = left(l), pc = pchg(l);
-  document.title = l.name.slice(0,60) + ' — БелЛот';
+  document.title = l.name.slice(0,60) + ' — МониТорг';
   $('#app').innerHTML = `<div class="wrap">
     ${crumbs([[secName(l.section), '#/s/'+l.section], ...(arch?[['Архив', `#/s/${l.section}?st=arch`]]:[]), ['Лот '+l.art]])}
     <div class="lothead">
@@ -1883,7 +1883,7 @@ function pageLot(id){
     </div>
     ${arch?`<div class="banner">${l.why==='removed'
       ? `<b>Лот снят с площадки ${dt(l.closed)}</b> — раньше окончания приёма заявок.`
-      : `<b>Приём заявок завершён ${dt(l.closed)}.</b>`} Лот в архиве БелЛота: сведения и итоги торгов сохранены.</div>`:''}
+      : `<b>Приём заявок завершён ${dt(l.closed)}.</b>`} Лот в архиве МониТорга: сведения и итоги торгов сохранены.</div>`:''}
     <div class="lotpage">
       <div class="gal">${pic(l,'big')}</div>
       <div class="rcol">
@@ -1967,7 +1967,7 @@ const SICON = {
 };
 
 function pageHelp(params){
-  document.title = 'Помощь в аукционе — БелЛот';
+  document.title = 'Помощь в аукционе — МониТорг';
   const lot = params.get('lot') || '', lotId = params.get('id') || '', lotRec = lotId ? byId(lotId) : null;
   const svc = params.get('svc') || '', mine = k => ME && ME[k] && !(k==='name' && ME.login==='guest' && ME[k]==='Гость') ? ME[k] : '';
   $('#app').innerHTML = `<div class="wrap">
@@ -2027,7 +2027,7 @@ function pageHelp(params){
 }
 
 function pageCalc(price){
-  document.title = 'Калькулятор торгов — БелЛот';
+  document.title = 'Калькулятор торгов — МониТорг';
   $('#app').innerHTML = `<div class="wrap">
     ${crumbs([['Калькулятор']])}
     <h1>Калькулятор торгов</h1>
@@ -2085,7 +2085,7 @@ const ADV = [
   ['funnel','Личная воронка','Заметки и статусы по объектам: смотрю, еду, подал заявку. Своя работа в одном месте.']
 ];
 
-/* значки «Возможности платформы» — линиями, как у разделов (05.10: были эмодзи и символы); «Почему БелЛот» на главной —
+/* значки «Возможности платформы» — линиями, как у разделов (05.10: были эмодзи и символы); «Почему МониТорг» на главной —
    3D-значки img/why1–6.png (Microsoft Fluent Emoji 3D, лицензия MIT — app/img/LICENSE-fluentui-emoji.txt), по порядку пунктов */
 const ADV_IC = {
   mkt:'<path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z"/>',
@@ -2112,7 +2112,7 @@ function howList(){
   const a = ((CFG.texts||{}).how||[]).filter(x=>x && x.t);
   return a.length ? a.map(x=>[x.t, x.d||'']) : HOW;
 }
-/* «Почему БелЛот» на главной и услуги на странице помощи: тексты можно поменять в админке, значки остаются */
+/* «Почему МониТорг» на главной и услуги на странице помощи: тексты можно поменять в админке, значки остаются */
 // 3D-значок не загрузился (так было на iPhone: файлы назывались adv*.png, а «adv» в адресе режут блокировщики рекламы) —
 // вместо пустой рамки контурный значок того же пункта
 function advFail(img){ const d = document.createElement('div'); d.className = 'ic'; d.innerHTML = advIc(img.dataset.ic); img.replaceWith(d); }
@@ -2126,7 +2126,7 @@ function svcList(){
 }
 
 /* политика конфиденциальности — текст из админки (texts.privacy_text), пока его нет — заглушка; абзацы — через пустую строку */
-const PRIVACY_DEF = 'Здесь будет политика обработки персональных данных БелЛот: какие данные мы получаем (контакты из заявок на помощь, данные личного кабинета, файлы cookie), зачем, сколько храним и как их удалить.\n\nТекст готовится. По вопросам обработки данных пишите по контактам из подвала сайта.';
+const PRIVACY_DEF = 'Здесь будет политика обработки персональных данных МониТорга: какие данные мы получаем (контакты из заявок на помощь, данные личного кабинета, файлы cookie), зачем, сколько храним и как их удалить.\n\nТекст готовится. По вопросам обработки данных пишите по контактам из подвала сайта.';
 /* ───────── новости ─────────
    Статьи — из админки (таблица news; робот кладёт их в CFG.news при публикации, фото — файлами). Без базы (локальная сборка) — NEWS ниже:
    те же три первые статьи — пересказ своими словами реальных новостей 2026 года со ссылкой на источник; фото — Pexels (бесплатная лицензия). */
@@ -2136,7 +2136,7 @@ const NEWS = [
     lead:'Минский район выставляет восемь участков под жилой дом — от Ратомки и Колодищ до деревни Селище.',
     body:'На 16 октября 2026 года назначен аукцион по продаже земельных участков в Минском районе. На торги выходят восемь участков — в агрогородках Ратомка и Колодищи, а также в деревнях Подгорье, Птичь, Селище и Василевщина.\n\nРазброс стартовых цен большой. Самый дорогой лот — в Ратомке, его начальная цена 225 тысяч рублей. Самый доступный — в деревне Селище, за 11 тысяч рублей.\n\nСтартовая цена на земельных аукционах под Минском — только начало: на востребованных участках ставки часто поднимаются в разы. Перед подачей заявки стоит сравнить лот с ценами на похожие участки и заранее определить для себя предел.',
     src:'https://myfin.by/article/rynki/zemla-pod-minskom-ot-11-tysac-rublej-kakie-ucastki-vystavili-na-aukcion-48559', srcName:'Myfin.by',
-    cta:['Земельные участки на БелЛот', '#/s/nedvizhimost?land=1'] },
+    cta:['Земельные участки на МониТорг', '#/s/nedvizhimost?land=1'] },
   { slug:'pustuyushchie-doma-2-kvartal-2026', date:'2026-07-08', img:'img/news/pustuyushchie-doma-2-kvartal-2026.jpg',
     title:'Каждый второй пустующий дом в Беларуси продают за одну базовую',
     lead:'Итоги второго квартала: 357 сделок, 193 дома ушли по символической цене.',
@@ -2146,7 +2146,7 @@ const NEWS = [
   { slug:'uchastok-leskovka-192-tysyachi', date:'2026-06-19', img:'img/news/uchastok-leskovka-192-tysyachi.jpg',
     title:'Участок под Минском продали за 192 тысячи долларов — вдвое дороже стартовой цены',
     lead:'На аукционе в Минском районе цены на землю выросли в 2–3 раза от начальных.',
-    body:'В июне прошёл аукцион по продаже земельных участков под жилые дома в Минском и Березинском районах. Самыми дорогими стали два участка по 22 сотки в Лесковке: оба стартовали с 250 тысяч рублей и ушли примерно за 536 тысяч рублей — около 192 тысяч долларов. За них боролись пять и семь участников.\n\nЕщё сильнее подорожал участок в Колодищах на 16 соток: при стартовой цене 150 тысяч рублей его продали за 475 тысяч, заявок было десять. Участок в Малиновке ушёл за 215 тысяч рублей при старте 150 тысяч.\n\nЕсли у лота много желающих, итоговая цена может в разы превысить начальную. Поэтому стоит смотреть не только на стартовую цену, но и на итоги похожих торгов — они есть в архиве БелЛот.',
+    body:'В июне прошёл аукцион по продаже земельных участков под жилые дома в Минском и Березинском районах. Самыми дорогими стали два участка по 22 сотки в Лесковке: оба стартовали с 250 тысяч рублей и ушли примерно за 536 тысяч рублей — около 192 тысяч долларов. За них боролись пять и семь участников.\n\nЕщё сильнее подорожал участок в Колодищах на 16 соток: при стартовой цене 150 тысяч рублей его продали за 475 тысяч, заявок было десять. Участок в Малиновке ушёл за 215 тысяч рублей при старте 150 тысяч.\n\nЕсли у лота много желающих, итоговая цена может в разы превысить начальную. Поэтому стоит смотреть не только на стартовую цену, но и на итоги похожих торгов — они есть в архиве МониТорга.',
     src:'https://nashaniva.com/ru/398035', srcName:'Наша Ніва (по данным Realt)',
     cta:['Архив торгов с итогами', '#/catalog?st=arch'] }
 ];
@@ -2156,15 +2156,15 @@ const ndate = d => { const [y,m,dd] = String(d).split('-').map(Number);
 const newsCard = n => `<a class="ncard" href="#/news/${encodeURIComponent(n.slug)}">${n.img ? `<img class="nimg" src="${esc(n.img)}" alt="" loading="lazy">` : ''}
   <span class="nbody"><span class="nmeta">${ndate(n.date)}</span><h3>${esc(n.title)}</h3><p>${esc(n.lead||'')}</p><span class="nmore">Читать →</span></span></a>`;
 function pageNews(){
-  document.title = 'Новости — БелЛот';
+  document.title = 'Новости — МониТорг';
   $('#app').innerHTML = `<div class="wrap">${crumbs([['Новости']])}<h1>Новости</h1>
     <p class="lede">Торги, аукционы и рынок имущества в Беларуси: события, итоги и что они значат для покупателя.</p>
     <div class="news">${newsList().map(newsCard).join('')}</div></div>`;
 }
 function pageNewsItem(slug){
   const n = newsList().find(x=>x.slug===slug);
-  if(!n){ document.title = 'Новость не найдена — БелЛот'; $('#app').innerHTML = `<div class="wrap">${crumbs([['Новости','#/news'],['Не найдено']])}<div class="panel empty">Такой новости нет. <a href="#/news">Все новости →</a></div></div>`; return; }
-  document.title = n.title + ' — БелЛот';
+  if(!n){ document.title = 'Новость не найдена — МониТорг'; $('#app').innerHTML = `<div class="wrap">${crumbs([['Новости','#/news'],['Не найдено']])}<div class="panel empty">Такой новости нет. <a href="#/news">Все новости →</a></div></div>`; return; }
+  document.title = n.title + ' — МониТорг';
   const more = newsList().filter(x=>x.slug!==slug).slice(0,3);
   $('#app').innerHTML = `<div class="wrap">${crumbs([['Новости','#/news'],[n.title.length > 60 ? n.title.slice(0,57) + '…' : n.title]])}
     <article class="nart"><div class="nmeta">${ndate(n.date)}</div><h1>${esc(n.title)}</h1>
@@ -2177,7 +2177,7 @@ function pageNewsItem(slug){
 }
 
 function pagePrivacy(){
-  document.title = 'Политика конфиденциальности — БелЛот';
+  document.title = 'Политика конфиденциальности — МониТорг';
   const t = TX('privacy_text', PRIVACY_DEF).split(/\n\s*\n/).map(p=>`<p>${esc(p.trim()).replace(/\n/g,'<br>')}</p>`).join('');
   $('#app').innerHTML = `<div class="wrap">${crumbs([['Политика конфиденциальности']])}<h1>Политика конфиденциальности</h1><div class="privacy">${t}</div></div>`;
 }
@@ -2191,11 +2191,11 @@ function pagePrivacy(){
 })();
 
 function pageAbout(){
-  document.title = 'О платформе — БелЛот';
+  document.title = 'О платформе — МониТорг';
   $('#app').innerHTML = `<div class="wrap">
     ${crumbs([['О платформе']])}
     <h1>Возможности платформы</h1>
-    <p class="lede">БелЛот собирает торги по имуществу должников со всех площадок Беларуси, приводит их к одному виду и помогает довести покупку до сделки.</p>
+    <p class="lede">МониТорг собирает торги по имуществу должников со всех площадок Беларуси, приводит их к одному виду и помогает довести покупку до сделки.</p>
     <div class="adv">${ADV.map(([ic,t,d])=>`<div class="it"><div class="ic">${advIc(ic)}</div><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
     </div>`;
 }
@@ -2289,7 +2289,7 @@ function bindCarousels(){
 }
 
 function pageHome(){
-  document.title = 'БелЛот — торги по имуществу должников Беларуси';
+  document.title = 'МониТорг — торги по имуществу должников Беларуси';
   // ленты: по 20 лотов — истекающие по сроку заявок, новые по времени появления (раздел не важен — решение Артёма 05.10)
   const pins = DATA.filter(l=>l.pin).sort((a,b)=>a.req_to-b.req_to);
   const soon = DATA.filter(isSoon).sort((a,b)=>a.req_to-b.req_to).slice(0,20);
@@ -2323,11 +2323,11 @@ function pageHome(){
       <a class="btn pri big" href="#/help">Оставить заявку</a>
     </div>
 
-    ${carousel('Рекомендуем', 'Лоты, отобранные специалистами БелЛот', pins, '#/catalog?view=pin')}
+    ${carousel('Рекомендуем', 'Лоты, отобранные специалистами МониТорга', pins, '#/catalog?view=pin')}
     ${carousel('Истекающие торги', 'Приём заявок закрывается в ближайшие 3 дня', soon, '#/catalog?view=soon')}
     ${carousel('Новые лоты', 'Появились на площадках за последние сутки', fresh, '#/catalog?view=new')}
 
-    <div class="sec"><h2>Почему БелЛот</h2>
+    <div class="sec"><h2>Почему МониТорг</h2>
       <div class="adv">${advList().map(([ic,t,d],i)=>`<div class="it"><img class="ic3" src="img/why${i+1}.png" width="64" height="64" alt="" loading="lazy" data-ic="${esc(ic)}" onerror="advFail(this)"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
       <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p></div>
 
@@ -2600,7 +2600,7 @@ const regPurposes = () => { const p = (CFG.texts||{}).reg_purposes; return (Arra
 const OTHER = 'Другое';
 const MAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function pageLogin(params){
-  document.title = 'Вход в личный кабинет — БелЛот';
+  document.title = 'Вход в личный кабинет — МониТорг';
   const next = params.get('next') || '/me', mode = params.get('mode') || 'in';
   const href = m => '#/login?' + new URLSearchParams(Object.assign({ mode:m }, params.get('next') ? { next } : {}));
   const go = async () => { await uload(); location.hash = '#' + (next.startsWith('/') ? next : '/me'); };
@@ -2664,7 +2664,7 @@ function pageLogin(params){
       <div class="fg"><label for="r-pass2">Пароль ещё раз</label><input id="r-pass2" type="password" autocomplete="new-password" required>
         <div class="fhint" id="r-match"></div></div>
       <div class="fg"><label for="r-phone">Телефон <span class="opt">— необязательно</span></label><input id="r-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00"></div>
-      <div class="fg"><label for="r-purp">Для чего вам БелЛот</label><select id="r-purp" required>
+      <div class="fg"><label for="r-purp">Для чего вам МониТорг</label><select id="r-purp" required>
         <option value="">Выберите…</option>${regPurposes().map(p=>`<option>${esc(p)}</option>`).join('')}<option>${OTHER}</option></select></div>
       <div class="fg" id="r-note-w" hidden><label for="r-note">Уточните</label><input id="r-note" maxlength="300" placeholder="Коротко, для чего вам сервис"></div>
       <div class="fg"><label class="chk"><input type="checkbox" id="r-ok"> <span>Соглашаюсь на обработку персональных данных в соответствии
@@ -2683,7 +2683,7 @@ function pageLogin(params){
         phone = v('r-phone'), purpose = $('#r-purp').value, note = purpose === OTHER ? v('r-note') : '';
       const err = !name ? 'Укажите имя' : !MAIL_RE.test(email) ? 'Проверьте адрес почты' : pass.length < 8 ? 'Пароль — не короче 8 символов'
         : pass !== $('#r-pass2').value ? 'Пароли не совпадают' : (phone && phone.replace(/\D/g,'').length < 9) ? 'Проверьте номер телефона'
-        : !purpose ? 'Выберите, для чего вам БелЛот' : (purpose === OTHER && !note) ? 'Уточните, для чего вам БелЛот'
+        : !purpose ? 'Выберите, для чего вам МониТорг' : (purpose === OTHER && !note) ? 'Уточните, для чего вам МониТорг'
         : !$('#r-ok').checked ? 'Нужно согласие на обработку персональных данных' : '';
       $('#u-err').textContent = err; if(err) return;
       const b = $('#uf button'); busy(b, true, 'Регистрируем…');
@@ -2757,7 +2757,7 @@ const ME_TABS = [['','Обзор'],['fav','Избранное'],['notify','Ув�
   ['orders','Заявки на помощь'],['reports','Отчёты'],['stats','Аналитика рынка'],['profile','Профиль']];
 const withArch = () => ARCH ? Promise.resolve() : loadArch();
 async function pageMe(sub, params){
-  document.title = 'Личный кабинет — БелЛот';
+  document.title = 'Личный кабинет — МониТорг';
   if(!UB){ pageLogin(params); return; }
   $('#app').innerHTML = '<div class="wrap"><div class="skel" style="height:300px;margin-top:24px"></div></div>';
   await uload();
@@ -2887,7 +2887,7 @@ async function meFav(M, arg, params){
     const rows = list.map(k=>{ const l = lots[k] || {}, u = ULOTS[k];
       return [l.name, l.platform, secName(l.section), l.price, l.req_to?dtm(l.req_to):'', l.status==='active'?'идёт приём заявок':'завершён', (STAGES.find(s=>s[0]===u.stage)||[,''])[1], u.note, l.url].map(cv).join(';'); });
     const csv = '﻿' + ['Лот;Площадка;Раздел;Цена, BYN;Заявки до;Статус;Мой этап;Заметка;Ссылка', ...rows].join('\r\n');
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' })); a.download = 'bellot-izbrannoe.csv'; a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' })); a.download = 'monitorg-izbrannoe.csv'; a.click();
   };
 }
 
@@ -2936,12 +2936,12 @@ async function meCal(M){
     const z = t => { const d = new Date(t*1000); return d.getUTCFullYear() + p2(d.getUTCMonth()+1) + p2(d.getUTCDate()) + 'T' + p2(d.getUTCHours()) + p2(d.getUTCMinutes()) + '00Z'; };
     const ie = s => String(s).replace(/[\;,]/g, m=>'\\' + m).replace(/\n/g, '\\n');
     const base = location.origin + location.pathname;
-    const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//BelLot//RU','CALSCALE:GREGORIAN'];
+    const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//MoniTorg//RU','CALSCALE:GREGORIAN'];
     ev.forEach(e=>L.push('BEGIN:VEVENT', 'UID:' + e.l.id + '-' + e.t + '@bellot', 'DTSTAMP:' + z(Date.now()/1000), 'DTSTART:' + z(e.t), 'DTEND:' + z(e.t + 1800),
       'SUMMARY:' + ie(e.kind + ': ' + e.l.name.slice(0,80)), 'DESCRIPTION:' + ie(nf(e.l.price) + ' BYN · ' + e.l.platform + '\n' + base + '#/lot/' + e.l.id), 'URL:' + base + '#/lot/' + encodeURIComponent(e.l.id),
       'BEGIN:VALARM', 'TRIGGER:-P1D', 'ACTION:DISPLAY', 'DESCRIPTION:' + ie(e.kind), 'END:VALARM', 'END:VEVENT'));
     L.push('END:VCALENDAR');
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([L.join('\r\n')], { type:'text/calendar;charset=utf-8' })); a.download = 'bellot-torgi.ics'; a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([L.join('\r\n')], { type:'text/calendar;charset=utf-8' })); a.download = 'monitorg-torgi.ics'; a.click();
   };
 }
 
@@ -3012,7 +3012,7 @@ async function meReports(M, arg){
   if(arg) return meReport(M, arg);
   const rows = await uapi('reports?select=id,lot,lot_name,title,created_at,read_at,file_name&order=created_at.desc');
   M.innerHTML = `<h1>Отчёты по объектам</h1>
-    <p class="lede">Сюда специалисты БелЛота присылают отчёты: проверка объекта, осмотр, оценка и стратегия ставок. О новом отчёте придёт уведомление.</p>
+    <p class="lede">Сюда специалисты МониТорга присылают отчёты: проверка объекта, осмотр, оценка и стратегия ставок. О новом отчёте придёт уведомление.</p>
     ${rows.length ? `<div class="panel me-p">${rows.map(r=>`<a class="nrow${r.read_at?'':' un'}" href="#/me/reports/${r.id}"><span class="ntag b">Отчёт</span>
       <span class="nbd"><b>${esc(r.title)}</b><span>${r.lot_name ? esc(r.lot_name.slice(0,90)) : 'без привязки к лоту'}${r.file_name ? ' · файл' : ''}</span></span><span class="nt">${dt(new Date(r.created_at)/1000)}</span></a>`).join('')}</div>`
     : '<div class="panel empty">Отчётов пока нет. Закажите проверку или осмотр объекта — отчёт появится здесь. <a href="#/help">Заказать</a></div>'}`;
@@ -3022,7 +3022,7 @@ async function meReport(M, id){
   if(!r){ M.innerHTML = '<div class="panel empty">Отчёт не найден.</div>'; return; }
   if(!r.read_at) uapi(`reports?id=eq.${r.id}`, { method:'PATCH', body:{ read_at:new Date().toISOString() }, prefer:'return=minimal' }).then(()=>uload()).catch(()=>{});
   M.innerHTML = `<p><a href="#/me/reports">← Все отчёты</a></p>
-    <article class="panel report"><div class="muted">${dtm(new Date(r.created_at)/1000)} · отчёт БелЛота</div><h1>${esc(r.title)}</h1>
+    <article class="panel report"><div class="muted">${dtm(new Date(r.created_at)/1000)} · отчёт МониТорга</div><h1>${esc(r.title)}</h1>
       ${r.lot ? `<p>Лот: <a href="#/lot/${encodeURIComponent(r.lot)}">${esc(r.lot_name || r.lot)}</a></p>` : ''}
       ${r.body ? `<div class="rbody">${esc(r.body)}</div>` : ''}
       ${r.link && /^https?:\/\//.test(r.link) ? `<p><a href="${esc(r.link)}" target="_blank" rel="noopener">Открыть материалы ↗</a></p>` : ''}
@@ -3051,7 +3051,7 @@ async function meStats(M, arg, params){
     ME_STATS = { at:Date.now(), out, daily, blocks, sales };
   }
   const { out, daily, blocks, sales } = ME_STATS;
-  M.innerHTML = '<h1>Аналитика рынка</h1><p class="lede">Торги по имуществу должников со всех площадок, которые собирает БелЛот.</p><div id="mst"></div>';
+  M.innerHTML = '<h1>Аналитика рынка</h1><p class="lede">Торги по имуществу должников со всех площадок, которые собирает МониТорг.</p><div id="mst"></div>';
   BLStats.render($('#mst'), { lots:out, daily, sales, blocks, f:Object.fromEntries(['per','sec','plat','reg','kind'].map(k=>[k, params.get(k) || ''])),
     href:x => '#/me/stats?' + new URLSearchParams(Object.entries(x).filter(([,v])=>v)).toString() });
 }
@@ -3067,7 +3067,7 @@ async function meProfile(M){
         <div class="fg"><label for="p-phone">Телефон</label><input id="p-phone" type="tel" value="${esc(ME.phone||'')}" placeholder="+375 (29) 000-00-00"></div>
         <div class="fg"><label for="p-mail">Email</label><input id="p-mail" type="email" value="${esc(ME.email||'')}"${ME.auth?' disabled':''}>${ME.auth?'<div class="fhint">Почта — логин кабинета, здесь не меняется</div>':''}</div>
         <div class="fg"><label for="p-tg">Telegram</label><input id="p-tg" value="${esc(ME.telegram||'')}" placeholder="@username"></div></div>
-      ${ME.purpose ? `<p class="muted">Для чего вам БелЛот: ${esc(ME.purpose)}${ME.purpose_note ? ' — ' + esc(ME.purpose_note) : ''}</p>` : ''}
+      ${ME.purpose ? `<p class="muted">Для чего вам МониТорг: ${esc(ME.purpose)}${ME.purpose_note ? ' — ' + esc(ME.purpose_note) : ''}</p>` : ''}
       <button class="btn pri" type="button" id="p-save">Сохранить</button>`}</div>
     <div class="panel me-p"><h2>Уведомления</h2><p class="muted" style="margin-top:0">Приходят в личный кабинет. Доставка на почту и в Telegram — позже.</p>
       ${NT.map(([k,t])=>`<label class="chk"><input type="checkbox" data-nt="${k}"${on(k)?' checked':''}${guest?' disabled':''}> ${t}</label>`).join('')}

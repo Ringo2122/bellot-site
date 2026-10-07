@@ -1,4 +1,4 @@
-/* БелЛот — аналитика рынка. Общая для админки и личного кабинета.
+/* МониТорг — аналитика рынка. Общая для админки и личного кабинета.
    Считается в браузере по копии каталога (таблица lots) и снимкам дня (daily).
    Рынок — активные лоты всех площадок без дублей и без скрытых админом.
 
@@ -409,7 +409,7 @@
       const cv = v => { const s = String(v==null?'':v); return /[;"\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
       const csv = '﻿' + [C.map(c=>c[0]).join(';'), ...market.map(l=>C.map(([,fn])=>cv(typeof fn==='function'?fn(l):l[fn])).join(';'))].join('\r\n');
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
-      a.download = `bellot-rynok-${dkey(now)}.csv`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+      a.download = `monitorg-rynok-${dkey(now)}.csv`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
     };
   }
 

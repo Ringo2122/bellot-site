@@ -1,4 +1,4 @@
-# БелЛот — прототип агрегатора торгов
+# МониТорг — агрегатор торгов
 
 Сайт: https://ringo2122.github.io/bellot-site/
 Админка: https://ringo2122.github.io/bellot-site/admin/
