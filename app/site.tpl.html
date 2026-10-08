@@ -300,6 +300,44 @@ applyTheme(window.THEME);
     -webkit-box-orient:vertical;overflow:hidden;min-height:2.6em}
   .lot .pr{font-size:19px;font-weight:700;color:var(--brand);letter-spacing:-.02em}
   .lot .pr span{font-size:11.5px;color:var(--ink-3);font-weight:400}
+  .lot .pr2{font-size:12.5px;color:var(--ink-3);font-weight:600;margin-top:-6px}
+  .bigalt{font-size:15px;color:var(--ink-3);font-weight:600;margin-top:2px}
+  .fg .lrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .fg .lrow label{margin:0}
+  .cursw{display:inline-flex;background:var(--bg);border:1px solid var(--hair-2);border-radius:7px;padding:2px}
+  .cursw button{border:0;background:none;padding:2px 8px;border-radius:5px;font-size:11.5px;font-weight:700;color:var(--ink-3);cursor:pointer}
+  .cursw button.on{background:var(--card);color:var(--brand);box-shadow:var(--sh)}
+  .cursw button{transition:background .15s,color .15s}
+  /* выпадающие списки фильтров и сортировки (вместо системных): кнопка + список, обычный select спрятан и хранит значение */
+  .dd{position:relative;min-width:0}
+  .fg .dd{width:100%}
+  .dd>select{display:none}
+  .dd-b{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px 7px 11px;border:1px solid var(--hair-2);border-radius:8px;
+    background:var(--card);color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer;
+    transition:border-color .15s,box-shadow .15s}
+  .filters .dd-b{padding:6px 9px 6px 10px}
+  .dd-b span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dd-b svg{width:12px;height:12px;flex:none;fill:none;stroke:var(--ink-3);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
+    transition:transform .2s ease,stroke .15s}
+  .dd-b:hover{border-color:var(--ink-3)}
+  .dd-b:focus-visible,.dd.open .dd-b{outline:0;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-l)}
+  .dd.open .dd-b svg{transform:rotate(180deg);stroke:var(--brand)}
+  .dd-l{position:fixed;z-index:96;margin:0;padding:5px;list-style:none;background:var(--card);border:1px solid var(--hair);
+    border-radius:10px;box-shadow:var(--sh-2);max-height:min(320px,60vh);overflow:auto;overscroll-behavior:contain;
+    transform-origin:top center;animation:ddin .16s ease-out}
+  .dd-l.up{transform-origin:bottom center;animation-name:ddup}
+  .dd-l.out{animation:ddout .12s ease-in forwards}
+  .dd-l li{padding:7px 10px 7px 28px;border-radius:7px;font-size:14px;color:var(--ink);cursor:pointer;position:relative;
+    transition:background .1s}
+  .dd-l li.act{background:var(--bg)}
+  .dd-l li.sel{color:var(--brand);font-weight:600}
+  .dd-l li.sel::before{content:"";position:absolute;left:11px;top:50%;width:9px;height:5px;margin-top:-4px;
+    border:solid var(--brand);border-width:0 0 2px 2px;transform:rotate(-45deg)}
+  @keyframes ddin{from{opacity:0;transform:translateY(-4px) scale(.98)}}
+  @keyframes ddup{from{opacity:0;transform:translateY(4px) scale(.98)}}
+  @keyframes ddout{to{opacity:0;transform:translateY(-3px)}}
+  @media (prefers-reduced-motion:reduce){.dd-l,.dd-l.out{animation:none}.dd-b svg{transition:none}}
+
   .lot .loc{font-size:12.5px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:1;
     -webkit-box-orient:vertical;overflow:hidden}
   .lot .ft{margin-top:auto;padding-top:9px;border-top:1px solid var(--hair);font-size:12px;
@@ -1039,6 +1077,13 @@ const numv = v => v===''||v==null||isNaN(+v) ? null : +v;
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nf = n => Math.round(n).toLocaleString('ru-RU');
+/* Доллары: курс Нацбанка на день сборки (робот берёт его при каждом обновлении, BYN за 1 USD).
+   Цена всегда в рублях, под ней — ориентир в долларах. CURR — последняя выбранная валюта цены «от/до» в фильтре. */
+const USD = +(CFG.usd||{}).rate || 0;
+let CURR = 'BYN'; try{ if(USD && localStorage.getItem('bl_cur')==='USD') CURR = 'USD'; }catch(e){}   // последний выбор посетителя
+const setCurr = c => { CURR = USD && c==='USD' ? 'USD' : 'BYN'; try{ localStorage.setItem('bl_cur', CURR); }catch(e){} };
+const fUsd = f => f.cur==='USD' && USD > 0;   // фильтр: цена «от/до» в долларах
+const usdTxt = b => USD && b > 0 ? '≈ ' + nf(b / USD) + ' USD' : '';
 const p2 = n => String(n).padStart(2,'0');
 const dt = ts => { const d=new Date(ts*1000); return p2(d.getDate())+'.'+p2(d.getMonth()+1)+'.'+d.getFullYear(); };
 // «сегодня в 12:08», «вчера в 18:40», иначе дата
@@ -1270,6 +1315,7 @@ function lotCard(l){
     <div class="body">
       <div class="nm">${esc(l.name)}</div>
       <div class="pr">${nf(l.price)} <span>BYN</span>${pc!==null&&pc<0?`<em class="down">↓ ${-pc}%</em>`:''}</div>
+      ${usdTxt(l.price)?`<div class="pr2">${usdTxt(l.price)}</div>`:''}
       <div class="loc">${esc(l.location||'—')}</div>
       <div class="ft">${arch
         ? (resShort(l) ? `<span class="rs ${RES[l.result.st][1]}">${resShort(l)}</span>` : `<span>${l.why==='removed'?'Снят':'Завершён'} <b>${dt(l.closed)}</b></span>`)
@@ -1312,11 +1358,12 @@ function resultBlock(l){
 /* ───────── фильтры ───────── */
 let FSTATE = {};
 function applyFilters(list, f){
-  const arch = f.st==='arch';
+  // в долларах сравниваем ту же целую сумму, что написана под ценой («≈ 4 891 USD»)
+  const arch = f.st==='arch', usd = fUsd(f), pv = l => usd ? Math.round(l.price / USD) : l.price;
   let out = list.filter(l=>{
     if(f.region && l.region!==f.region) return false;
-    if(f.pmin && l.price < +f.pmin) return false;
-    if(f.pmax && l.price > +f.pmax) return false;
+    if(f.pmin && pv(l) < +f.pmin) return false;
+    if(f.pmax && pv(l) > +f.pmax) return false;
     if(f.cat && l.section!==f.cat) return false;
     if(arch && f.res && !resMatch(l, f.res)) return false;
     if(f.dfrom && torgAt(l) < new Date(f.dfrom+'T00:00:00').getTime()/1000) return false;
@@ -1346,7 +1393,7 @@ const nFilters = f => ['q','cat','res','region','pmin','pmax','dfrom','dto','pla
 const torgAt = l => l.torg || l.req_to + 86400;
 /* фильтры, которые переносятся при смене категории на странице раздела */
 let CARRY = null;
-const CARRY_KEYS = ['st','q','region','pmin','pmax','dfrom','dto','plat','photo','mkt','land','sort'];
+const CARRY_KEYS = ['st','q','region','pmin','pmax','cur','dfrom','dto','plat','photo','mkt','land','sort'];
 function fitFilters(){
   const fp = $('#fp'); if(!fp) return;
   if(innerWidth <= 760){ fp.style.top = ''; return; }
@@ -1364,6 +1411,57 @@ const resKey = l => l.why==='removed' ? 'removed' : l.platform==='mgcn.by' ? 'of
 const RES_F = [['sold_any','Продан — любой'],['sold','Торги состоялись'],['single','Продан единственному участнику'],['failed','Торги не состоялись'],
   ['cancelled','Торги отменены'],['removed','Снят с площадки до торгов'],['pending','Итоги ещё не опубликованы'],['offline','Очный аукцион — итоги не публикуются']];
 const resMatch = (l, f) => f==='sold_any' ? ['sold','single'].includes(resKey(l)) : resKey(l)===f;
+
+/* Свой выпадающий список поверх обычного select: значение и события change остаются у select,
+   поэтому остальной код фильтров не меняется. Список — position:fixed (панель фильтров обрезает всё, что за её краем). */
+function dd(sel){
+  if(!sel || sel.parentNode.classList.contains('dd')) return;
+  const w = document.createElement('div'); w.className = 'dd';
+  sel.before(w); w.append(sel);
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'dd-b';
+  b.setAttribute('aria-haspopup', 'listbox'); b.setAttribute('aria-expanded', 'false');
+  const lab = sel.id && document.querySelector(`label[for="${sel.id}"]`);
+  if(lab){ lab.htmlFor = ''; lab.onclick = () => b.focus(); }
+  b.setAttribute('aria-label', sel.getAttribute('aria-label') || (lab ? lab.textContent : ''));
+  w.append(b);
+  const sync = () => { const o = sel.options[sel.selectedIndex];
+    b.innerHTML = `<span>${esc(o ? o.text : '')}</span><svg viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>`; };
+  sync(); sel.addEventListener('change', sync);
+  let ul = null, act = -1;
+  const place = () => { const r = b.getBoundingClientRect(), h = ul.offsetHeight, below = innerHeight - r.bottom - 8;
+    const up = below < h && r.top - 8 > below;
+    ul.classList.toggle('up', up);
+    ul.style.left = Math.max(8, Math.min(r.left, innerWidth - ul.offsetWidth - 8)) + 'px';
+    ul.style.top = (up ? r.top - h - 4 : r.bottom + 4) + 'px'; };
+  // подсветка пункта; прокручиваем только сам список (scrollIntoView двигал бы страницу — и список закрылся бы)
+  const hl = i => { act = i; [...ul.children].forEach((li, k) => li.classList.toggle('act', k === i));
+    const li = ul.children[i]; if(!li) return;
+    if(li.offsetTop < ul.scrollTop) ul.scrollTop = li.offsetTop - 5;
+    else if(li.offsetTop + li.offsetHeight > ul.scrollTop + ul.clientHeight) ul.scrollTop = li.offsetTop + li.offsetHeight - ul.clientHeight + 5; };
+  const away = e => { if(e.type === 'scroll' && ul && ul.contains(e.target)) return;
+    if(e.type === 'pointerdown' && (w.contains(e.target) || (ul && ul.contains(e.target)))) return; close(); };
+  const close = () => { if(!ul) return; const u = ul; ul = null;
+    w.classList.remove('open'); b.setAttribute('aria-expanded', 'false');
+    u.classList.add('out'); setTimeout(() => u.remove(), reduced ? 0 : 120);
+    removeEventListener('pointerdown', away, true); removeEventListener('scroll', away, true); removeEventListener('resize', away); };
+  const pick = i => { if(i >= 0 && sel.selectedIndex !== i){ sel.selectedIndex = i; sel.dispatchEvent(new Event('change', { bubbles:true })); }
+    close(); if(b.isConnected) b.focus(); };
+  const open = () => {
+    ul = document.createElement('ul'); ul.className = 'dd-l'; ul.setAttribute('role', 'listbox');
+    ul.innerHTML = [...sel.options].map((o, i) => `<li role="option" data-i="${i}"${i === sel.selectedIndex ? ' class="sel" aria-selected="true"' : ''}>${esc(o.text)}</li>`).join('');
+    ul.style.minWidth = b.offsetWidth + 'px';
+    ul.onclick = e => { const li = e.target.closest('li'); if(li) pick(+li.dataset.i); };
+    ul.onpointermove = e => { const li = e.target.closest('li'); if(li && +li.dataset.i !== act) hl(+li.dataset.i); };
+    document.body.append(ul); place(); hl(sel.selectedIndex);
+    w.classList.add('open'); b.setAttribute('aria-expanded', 'true');
+    addEventListener('pointerdown', away, true); addEventListener('scroll', away, true); addEventListener('resize', away); };
+  b.onclick = () => ul ? close() : open();
+  b.onkeydown = e => { const n = sel.options.length;
+    if(e.key === 'Escape' || e.key === 'Tab'){ close(); return; }
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); if(!ul){ open(); return; }
+      hl((act + (e.key === 'ArrowDown' ? 1 : -1) + n) % n); }
+    else if((e.key === 'Enter' || e.key === ' ') && ul){ e.preventDefault(); pick(act); } };
+}
 
 function filterPanel(list, f, section){
   const arch = f.st==='arch';
@@ -1385,7 +1483,8 @@ function filterPanel(list, f, section){
           return `<option value="${s}"${(section||f.cat)===s?' selected':''}>${n} · ${nf(c)}</option>`; }).join('')}</select></div>
       <div class="fg"><label for="f-region">Регион</label><select id="f-region"><option value="">Любой</option>
         ${regions.map(r=>`<option${f.region===r?' selected':''}>${esc(r)}</option>`).join('')}</select></div>
-      <div class="fg"><label>Цена, BYN</label><div class="two">
+      <div class="fg"><div class="lrow"><label>Цена${USD?'':', BYN'}</label>${USD?`<span class="cursw" id="f-cur" role="group" aria-label="Валюта цены">${['BYN','USD'].map(c=>
+        `<button type="button" data-c="${c}"${(fUsd(f)?'USD':'BYN')===c?' class="on" aria-pressed="true"':' aria-pressed="false"'}>${c}</button>`).join('')}</span>`:''}</div><div class="two">
         <input id="f-pmin" type="number" placeholder="от" value="${esc(f.pmin||'')}">
         <input id="f-pmax" type="number" placeholder="до" value="${esc(f.pmax||'')}"></div></div>
       <div class="fg"><label for="f-dfrom">Дата торгов: от — до</label><div class="two">
@@ -1409,12 +1508,14 @@ function crumbs(parts){
 
 /* Фильтры каталога живут в адресе (#/s/avto?region=…&pmin=…): «Назад» с лота возвращает тот же поиск,
    а место в списке и «Показать ещё» восстанавливаются из CAT_POS. */
-const FKEYS = ['st','sort','q','cat','res','region','pmin','pmax','dfrom','dto','plat','photo','mkt','land'];
+const FKEYS = ['st','sort','q','cat','res','region','pmin','pmax','cur','dfrom','dto','plat','photo','mkt','land'];
 const CAT_POS = {};   // адрес каталога → { y, show, t }
 let CAT_NOW = null;   // открытый каталог: { hash, show }
 function pageCatalog(section, params){
   FSTATE = CARRY || {}; CARRY = null;
   FKEYS.forEach(k=>{ const v = params.get(k); if(v) FSTATE[k] = v; });
+  // валюта цены: из адреса; суммы без пометки — в рублях; иначе — последний выбор посетителя
+  if(FSTATE.cur!=='USD' || !USD) FSTATE.cur = !FSTATE.pmin && !FSTATE.pmax && CURR==='USD' ? 'USD' : undefined;
   const view = params.get('view');
   if(view==='soon') FSTATE.soon = 1;
   if(view==='new'){ FSTATE.fresh = 1; FSTATE.sort = FSTATE.sort || 'new'; }
@@ -1443,10 +1544,11 @@ function pageCatalog(section, params){
   document.title = title + ' — МониТорг';
 
   const closeDrawer = () => { $('#fp')?.classList.remove('open'); $('#ov').classList.remove('open'); };
-  const read = () => {
+  let SWAP = null;   // последнее переключение валюты: прежние «от/до» — чтобы вернуть их при обратном переключении
+  const read = () => { SWAP = null;
     const v = id => (document.getElementById(id)||{}).value || '';
     const c = id => (document.getElementById(id)||{}).checked ? '1' : '';
-    FSTATE = {st:FSTATE.st, sort:FSTATE.sort, soon:FSTATE.soon, fresh:FSTATE.fresh, pin:FSTATE.pin, q:v('f-q').trim(), region:v('f-region'), pmin:v('f-pmin'),
+    FSTATE = {st:FSTATE.st, sort:FSTATE.sort, soon:FSTATE.soon, fresh:FSTATE.fresh, pin:FSTATE.pin, q:v('f-q').trim(), region:v('f-region'), pmin:v('f-pmin'), cur:FSTATE.cur,
       pmax:v('f-pmax'), dfrom:v('f-dfrom'), dto:v('f-dto'), plat:v('f-plat'), photo:c('f-photo'), mkt:c('f-mkt'), land:c('f-land'), cat:section?'':v('f-cat'),
       res:FSTATE.st==='arch'?v('f-res'):''};
   };
@@ -1463,6 +1565,7 @@ function pageCatalog(section, params){
         if(id==='f-cat'){ if(FSTATE.cat!=='nedvizhimost') FSTATE.land = ''; drawPanel(); }   // «только земельные участки» — у недвижимости
         render(); });
     });
+    document.querySelectorAll('#fp select').forEach(dd);
     requestAnimationFrame(fitFilters);
     // площадка — кнопками в цвет площадки (значение — в скрытом поле f-plat)
     document.querySelectorAll('#f-pchips .pchip').forEach(b=>b.onclick = () => {
@@ -1470,14 +1573,25 @@ function pageCatalog(section, params){
       document.querySelectorAll('#f-pchips .pchip').forEach(x=>x.classList.toggle('on', x===b));
       read(); render(); });
     // «Сбросить» — к исходному виду этой страницы: раздел, лента («Истекающие», «Новые»), режим «Активные / Архив»
-    $('#f-reset').onclick = () => { FSTATE = { st:FSTATE.st };
+    $('#f-reset').onclick = () => { FSTATE = { st:FSTATE.st, cur:FSTATE.cur };
       if(view==='soon') FSTATE.soon = 1; if(view==='new'){ FSTATE.fresh = 1; FSTATE.sort = 'new'; } if(view==='pin') FSTATE.pin = 1;
       drawPanel(); render(); window.scrollTo({ top:0, behavior:'smooth' }); };
+    // валюта цены «от/до»: введённые суммы пересчитываются по курсу. Переключили туда и обратно, ничего не меняя, —
+    // возвращаются прежние числа; доллары → рубли — границы, при которых под ценой та же сумма в долларах
+    document.querySelectorAll('#f-cur button').forEach(b=>b.onclick = () => { const c = b.dataset.c; if(c===(fUsd(FSTATE)?'USD':'BYN')) return;
+      const sw = SWAP, was = { pmin:FSTATE.pmin, pmax:FSTATE.pmax };
+      if(sw && sw.cur===c && sw.to.pmin===FSTATE.pmin && sw.to.pmax===FSTATE.pmax){ FSTATE.pmin = sw.pmin; FSTATE.pmax = sw.pmax; SWAP = null; }
+      else {
+        if(FSTATE.pmin) FSTATE.pmin = String(c==='USD' ? Math.round(+FSTATE.pmin / USD) : Math.max(0, Math.ceil((+FSTATE.pmin - .5) * USD)));
+        if(FSTATE.pmax) FSTATE.pmax = String(c==='USD' ? Math.round(+FSTATE.pmax / USD) : Math.floor((+FSTATE.pmax + .5) * USD));
+        SWAP = { cur:fUsd(FSTATE)?'USD':'BYN', ...was, to:{ pmin:FSTATE.pmin, pmax:FSTATE.pmax } };
+      }
+      FSTATE.cur = c==='USD' ? 'USD' : undefined; setCurr(c); drawPanel(); render(); });
     $('#f-close').onclick = closeDrawer;
     $('#f-apply').onclick = closeDrawer;
     document.querySelectorAll('#f-st button').forEach(b=>b.onclick = () => {
       if((FSTATE.st||'')===b.dataset.st) return;
-      FSTATE = {st:b.dataset.st||undefined, q:FSTATE.q};
+      FSTATE = {st:b.dataset.st||undefined, q:FSTATE.q, cur:FSTATE.cur};
       drawPanel(); render();
     });
   };
@@ -1499,6 +1613,7 @@ function pageCatalog(section, params){
       ${arch||!UB?'':`<button class="btn ssave" id="f-save" type="button" title="Новые лоты по этому поиску будут приходить в личный кабинет">${IC.save}<span>Сохранить поиск</span></button>`}
       <select id="f-sort" aria-label="Сортировка">${sorts.map(([v,t])=>`<option value="${v}"${cur===v?' selected':''}>${t}</option>`).join('')}</select>`;
     $('#f-sort').onchange = e => { FSTATE.sort = e.target.value; render(); };
+    dd($('#f-sort'));
     const sv = $('#f-save'); if(sv) sv.onclick = () => saveSearch(section);
     $('#f-open').onclick = () => { $('#fp').classList.add('open'); $('#ov').classList.add('open'); };
     let hint = '';
@@ -1994,6 +2109,7 @@ function pageLot(id){
         <aside class="panel buy">
           <div class="lbl">${l.platform==='belauction.by' ? (arch ? 'Последняя ставка' : 'Текущая ставка') : l.section==='arenda' ? (l.platform==='auction24.by' ? 'Начальная арендная плата в месяц' : 'Начальная цена права аренды') : 'Стартовая цена'}</div>
           <div class="bigprice">${nf(l.price)} BYN</div>
+          ${usdTxt(l.price)?`<div class="bigalt">${usdTxt(l.price)}</div>`:''}
           ${pc?`<div class="pchg">${pc<0?'↓ снижена на '+(-pc)+'%':'↑ выросла на '+pc+'%'} — было ${nf(l.prices[0][1])} BYN</div>`:''}
           <dl class="facts">
             <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
@@ -2742,6 +2858,8 @@ async function saveSearch(section){
   if(!ME){ needLogin(); return; }
   const p = {}; if(section) p.sec = section;
   SS_KEYS.forEach(k=>{ if(FSTATE[k]) p[k] = String(FSTATE[k]); });
+  // база сравнивает цены в рублях — доллары переводим по сегодняшнему курсу
+  if(fUsd(FSTATE)){ if(p.pmin) p.pmin = String(Math.max(0, Math.floor((+p.pmin - .5) * USD))); if(p.pmax) p.pmax = String(Math.ceil((+p.pmax + .5) * USD)); }
   const name = prompt('Как назвать поиск? Новые лоты по нему будут приходить в личный кабинет.', searchTitle(p));
   if(name === null) return;
   try{ await uapi('saved_searches', { method:'POST', body:[{ name:name.trim() || searchTitle(p), params:p, notify:true }], prefer:'return=minimal' });

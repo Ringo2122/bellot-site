@@ -311,6 +311,22 @@ end
 pub = { 'texts' => CFG['texts'] || {}, 'calc' => CFG['calc'] || {}, 'sec_off' => sec_off,
         'bav' => Bav.load.slice('v', 'from', 'src', 'url') }   # действующая БАВ — для расчёта аренды
 pub['sb'] = { 'url' => ENV['SB_URL'], 'key' => ENV['SB_KEY'] } if Sb.on?
+# курс доллара Нацбанка на сегодня: ориентир в долларах под ценой и фильтр по цене в USD. Не ответил — сайт без долларов
+def nbrb_usd
+  u = URI('https://api.nbrb.by/exrates/rates/USD?parammode=2')
+  2.times do
+    begin
+      j = JSON.parse(Net::HTTP.start(u.host, u.port, use_ssl: true, open_timeout: 10, read_timeout: 15) { |h| h.get(u.request_uri).body })
+      r = j['Cur_OfficialRate'].to_f / (j['Cur_Scale'] || 1).to_f
+      return { 'rate' => r.round(4), 'date' => j['Date'].to_s[0, 10] } if r > 1 && r < 100
+    rescue StandardError => e
+      warn "курс НБРБ: #{e.class}"
+    end
+    sleep 3
+  end
+  nil
+end
+pub['usd'] = nbrb_usd
 # главная из блоков (админка → «Главная страница»): картинки блоков — файлами media/<id>-<отпечаток>.jpg, в настройках —
 # пути к ним; ссылки — только http(s) и разделы сайта (#/…). Без настроек сайт собирает главную как раньше.
 if CFG['home'].is_a?(Hash)
