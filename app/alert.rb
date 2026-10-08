@@ -95,8 +95,12 @@ if last_c
                'detail' => "обхода в #{due.getlocal('+03:00').strftime('%H:%M')} не было; последний — #{(age / 3600).round} ч назад" }
   end
   found << { 'fp' => 'robot-failed', 'title' => 'Последний обход площадок завершился с ошибкой', 'detail' => 'подробности — в админке, раздел «Сводка»' } if last_c['ok'] == false
-  (last_c.dig('stats', 'update', 'unread') || []).each do |src|
-    found << { 'fp' => "unread|#{src}", 'title' => "Не читается список площадки: #{src}", 'detail' => 'в последнем обходе — 0 лотов; возможно, площадка сменила вёрстку' }
+  # «не читается список» — только если так было два обхода подряд: разовый 0 бывает, когда площадка на минуту
+  # недоступна или не ответила роботу GitHub (так было 08.10 с belauction.by — следующий обход прочитал всё)
+  prev_c = runs.select { |r| r['kind'] == 'collect' && r['finished_at'] }[1]
+  prev_unread = (prev_c && prev_c.dig('stats', 'update', 'unread')) || []
+  (last_c.dig('stats', 'update', 'unread') || []).select { |src| prev_unread.include?(src) }.each do |src|
+    found << { 'fp' => "unread|#{src}", 'title' => "Не читается список площадки: #{src}", 'detail' => 'два обхода подряд — 0 лотов; возможно, площадка сменила вёрстку или закрыла доступ' }
   end
 end
 hung = runs.find { |r| r['finished_at'].nil? && now - Time.parse(r['at']) > 90 * 60 && now - Time.parse(r['at']) < 24 * 3600 }
