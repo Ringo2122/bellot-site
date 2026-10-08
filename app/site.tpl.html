@@ -278,10 +278,7 @@ applyTheme(window.THEME);
   .lot .ph{position:relative;aspect-ratio:4/3;background:var(--brand-l);overflow:hidden}
   .lot .ph img{width:100%;height:100%;object-fit:cover;display:block}
   .lot .noph{width:100%;height:100%;display:grid;place-items:center;color:var(--ink-3);font-size:12px}
-  .flag{position:absolute;top:8px;left:8px;font-size:11px;font-weight:700;padding:3px 8px;
-    border-radius:999px;background:var(--accent);color:#fff}
-  .flag.t{background:rgba(16,22,30,.72);left:auto;right:8px}
-  .flag.disc{top:auto;bottom:8px;left:8px;background:var(--ok);color:#fff}
+
 
   /* ── рыночный ориентир ── */
   /* рыночный ориентир: спокойная карточка — чёрный текст, серые пояснения, один цвет ссылок (как на всём сайте) */
@@ -297,7 +294,10 @@ applyTheme(window.THEME);
   .mkt .mft a,.mkt .mft .beta{color:var(--brand-d)}
   .lot .body{padding:12px 13px;display:flex;flex-direction:column;gap:7px;flex:1}
   .lot .nm{font-weight:700;font-size:14.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
-    -webkit-box-orient:vertical;overflow:hidden;min-height:2.6em}
+    -webkit-box-orient:vertical;overflow:hidden}
+  .lot .kind{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:-2px}
+  .lot .dsc{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--ink-3);margin-top:-2px}
+  .lot .dsc svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .lot .pr{font-size:19px;font-weight:700;color:var(--brand);letter-spacing:-.02em}
   .lot .pr span{font-size:11.5px;color:var(--ink-3);font-weight:400}
   .lot .pr2{font-size:12.5px;color:var(--ink-3);font-weight:600;margin-top:-6px}
@@ -455,11 +455,14 @@ applyTheme(window.THEME);
   @keyframes sk{to{background-position:-220% 0}}
 
   /* ── значки на карточках ── */
-  .lot .flags{position:absolute;top:8px;left:8px;display:flex;flex-wrap:wrap;gap:5px;max-width:65%}
-  .lot .flags .flag{position:static}
-  .flag.new{background:var(--ok)}
-  .flag.two{background:#6a4fb3}
-  .flag.arch{background:#6b7480}
+  .lot .marks{position:absolute;left:0;right:0;bottom:0;padding:44px 92px 11px 12px;display:flex;flex-wrap:wrap;gap:4px 14px;
+    background:linear-gradient(0deg,rgba(10,14,20,.82) 0%,rgba(10,14,20,.55) 45%,rgba(10,14,20,0));color:#fff;font-size:13px;font-weight:700;
+    text-shadow:0 1px 2px rgba(0,0,0,.35);pointer-events:none}
+  .lot .marks span{display:flex;align-items:center;gap:6px}
+  .lot .marks svg{width:15px;height:15px;flex:none;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .marks .urg svg{stroke:#ff9b73}.marks .new svg{stroke:#8ee6b5}.marks .arch svg{stroke:#d5dae0}.marks .two svg{stroke:#c9bbf5}.marks .off svg{stroke:#ffd27a}
+  .lot.arch .marks{background:linear-gradient(0deg,rgba(40,44,50,.82) 0%,rgba(40,44,50,.5) 45%,rgba(40,44,50,0))}
+  .lot .marks ~ .npc{background:none;padding:0;bottom:15px;right:52px}
   .lot.arch .ph img{filter:grayscale(.6)}
   .lot.arch .pr{color:var(--ink-2)}
   .down{font-style:normal;font-size:11.5px;color:var(--ok);font-weight:700;margin-left:4px}
@@ -1296,26 +1299,37 @@ function pchg(l){
   return Math.round((l.price - l.prices[0][1]) / l.prices[0][1] * 100);
 }
 
-function lotCard(l){
+/* пометки внизу фото карточки: значок + текст на затемнении */
+const MARK = {
+  urg:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+  new:'<svg viewBox="0 0 24 24"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9-1.9 5.1-1.9-5.1L5 10.5l5.1-1.9z"/></svg>',
+  arch:'<svg viewBox="0 0 24 24"><path d="M4 5h16v4H4zM5.5 9v10h13V9M10 13h4"/></svg>',
+  two:'<svg viewBox="0 0 24 24"><path d="M12 4l8 4-8 4-8-4zM4 12l8 4 8-4M4 16l8 4 8-4"/></svg>',
+  off:'<svg viewBox="0 0 24 24"><path d="M14 4l6 6-3 3-6-6zM14 10l-8.5 8.5"/></svg>' };
+const DOWN = '<svg viewBox="0 0 24 24"><path d="M4 7l6 6 4-4 6 6M20 10v5h-5"/></svg>';
+// inArch === true — карточка в разделе «Архив»: пометка «Архив» там лишняя (map передаёт номер — поэтому строго true)
+function lotCard(l, inArch){
   const arch = l.status==='archive', d = left(l), urg = !arch && d>=0 && d<=7, dc = discount(l), pc = pchg(l);
-  const flags = (arch?'<span class="flag arch">архив</span>':'')
-    + (!arch&&isNew(l)?'<span class="flag new">новый</span>':'')
-    + (urg?`<span class="flag">${d===0?'последний день':d===1?'до завтра':d+' дн.'}</span>`:'')
-    + (!arch&&l.alt?`<span class="flag two">${l.alt.length} ${plural(l.alt.length,'площадка','площадки','площадок')}</span>`:'')
-    + (l.platform==='mgcn.by'?'<span class="flag">очный аукцион</span>':'');
+  const marks = [];
+  if(arch && inArch !== true) marks.push(['arch', 'Архив']);
+  if(!arch && isNew(l)) marks.push(['new', 'Новый']);
+  if(urg) marks.push(['urg', d===0 ? 'Последний день' : d===1 ? 'До завтра' : 'Осталось ' + d + ' дн.']);
+  if(!arch && l.alt) marks.push(['two', l.alt.length + ' ' + plural(l.alt.length,'площадка','площадки','площадок')]);
+  if(l.platform==='mgcn.by') marks.push(['off', 'Очный аукцион']);
+  const disc = !arch && dc!==null && dc>=15 ? dc : null;
   return `<a class="lot${arch?' arch':''} ${pslug(l.platform)}" href="#/lot/${encodeURIComponent(l.id)}">
     <div class="ph">
       ${pic(l)}
-      <div class="flags">${flags}</div>
-      <span class="flag t">${esc(secName(l.section))}</span>
-      ${!arch&&dc!==null&&dc>=15?`<span class="flag disc">дешевле рынка на ${dc}%</span>`:''}
+      ${marks.length?`<div class="marks">${marks.map(([k,t])=>`<span class="${k}">${MARK[k]}${t}</span>`).join('')}</div>`:''}
       ${l.np?`<span class="npc" title="${l.np} фото"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${l.np}</span>`:''}
       ${favBtn(l)}
     </div>
     <div class="body">
+      <div class="kind">${esc(secName(l.section))}</div>
       <div class="nm">${esc(l.name)}</div>
       <div class="pr">${nf(l.price)} <span>BYN</span>${pc!==null&&pc<0?`<em class="down">↓ ${-pc}%</em>`:''}</div>
       ${usdTxt(l.price)?`<div class="pr2">${usdTxt(l.price)}</div>`:''}
+      ${disc?`<div class="dsc">${DOWN}На ${disc}% дешевле рынка</div>`:''}
       <div class="loc">${esc(l.location||'—')}</div>
       <div class="ft">${arch
         ? (resShort(l) ? `<span class="rs ${RES[l.result.st][1]}">${resShort(l)}</span>` : `<span>${l.why==='removed'?'Снят':'Завершён'} <b>${dt(l.closed)}</b></span>`)
@@ -1626,7 +1640,7 @@ function pageCatalog(section, params){
       else loadArch1().then(()=>{ if($('#res')) render(); });
     }
     $('#res').innerHTML = hint + (list.length
-      ? `<div class="grid">${list.slice(0,show).map(lotCard).join('')}</div>`
+      ? `<div class="grid">${list.slice(0,show).map(l=>lotCard(l, arch)).join('')}</div>`
         + (list.length>show ? `<button class="btn more" id="more" type="button">Показать ещё ${Math.min(STEP,list.length-show)} · осталось ${list.length-show}</button>` : '')
       : `<div class="panel empty">${arch&&!base.length?'Архив раздела пока пуст — лоты попадают сюда после окончания приёма заявок.':'По этим условиям ничего не нашлось. Попробуйте смягчить фильтры.'}</div>`);
     const mb = $('#more'); if(mb) mb.onclick = () => { show += STEP; render(true); };
