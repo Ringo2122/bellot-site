@@ -202,6 +202,8 @@ stat['удалено: площадка исключена'] = dropped if dropped
 # коды символов в названиях, записанных раньше, чем их стал понимать Src.decode (05.10: «Orenstein &#038; Koppel», «&lt;ГС-14.02&gt;»)
 db.each_value do |l|
   %w[name location debtor].each { |k| l[k] = Src.decode(l[k]) if l[k].is_a?(String) && l[k] =~ /&#?\w+;/ }
+  # gostorg: «коэффициент к базовой арендной ставке» — только текст, без расчёта (решение Артёма 09.10, лоты до него — с расчётом)
+  l['rent'] = { 'k' => 'raw', 'raw' => l['rent']['raw'] } if l['platform'] == 'gostorg.by' && l['rent'].is_a?(Hash) && l['rent']['k'] == 'ks'
 end
 
 (RESULTS_ONLY || YEAR_ARCH ? {} : PLAN.reject { |plat, _| PLAT_OFF.include?(plat) }).map do |plat, secs|
