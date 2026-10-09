@@ -6,7 +6,8 @@
 #   ruby app/alert.rb --event "текст"    разовое событие (упал прогон робота — шаг update.yml при ошибке)
 # Секреты GitHub: ALERT_TG_TOKEN — токен бота сигналов; ALERT_TG_CHAT — кому писать (если нет — берём из settings.alert_chat,
 # а туда — из первого сообщения боту: достаточно нажать «Start»). База — та же, что у робота (SB_URL, SB_KEY, SB_TOKEN).
-# Проблема (fp — отпечаток) присылается, когда появилась; напоминание — раз в 6 часов; «исправлено» — когда пропала.
+# Проблема (fp — отпечаток) присылается, когда подтвердилась на двух проверках подряд (разовые сбои не шлём);
+# напоминание — раз в 12 часов; «исправлено» — когда пропала (только о том, о чём писали).
 require 'json'
 require 'time'
 require 'uri'
@@ -14,7 +15,8 @@ require 'net/http'
 require_relative 'sb'
 
 TOKEN = ENV['ALERT_TG_TOKEN'].to_s
-REMIND = 6 * 3600
+REMIND = 12 * 3600
+CONFIRM = 20 * 60   # новая проблема ждёт второй проверки (монитор — раз в 30 минут)
 RUN_URL = ENV['GITHUB_RUN_ID'] ? "https://github.com/#{ENV['GITHUB_REPOSITORY']}/actions/runs/#{ENV['GITHUB_RUN_ID']}" : nil
 
 def tg(method, params)
@@ -67,6 +69,19 @@ abort 'нет базы админки (SB_URL, SB_KEY, SB_TOKEN)' unless Sb.on?
 now = Time.now
 found = []   # [{fp, title, detail}]
 
+# Запуски GitHub по расписанию. Робот сайта (update.yml) стартует каждые 10 минут, но GitHub иногда часами не запускает
+# задания по расписанию — сразу у всех наших: 04.10 почти весь день, 09.10 с 04:23 до 10:41. Тогда и бот лотов молчит,
+# и обход опаздывает, но это не поломка: запуски вернутся сами, робот догонит пропущенный обход. Поэтому «бот молчит»
+# и «робот не обошёл» — только если GitHub в это время робота запускал (значит, беда именно в нём или в боте).
+# nil — GitHub не ответил: тогда судим по-старому.
+def sched_runs_since(t)
+  repo = ENV['GITHUB_REPOSITORY'] or return nil
+  u = "https://api.github.com/repos/#{repo}/actions/workflows/update.yml/runs?event=schedule&per_page=100&created=%3E#{t.utc.iso8601}"
+  out = IO.popen(['curl', '-sS', '-m', '30', '-H', "Authorization: Bearer #{ENV['GH_TOKEN']}", '-H', 'Accept: application/vnd.github+json', u], err: File::NULL, &:read)
+  runs = (JSON.parse(out.to_s) rescue {})['workflow_runs']
+  runs && runs.map { |r| Time.parse(r['created_at']) }
+end
+
 # ── находки монитора сайта ──
 if ARGV[0] && File.exist?(ARGV[0])
   m = (JSON.parse(File.read(ARGV[0], encoding: 'UTF-8')) rescue nil)
@@ -90,7 +105,8 @@ if last_c
   mn = now.getlocal('+03:00')
   due = (0..2).flat_map { |d| day = mn - d * 86_400; hours.map { |h| Time.new(day.year, day.month, day.day, h, 0, 0, '+03:00') } }
              .select { |t| t <= now - 2 * 3600 }.max
-  if due && Time.parse(last_c['at']) < due
+  ran = due && sched_runs_since(due + 10 * 60)   # после часа обхода у робота было хотя бы 3 запуска — и всё равно не обошёл
+  if due && Time.parse(last_c['at']) < due && (ran.nil? || ran.size >= 3)
     found << { 'fp' => 'robot-stale', 'title' => 'Робот не обошёл площадки по расписанию',
                'detail' => "обхода в #{due.getlocal('+03:00').strftime('%H:%M')} не было; последний — #{(age / 3600).round} ч назад" }
   end
@@ -110,7 +126,16 @@ found << { 'fp' => 'robot-hung', 'title' => 'Прогон робота зави�
 bot = Sb.get('bot_runs?select=at,errors&order=at.desc&limit=1').first
 if bot
   age = now - Time.parse(bot['at'])
-  found << { 'fp' => 'bot-stale', 'title' => 'Telegram-бот лотов молчит', 'detail' => "последняя проверка площадок #{(age / 3600.0).round(1)} ч назад" } if age > 3 * 3600
+  # бот запускается каждые 15 минут; «молчит» — когда он не проверял площадки 3 часа, а робот сайта за это время
+  # GitHub запускал как обычно (≥ 9 раз, то есть больше полутора часов работы). Новых лотов может не быть по нескольку
+  # дней — это не поломка: бот всё равно отмечает каждую проверку.
+  if age > 3 * 3600
+    ran = sched_runs_since(Time.parse(bot['at']) + 20 * 60)
+    if ran.nil? || ran.size >= 9
+      found << { 'fp' => 'bot-stale', 'title' => 'Telegram-бот лотов не запускается',
+                 'detail' => "последняя проверка площадок #{(age / 3600.0).round(1)} ч назад, хотя робот сайта за это время работал" }
+    end
+  end
   found << { 'fp' => 'bot-errors', 'title' => 'Telegram-бот лотов: часть разделов не прочитана', 'detail' => bot['errors'] } if bot['errors'] && age < 3 * 3600
 end
 
@@ -120,7 +145,8 @@ open = Sb.get('alerts?open=eq.true&select=*').map { |a| [a['fp'], a] }.to_h
 fresh, remind = [], []
 found.each do |p|
   a = open[p['fp']]
-  if a.nil? || a['sent_at'].nil? then fresh << p
+  next if a.nil?                                                     # первая проверка — только запоминаем
+  if a['sent_at'].nil? then fresh << p if now - Time.parse(a['first_at']) >= CONFIRM
   elsif now - Time.parse(a['sent_at']) > REMIND then remind << p
   end
 end
@@ -180,7 +206,7 @@ found.each do |p|
   a = open[p['fp']]
   if a.nil?
     Sb.upsert('alerts', [{ 'fp' => p['fp'], 'title' => p['title'], 'detail' => p['detail'], 'open' => true, 'first_at' => t, 'last_at' => t,
-                           'sent_at' => ok ? t : nil, 'resolved_at' => nil, 'seen' => 1 }], 'fp')
+                           'sent_at' => nil, 'resolved_at' => nil, 'seen' => 1 }], 'fp')
   else
     upd = { 'last_at' => t, 'detail' => p['detail'], 'title' => p['title'], 'seen' => a['seen'].to_i + 1 }
     upd['sent_at'] = t if ok && (fresh.include?(p) || remind.include?(p))

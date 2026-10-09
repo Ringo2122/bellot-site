@@ -2,7 +2,7 @@ name: Мониторинг сайта
 
 # Каждые 30 минут: монитор сайта (tools/monitor.mjs — настоящий Chrome, компьютер и iPhone) и состояние робота
 # и Telegram-бота лотов → сигнал в личку Telegram отдельным ботом (app/alert.rb). Одна и та же проблема —
-# один раз, напоминание раз в 6 часов, «исправлено», когда пропала.
+# один раз (после второй проверки подряд), напоминание раз в 12 часов, «исправлено», когда пропала.
 on:
   schedule:
     - cron: '7,37 * * * *'
@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read     # alert.rb смотрит, запускал ли GitHub робота по расписанию
 
 concurrency:
   group: monitor
@@ -26,6 +27,7 @@ jobs:
       SB_TOKEN: ${{ secrets.SB_TOKEN }}
       ALERT_TG_TOKEN: ${{ secrets.ALERT_TG_TOKEN }}
       ALERT_TG_CHAT: ${{ secrets.ALERT_TG_CHAT }}
+      GH_TOKEN: ${{ github.token }}   # только чтение запусков этого репозитория
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
