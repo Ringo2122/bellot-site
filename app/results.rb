@@ -25,6 +25,7 @@
 #   auction24.by  «Статус» на странице лота и вкладка «Ход торгов»
 #   lotsale.by    API лота: статус лота и аукциона, ставки, число участников
 #   butb.by       «Состояние лота», «Цена продажи» и «Зарегистрировано заявлений» в карточке лота
+#   gostorg.by    вкладка «История аукциона»: состояние, заявки, ставки (только электронные торги)
 #   mgcn.by       очные аукционы — итоги онлайн не публикуются, не проверяем
 require 'json'
 require_relative 'sources'
@@ -247,6 +248,29 @@ module Res
               else return { 'st' => 'pending' }
               end
     r['price'] = Src.num(top['Цена продажи']) if %w[sold single].include?(r['st'])
+    r.reject { |_, v| v.nil? || v == 0 }
+  end
+
+  # ── gostorg.by ──
+  # Вкладка «История аукциона»: «Состояние» («До старта торгов», «Принятие заявок на участие», «Торги завершены»…),
+  # «Принято заявлений / Зарегистрировано участников», таблица ставок (№, дата, ставка, № участника). Очные торги — без итогов
+  # (робот их не проверяет). Ставок нет — торги не состоялись: продажу единственному участнику площадка отдельно не показывает.
+  def gs_result(html)
+    secs = Src.gs_fields(html.to_s)
+    h = (secs.find { |s| s['h'] =~ /История аукциона/ } || { 'rows' => [] })['rows'].to_h
+    st = h['Состояние'].to_s
+    return { 'st' => 'pending' } unless st =~ /заверш|состоял|продан|отмен|снят/i
+    body = html.to_s[%r{id="bets_block"[^>]*>(.*?)</tbody>}m, 1].to_s
+    bids = body.scan(%r{<tr[^>]*>(.*?)</tr>}m).map { |(r)| r.scan(%r{<td[^>]*>(.*?)</td>}m).flatten.map { |c| Src.txt(c) } }.select { |r| r.size >= 4 }
+    acc, reg = h.find { |k, _| k =~ /Принято заявлений/ }.to_a[1].to_s.split('/').map(&:to_i)
+    users = [reg.to_i, bids.map { |r| r[3] }.uniq.size].max
+    start = (secs.flat_map { |s| s['rows'] }.find { |k, _| k =~ /\AНачальная цена лота/ } || [])[1]
+    r = { 'v' => V, 'start' => Src.num(start), 'bids' => bids.size, 'users' => users, 'note' => acc ? "заявлений: #{acc}" : nil }
+    r['st'] = if st =~ /отмен|снят/i then 'cancelled'
+              elsif st =~ /не состоял|нерезульт/i || bids.empty? then 'failed'
+              else users == 1 ? 'single' : 'sold'
+              end
+    r['price'] = bids.map { |b| Src.num(b[2]) }.max if %w[sold single].include?(r['st'])
     r.reject { |_, v| v.nil? || v == 0 }
   end
 

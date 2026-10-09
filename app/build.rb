@@ -41,7 +41,7 @@ TMP  = File.join(Store::ROOT, 'tmp')
 PACKS = 1000
 # свежий архив — arch.js (календарь на главной, недавние лоты), старше — arch2.js
 ARCH_NEW = 45
-KEEP = %w[id art name price req_to torg url location region debtor area_num platform section
+KEEP = %w[id art name price req_to torg url location region debtor area_num platform section off
           photo pk market prices status closed why first_seen alt pin result phx land sub].freeze
 SECS = %w[nedvizhimost avto gruz spec oborud arenda].freeze
 

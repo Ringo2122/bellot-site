@@ -1,7 +1,7 @@
 # encoding: utf-8
 #
 # Разбор площадок: e-auction.by, ipmtorgi.by, beltorgi.by, konfiskat.by (торги — на torgikonfiskat.by), belauction.by,
-# auction24.by, minskestate.by, lotsale.by, butb.by (et.butb.by) (очные аукционы МГЦН — mgcn.rb).
+# auction24.by, minskestate.by, lotsale.by, butb.by (et.butb.by), gostorg.by (очные аукционы МГЦН — mgcn.rb).
 # Для каждой — список активных карточек раздела, разбор страницы лота и список завершённых торгов (архив).
 # cpo.by (ЦПО) с 25.09.2026 не собираем: это рекламная витрина торгов ИПМ.
 # Карточка списка: key, platform, art, name, price, req_to, url, thumb (+ служебные поля).
@@ -115,6 +115,9 @@ module Src
              h.scan(%r{href=["']?(https://belauction\.by/wp-content/uploads/[^\s"'>]+?\.(?:jpe?g|png|webp))["']?\s+data-fancybox=["']?images}i).flatten
            when 'auction24.by'
              h.scan(%r{class="gallery-link" href="(/file/[^"]+)"}).flatten.map { |u| A24 + u }
+           when 'gostorg.by'   # только главный слайдер лота (ниже — фото «похожих лотов»)
+             h[/js-auction-card-slider-main(.*?)js-auction-card-slider-nav/m, 1].to_s
+               .scan(%r{(?:src|data-src|href)="(/upload/[^"]+\.(?:jpe?g|png|webp))"}i).flatten.map { |u| GS + u }
            else []
            end
     list.uniq   # все фото карточки, без ограничения
@@ -884,6 +887,146 @@ module Src
       sleep 0.5
     end
     out.uniq
+  end
+
+  # ---------------- gostorg.by (ЭТП GOSTORG РУП «Институт недвижимости и оценки») ----------------
+  # Bitrix. В каталоге три вида продажи (фильтр «Вид продажи»): электронные торги, очные торги и «размещение объявлений»
+  # (изучение спроса, ≈ 12 тыс. в недвижимости) — его не берём (решение Артёма 09.10.2026), как и «продажу без торгов».
+  # Только наши разделы: недвижимость, земля, транспорт (без запчастей, шин, ж/д), спецтехника (без запчастей), оборудование.
+  # Список — адрес фильтра /catalog/<раздел>/filter/sale_method-is-<auction|sale>/apply/, по 100 лотов на странице;
+  # листать страницы robots.txt запрещает (?PAGEN_1=) — где лотов 100, делим список фильтром цены
+  # (start_price-from-A-to-B) на части меньше сотни. Если у раздела такого вида продажи нет, площадка молча показывает
+  # «Все» (с объявлениями) — такой ответ считаем пустым. Лот — /catalog/…/<код из 20 знаков>/: вкладки с полями
+  # «название — значение», история аукциона (состояние, заявки, ставки). Завершённые торги из каталога исчезают
+  # (архива нет), часть страниц потом удаляется. Очные торги — итогов онлайн нет (как у МГЦН).
+  GS = 'https://gostorg.by'
+  GS_SALE = { 'auction' => 'Электронные торги', 'sale' => 'Очные торги' }.freeze
+  # [раздел каталога, наш раздел (nil — недвижимость или право аренды по названию), подразделы-исключения]
+  GS_PLAN = [['nedvizhimost', nil], ['zemlya', nil],
+             ['transport/avtomobili-s-probegom', 'avto'], ['transport/avtobusy', 'gruz'], ['transport/gruzovoy-transport', 'gruz'],
+             ['transport/pritsepy-polupritsepy', 'gruz'], ['transport/mototekhnika', 'gruz'], ['transport/vozdushnyy-vodnyy-transport', 'gruz'],
+             ['spets-selkhoz-tekhnika', 'spec', %r{/spets-selkhoz-tekhnika/zapchasti}], ['oborudovanie', 'oborud']].freeze
+  GS_FROM = { 'oborudovanie' => 3000 }.freeze   # дешёвое оборудование робот всё равно отсеет порогом раздела
+
+  # одна страница фильтра: карточки или nil (не прочитана); [] — пусто или фильтр не применился
+  def gs_page(path, sale, lo = nil, hi = nil)
+    pr = if lo && hi then "start_price-from-#{lo}-to-#{hi}/"
+         elsif lo then "start_price-from-#{lo}/"
+         elsif hi then "start_price-to-#{hi}/"
+         else ''
+         end
+    h = get("#{GS}/catalog/#{path}/filter/sale_method-is-#{sale}/#{pr}apply/") or return nil
+    cur = txt(h[/Вид продажи.{0,3000}?data-role="currentOption"[^>]*>(.*?)</m, 1])
+    return [] unless cur == GS_SALE[sale]
+    h.split('class="auction-card__title"').drop(1).map do |ch|
+      href = ch[%r{href="(/catalog/[^"]+/([a-z0-9]{20})/)"}, 1] or next
+      { 'href' => href, 'code' => href[%r{([a-z0-9]{20})/\z}, 1], 'name' => txt(ch[%r{<h6>(.*?)</h6>}m, 1]) }
+    end.compact.uniq { |c| c['code'] }
+  end
+
+  # весь список раздела по виду продажи: где 100 карточек (страница полная) — делим по цене
+  def gs_all(path, sale, lo = nil, hi = nil, depth = 0)
+    cards = gs_page(path, sale, lo, hi) or return nil
+    sleep 1
+    return cards if cards.size < 100 || depth >= 7
+    a = (lo || 0).to_f
+    mid = hi ? Math.sqrt([a, 1].max * hi).round : [a * 4, 2000].max.round
+    left = gs_all(path, sale, lo, mid, depth + 1) or return nil
+    right = gs_all(path, sale, mid, hi, depth + 1) or return nil
+    (left + right).uniq { |c| c['code'] }
+  end
+
+  # раздел нашего сайта: недвижимость и земля — «Право аренды», если торгуется право аренды
+  def gs_sec(sec, name)
+    sec || (name.to_s =~ /аренд/i ? 'arenda' : 'nedvizhimost')
+  end
+
+  # активные: nil — какой-то список не прочитан; [] — торгов в наших разделах нет
+  def gs_list
+    out = []
+    GS_PLAN.each do |path, sec, skip|
+      GS_SALE.each_key do |sale|
+        cards = gs_all(path, sale, GS_FROM[path]) or return nil
+        cards.reject { |c| skip && c['href'] =~ skip }.each do |c|
+          out << { 'key' => "gs-#{c['code']}", 'platform' => 'gostorg.by', 'name' => c['name'], 'url' => GS + c['href'],
+                   'sec' => gs_sec(sec, c['name']), 'off' => sale == 'sale' }
+        end
+      end
+    end
+    out.uniq { |c| c['key'] }
+  end
+
+  # поля вкладок лота: «Сведения о лоте» → [[название, значение]], …
+  def gs_fields(html)
+    html.split('<h4>').drop(1).map do |sec|
+      # поля — <name class=…>, в «Описании лота» — <div class=…>
+      rows = sec.scan(%r{auction-card__tab-data-name">(.*?)</(?:name|div)>(.*?)</li>}m).map { |k, v| [txt(k), txt(v)] }
+      { 'h' => txt(sec[%r{\A(.*?)</h4>}m, 1]), 'rows' => rows }
+    end.reject { |s| s['rows'].empty? }
+  end
+
+  # ставка аренды из описания: «Размер ежемесячной арендной платы с учетом НДС 20 % - 16,74 б.а.в.» — готовая сумма в БАВ;
+  # «… арендной платы - 1 997,40 руб.» — в рублях; «Коэффициент к базовой арендной ставке – 3,0» — как у МГЦН (только Минск:
+  # базовая ставка и зоны на сайте — минские)
+  def gs_rent(text, area, loc)
+    t = text.to_s
+    s = t[/[^.]*ежемесячной арендной платы[^.]*?[-–—:]\s*[\d\s]+(?:[.,]\d+)?\s*(?:б\.?\s*а\.?\s*в|БАВ|базов\S* арендн\S* величин|руб|BYN)[^.]*/i]
+    if s
+      v = num(s[/[-–—:]\s*([\d\s]+(?:[.,]\d+)?)\s*(?:б\.?\s*а\.?\s*в|БАВ|базов|руб|BYN)/i, 1])
+      return { 'k' => s =~ /руб|BYN/i ? 'byn' : 'bav_total', 'v' => v, 'raw' => s.strip } if v.positive?
+    end
+    k = t[/Коэффициент к базовой арендной ставке\s*[-–—:]?\s*(\d+(?:[.,]\d+)?)/i, 1]
+    return nil unless k
+    raw = t[/Коэффициент к базовой арендной ставке[^.]*?\d+(?:[.,]\d+)?/i]
+    loc.to_s =~ /\A\s*(г\.\s*)?Минск\b(?!ая|ий|ой)/ && area ? { 'k' => 'ks', 'S' => area, 'steps' => [{ 'ks' => num(k) }], 'parts' => [], 'raw' => raw }
+                                                       : { 'k' => 'raw', 'raw' => raw }
+  end
+
+  def gs_detail(html)
+    secs = gs_fields(html)
+    f = {}   # первое значение поля («Единица» встречается дважды: у шага торгов и у задатка)
+    secs.flat_map { |s| s['rows'] }.each { |k, v| f[k] ||= v unless v.empty? }
+    find = ->(re) { (f.find { |k, _| k =~ re } || [])[1] }
+    hist = (secs.find { |s| s['h'] =~ /История аукциона/ } || { 'rows' => [] })['rows'].to_h
+    seller = (secs.find { |s| s['h'] =~ /\AПродавец/ } || { 'rows' => [] })['rows'].to_h
+    org = (secs.find { |s| s['h'] =~ /\AОрганизатор/ } || { 'rows' => [] })['rows'].to_h
+    loc = find.(/\AМестоположение/).to_s
+    alt = find.(/\AПри местоположении вне/).to_s   # уточнённый адрес («Минская обл., Молодечненский р-н., г. Молодечно, ул. …»)
+    loc = alt if alt =~ /обл|Минск/ && alt.size > loc.size
+    loc = loc.sub(/\AМинск\b/, 'г. Минск')   # «Минск, Ботаническая улица» — иначе определится как Минская область
+    desc = [find.(/\AХарактеристики/), find.(/\AПримечание/)].compact.join(' ').strip
+    area = (a = find.(/\AПлощадь общая/)) && num(a[/[\d.,]+/])
+    price = num(find.(/\AНачальная цена лота/))
+    step = find.(/\AШаг торгов/).to_s
+    pct = find.(/\AЕдиница/)   # первая «Единица» — у шага торгов
+    fee = find.(/\AРазмер затрат\/вознаграждения/).to_s
+    cond = [['Карточка №', html[/id="bx_detail_(\d+)/, 1]], ['Вид продажи', find.(/\AВид продажи/)], ['Лот', find.(/\AНомер лота в аукционе/)],
+            ['Начальная цена', price.positive? ? "#{find.(/\AНачальная цена лота/)} BYN#{find.(/\AЕсть ли НДС/) == 'Да' ? ', с НДС' : ''}" : nil],
+            ['Шаг торгов', step.empty? ? nil : "#{step} #{pct == '%' ? '%' : 'BYN'}"], ['Размер задатка', (d = find.(/\AРазмер задатка/)) && "#{d} BYN"],
+            ['Приём заявок до', find.(/\AДата и время окончания приема заявок/)], ['Начало торгов', find.(/\AДата и время начала проведения торгов/)],
+            ['Место торгов', find.(/\AАдрес проведения торгов/)], ['Затраты и вознаграждение', fee.empty? ? nil : fee],
+            ['Порядок оплаты', find.(/\AПорядок и сроки оплаты/)]].reject { |_, v| v.to_s.empty? }
+    about = [['Описание', desc], ['Местоположение', loc], ['Год постройки', find.(/\AГод постройки/)], ['Площадь', find.(/\AПлощадь общая/)],
+             ['Инвентарный номер', find.(/\AИнвентарный номер/)], ['Форма собственности', find.(/\AФорма собственности/)],
+             ['Собственник', find.(/\AСобственник имущества/)]].reject { |_, v| v.to_s.empty? }
+    out = [{ 'h' => 'Условия торгов', 'rows' => cond }, { 'h' => 'Сведения о лоте', 'rows' => about }]
+    out << { 'h' => 'Продавец', 'rows' => [['Продавец', seller['Краткое название организации']], ['УНП', seller['УНП']]].reject { |_, v| v.to_s.empty? } }
+    out << { 'h' => 'Осмотр', 'rows' => (secs.find { |s| s['h'] =~ /осмотр/i } || { 'rows' => [] })['rows'] }
+    out << { 'h' => 'Организатор торгов', 'rows' => [['Организатор', org['Краткое название организации']], ['Телефон', org['Номер телефона']]].reject { |_, v| v.to_s.empty? } }
+    pics = photos('gostorg.by', html)
+    # «Право заключения договора аренды» без объекта — берём полное наименование лота («… части изолированного помещения …»)
+    name = find.(/\AКраткое наименование/).to_s
+    full = find.(/\AНомер лота в аукционе/).to_s.sub(%r{\A\s*Лот\s*№\s*\d+\s*/\s*}, '')
+    name = full if name =~ /\AПраво заключения договора аренды\.?\z/i && full.size > name.size
+    { 'details' => out.reject { |s| s['rows'].empty? }, 'name' => name.empty? ? nil : name, 'art' => html[/id="bx_detail_(\d+)/, 1],
+      'location' => loc.empty? ? nil : loc, 'debtor' => seller['Краткое название организации'],
+      'req_to' => ts(find.(/\AДата и время окончания приема заявок/)), 'torg' => ts(find.(/\AДата и время начала проведения торгов/)),
+      'price_byn' => price, 'area_num' => area, 'photo_url' => pics.first, 'photos' => pics, 'status' => hist['Состояние'],
+      'off' => find.(/\AВид продажи/).to_s =~ /Очные/ ? true : nil, 'rent' => gs_rent(desc, area, loc),
+      'terms' => { 'deposit' => num(find.(/\AРазмер задатка/)), 'step_pct' => pct == '%' ? num(step) : nil,
+                   'step_abs' => pct == '%' ? nil : num(step), 'fee_pct' => fee[/(\d+(?:[.,]\d+)?)\s*%\s*от цены продажи/, 1]&.tr(',', '.')&.to_f,
+                   'vat' => find.(/\AЕсть ли НДС/) == 'Да' ? 'Начальная цена — с НДС' : nil, 'v' => 2 }
+                 .reject { |_, v| v.nil? || v == 0.0 } }
   end
 
   # ---------------- butb.by (ЭТП «БУТБ-Имущество» Белорусской универсальной товарной биржи, et.butb.by) ----------------

@@ -1042,9 +1042,10 @@ applyTheme(window.THEME);
   .p-eauction{--pc:#0f9d58} .p-konfiskat{--pc:#555e90} .p-beltorgi{--pc:#c0282d} .p-ipmtorgi{--pc:#1f8fdc}
   .p-mgcn{--pc:#1a4fc4} .p-belauction{--pc:#b8860b} .p-minskestate{--pc:#1c7182} .p-auction24{--pc:#6b5bd2}
   /* lotsale — оливковый (их фирменный); БУТБ — малиновый: их зелёный занят e-auction, золотой — belauction */
-  .p-lotsale{--pc:#8a8f1c} .p-butb{--pc:#ad1457}
-  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .p-lotsale{--pc:#c3c94a} :root:not([data-theme="light"]) .p-butb{--pc:#f06292} }
-  :root[data-theme="dark"] .p-lotsale{--pc:#c3c94a} :root[data-theme="dark"] .p-butb{--pc:#f06292}
+  .p-lotsale{--pc:#8a8f1c} .p-butb{--pc:#ad1457} .p-gostorg{--pc:#002c73}   /* gostorg — их тёмно-синий, темнее синего МГЦН */
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .p-lotsale{--pc:#c3c94a} :root:not([data-theme="light"]) .p-butb{--pc:#f06292}
+    :root:not([data-theme="light"]) .p-gostorg{--pc:#93a6cc} }
+  :root[data-theme="dark"] .p-lotsale{--pc:#c3c94a} :root[data-theme="dark"] .p-butb{--pc:#f06292} :root[data-theme="dark"] .p-gostorg{--pc:#93a6cc}
   @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .p-eauction{--pc:#3ccf82} :root:not([data-theme="light"]) .p-konfiskat{--pc:#9aa3dd}
     :root:not([data-theme="light"]) .p-beltorgi{--pc:#f06a6e} :root:not([data-theme="light"]) .p-ipmtorgi{--pc:#5cb6f5} :root:not([data-theme="light"]) .p-mgcn{--pc:#6f95f2}
     :root:not([data-theme="light"]) .p-belauction{--pc:#e2b34a} :root:not([data-theme="light"]) .p-minskestate{--pc:#4fb3c4} :root:not([data-theme="light"]) .p-auction24{--pc:#a597f0} }
@@ -1165,6 +1166,7 @@ applyTheme(window.THEME);
       <li><a href="https://auction24.by" target="_blank" rel="noopener">Госторги (auction24.by)</a></li>
       <li><a href="https://et.butb.by/et/index.xhtml" target="_blank" rel="noopener">БУТБ-Имущество (товарная биржа)</a></li>
       <li><a href="https://lotsale.by" target="_blank" rel="noopener">LotSale</a></li>
+      <li><a href="https://gostorg.by" target="_blank" rel="noopener">GOSTORG (Институт недвижимости и оценки)</a></li>
       <li><a href="https://bankrot.gov.by" target="_blank" rel="noopener">Реестр банкротств</a></li>
     </ul></div>
   </div>
@@ -1492,7 +1494,7 @@ function lotCard(l, inArch){
   if(!arch && isNew(l)) marks.push(['new', 'Новый']);
   if(urg) marks.push(['urg', d===0 ? 'Последний день' : d===1 ? 'До завтра' : 'Осталось ' + d + ' дн.']);
   if(!arch && l.alt) marks.push(['two', l.alt.length + ' ' + plural(l.alt.length,'площадка','площадки','площадок')]);
-  if(l.platform==='mgcn.by') marks.push(['off', 'Очный аукцион']);
+  if(l.platform==='mgcn.by' || l.off) marks.push(['off', 'Очный аукцион']);
   const disc = !arch && dc!==null && dc>=15 ? dc : null;
   return `<a class="lot${arch?' arch':''} ${pslug(l.platform)}" href="#/lot/${encodeURIComponent(l.id)}">
     <div class="ph">
@@ -1527,6 +1529,10 @@ function resShort(l){
 }
 function resultBlock(l){
   const r = resOf(l), at = (r && r.at) || l.torg || l.req_to + 86400;
+  // очные торги gostorg: итогов онлайн тоже нет — узнать у организатора
+  if(l.off) return `<aside class="panel rres"><div class="lbl">Итоги торгов</div><div class="rst">Очный аукцион</div>
+    <p class="note">Аукцион ${at*1000 > Date.now() ? 'пройдёт ' + dtm(at) : 'прошёл ' + dtm(at)} очно у организатора. Итоги очных торгов онлайн не публикуются — узнать их можно у организатора (контакты — на площадке).
+      <a href="${esc(l.url)}" target="_blank" rel="noopener">Лот на площадке ↗</a></p></aside>`;
   if(l.platform==='mgcn.by') return `<aside class="panel rres"><div class="lbl">Итоги торгов</div><div class="rst">Очный аукцион</div>
     <p class="note">Аукцион ${at*1000 > Date.now() ? 'пройдёт ' + dtm(at) : 'прошёл ' + dtm(at)} в зале МГЦН (г. Минск, ул. К. Маркса, 39). Итоги очных аукционов организатор онлайн не публикует — узнать их можно у МГЦН: +375 (17) 360-42-22.
       <a href="${esc(l.url)}" target="_blank" rel="noopener">Извещение ↗</a></p></aside>`;
@@ -1598,7 +1604,7 @@ const SORTS_ACTIVE = [['deadline','Заявки закрываются рань�
 const SORTS_ARCH = [['closed','Недавно завершённые'],['sale-desc','Цена продажи: дороже'],['prem-desc','Рост цены на торгах'],
   ['price-asc','Начальная цена по возрастанию'],['price-desc','Начальная цена по убыванию'],['name','По названию']];
 /* итог торгов лота в архиве — для фильтра «Итог торгов» */
-const resKey = l => l.why==='removed' ? 'removed' : l.platform==='mgcn.by' ? 'offline' : l.result && RES[l.result.st] ? l.result.st : 'pending';
+const resKey = l => l.why==='removed' ? 'removed' : l.platform==='mgcn.by' || l.off ? 'offline' : l.result && RES[l.result.st] ? l.result.st : 'pending';
 const RES_F = [['sold_any','Продан — любой'],['sold','Торги состоялись'],['single','Продан единственному участнику'],['failed','Торги не состоялись'],
   ['cancelled','Торги отменены'],['removed','Снят с площадки до торгов'],['pending','Итоги ещё не опубликованы'],['offline','Очный аукцион — итоги не публикуются']];
 const resMatch = (l, f) => f==='sold_any' ? ['sold','single'].includes(resKey(l)) : resKey(l)===f;
@@ -1937,6 +1943,8 @@ function calcBlock(l, det){
       ? 'Победитель возмещает затраты на организацию торгов — сумма в условиях лота на площадке (может уточняться до начала торгов). Впишите её.'
     : l.platform==='butb.by'
       ? 'Из карточки лота на бирже: затраты на организацию и проведение торгов (организатор может уточнить сумму до начала торгов).'
+    : l.platform==='gostorg.by'
+      ? 'Из карточки лота: вознаграждение организатору, % от цены продажи (если указано). Затраты на организацию торгов, если есть, — в условиях лота на площадке.'
       : 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.';
   const feesHtml = `<div class="cx-fees"><div class="cx-fh">Расходы сверх цены лота</div>
       <label class="cx-f"><span>${feeName}, % от итоговой цены</span><input type="number" id="cx-fp" min="0" max="30" step="0.1" value="${t.fee_pct!=null?t.fee_pct:''}" placeholder="0"></label>
@@ -2050,6 +2058,9 @@ function rentBlock(l, r){
   } else if(r.k === 'bav_total'){
     rows.push(line(`${k(r.v)} БАВ в месяц за всю площадь`, `${r2(r.v * bav)} BYN в месяц`, true));
     formula = `${k(r.v)} БАВ × ${r2(bav)} руб.`;
+  } else if(r.k === 'byn'){
+    // gostorg: размер арендной платы в рублях прямо в извещении
+    rows.push(line('Арендная плата', `${r2(r.v)} BYN в месяц`, true));
   } else if(r.k === 'month'){
     // auction24: торгуются сразу за арендную плату — начальная цена и есть аренда в месяц, БАВ не участвует
     rows.push(line('Начальная арендная плата на торгах', `${r2(r.v)} BYN в месяц`, true));
@@ -2063,7 +2074,7 @@ function rentBlock(l, r){
       <div class="note">Ставка по извещению: «${esc(r.raw)}».${formula ? ` Расчёт: ${formula.replace(/\.$/, '')}.` : ''}</div>
       ${notes.map(n=>`<div class="note">${n}</div>`).join('')}
       ${r.k === 'month' ? '<div class="note">Коммунальные и эксплуатационные расходы оплачиваются сверх аренды.</div>'
-        : `<div class="note">БАВ ${r2(bav)} руб. действует с ${from}${B.src ? `: ${B.url ? `<a href="${esc(B.url)}" target="_blank" rel="noopener">${esc(B.src)}</a>` : esc(B.src)}` : ''}. При её изменении сумма пересчитается.
+        : `<div class="note">${r.k === 'byn' ? '' : `БАВ ${r2(bav)} руб. действует с ${from}${B.src ? `: ${B.url ? `<a href="${esc(B.url)}" target="_blank" rel="noopener">${esc(B.src)}</a>` : esc(B.src)}` : ''}. При её изменении сумма пересчитается.`}
         Коммунальные и эксплуатационные расходы оплачиваются сверх аренды. Начальная цена права заключения договора (${nf(l.price)} BYN) — разовый платёж победителя аукциона, в аренду не входит.</div>`}</div>`;
 }
 
@@ -2319,10 +2330,10 @@ function pageLot(id){
           <dl class="facts">
             <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
               :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
-            <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(['e-auction.by','minskestate.by','lotsale.by','butb.by'].includes(l.platform)?' · онлайн':l.platform==='mgcn.by'?' · очно, г. Минск, ул. К. Маркса, 39':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
+            <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(l.off?' · очно':['e-auction.by','minskestate.by','lotsale.by','butb.by','gostorg.by'].includes(l.platform)?' · онлайн':l.platform==='mgcn.by'?' · очно, г. Минск, ул. К. Маркса, 39':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
             <dt>Регион</dt><dd>${esc(l.region||'—')}</dd>
             ${l.area_num?`<dt>Площадь</dt><dd>${nf(l.area_num)} м²</dd>`:''}
-            <dt>${l.section==='arenda' ? 'Арендодатель' : ['minskestate.by','mgcn.by','lotsale.by','butb.by'].includes(l.platform) ? 'Продавец' : 'Должник'}</dt><dd>${esc(l.debtor||'—')}</dd>
+            <dt>${l.section==='arenda' ? 'Арендодатель' : ['minskestate.by','mgcn.by','lotsale.by','butb.by','gostorg.by'].includes(l.platform) ? 'Продавец' : 'Должник'}</dt><dd>${esc(l.debtor||'—')}</dd>
           </dl>
           <div class="cta">
             <a class="btn" href="${esc(l.url)}" target="_blank" rel="noopener">На площадке ↗</a>

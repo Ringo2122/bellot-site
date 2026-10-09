@@ -29,7 +29,12 @@ require 'fileutils'
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 365).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
 WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfiskat.by' => 1, 'belauction.by' => 1,
-            'minskestate.by' => 1, 'mgcn.by' => 1, 'auction24.by' => 1, 'lotsale.by' => 1, 'butb.by' => 1 }.freeze   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
+            'minskestate.by' => 1, 'mgcn.by' => 1, 'auction24.by' => 1, 'lotsale.by' => 1, 'butb.by' => 1, 'gostorg.by' => 2 }.freeze
+# gostorg: срока заявок в списке нет, а лот висит в каталоге до дня торгов — 2/3 списка с уже закрытым приёмом заявок.
+# Новых карточек за прогон — не больше NEW_CAP (первый обход — ≈ 600 карточек, ≈ 3 с каждая); закрытые запоминаем
+# в data/closed.json и больше не открываем.
+NEW_CAP = { 'gostorg.by' => 250 }.freeze
+CLOSED_FILE = File.join(Store::DATA, 'closed.json')   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
 MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
 # Настройки из админки: выключенные площадки не обходим, минимальная цена по разделам — своя.
 # База недоступна — работаем по умолчаниям.
@@ -85,7 +90,9 @@ PLAN = {
   # lotsale.by: все активные из API, раздел — по категории и названию (ls_sec); лотов мало, пустой список — норма
   'lotsale.by' => [['auctions', nil]],
   # butb.by (et.butb.by): весь список «Торги» одной страницей, раздел — по категории в карточке лота (bu_sec)
-  'butb.by' => [['auctions', nil]]
+  'butb.by' => [['auctions', nil]],
+  # gostorg.by: электронные и очные торги наших разделов (без «размещения объявлений»), раздел — по разделу каталога (gs_list)
+  'gostorg.by' => [['catalog', nil]]
 }.freeze
 # Площадки, которые больше не собираем: их лоты удаляются из памяти вместе с подробностями и фото.
 # cpo.by (ЦПО) — рекламная витрина торгов ИПМ-Торгов, те же лоты (решение Артёма 25.09.2026)
@@ -116,6 +123,7 @@ def list(plat, path)
   when 'auction24.by' then Src.a24_list
   when 'lotsale.by' then Src.ls_list     # nil — API не ответил, [] — торгов сейчас нет
   when 'butb.by' then Src.bu_list
+  when 'gostorg.by' then Src.gs_list
   else Src.bt_list(path)
   end
 end
@@ -131,9 +139,10 @@ def fetch_detail(c)
       when 'minskestate.by' then Src.me_detail(html)
       when 'auction24.by' then Src.a24_detail(html)
       when 'butb.by' then Src.bu_detail(html)
+      when 'gostorg.by' then Src.gs_detail(html)
       else Src.bt_detail(html)
       end
-  sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2, 'minskestate.by' => 1, 'auction24.by' => 1, 'butb.by' => 1 }[c['platform']] || 0.4)
+  sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2, 'minskestate.by' => 1, 'auction24.by' => 1, 'butb.by' => 1, 'gostorg.by' => 1 }[c['platform']] || 0.4)
   d
 end
 
@@ -151,8 +160,8 @@ def new_lot(c, sec, d, src, now)
   end
   price = c['price'].to_f.positive? ? c['price'] : d['price_byn'].to_f
   { 'key' => c['key'], 'status' => 'active', 'src' => src, 'first_seen' => now, 'last_seen' => now,
-    'art' => plat == 'ipmtorgi.by' && !d['lotno'].to_s.empty? ? d['lotno'] : c['art'],
-    'name' => plat == 'beltorgi.by' && !d['title'].to_s.empty? ? d['title'] : plat == 'butb.by' && !d['name'].to_s.empty? ? d['name'] : c['name'],
+    'art' => plat == 'ipmtorgi.by' && !d['lotno'].to_s.empty? ? d['lotno'] : (c['art'] || d['art']),   # gostorg: номер карточки — со страницы лота
+    'name' => plat == 'beltorgi.by' && !d['title'].to_s.empty? ? d['title'] : %w[butb.by gostorg.by].include?(plat) && !d['name'].to_s.empty? ? d['name'] : c['name'],
     'price' => price, 'prices' => [[now, price]],
     # у ИПМ точное время — в карточке лота; у beltorgi в списке его нет вовсе
     'req_to' => plat == 'e-auction.by' ? c['req_to'] : (d['req_to'] || c['req_to']),
@@ -163,7 +172,8 @@ def new_lot(c, sec, d, src, now)
     .tap do |r|
       r['pics'] = d['photos'] if d['photos']   # все фото карточки — ссылками (pics.rb)
       r['phx'] = c['phx'] if c['phx']          # minskestate: главное фото тоже ссылкой (robots.txt закрывает фото для роботов)
-      r['rent'] = d['rent'] if d['rent']       # mgcn: ставка аренды для расчёта на сайте
+      r['rent'] = d['rent'] if d['rent']       # mgcn, gostorg: ставка аренды для расчёта на сайте
+      r['off'] = true if c['off'] || d['off']  # gostorg: очные торги — итогов онлайн нет
     end
 end
 
@@ -184,6 +194,9 @@ bav_mg = []        # БАВ из извещений МГЦН: [дата нача
 stat = Hash.new(0)
 pstat = Hash.new { |h, k| h[k] = Hash.new(0) }   # по площадкам — для отчёта в админке
 terms_left = TERMS_CAP
+new_left = NEW_CAP.dup
+closed = File.exist?(CLOSED_FILE) ? (JSON.parse(File.read(CLOSED_FILE, encoding: 'UTF-8')) rescue {}) : {}
+closed.reject! { |_, t| t.to_i < now - 30 * 86_400 }
 ea_torg_left = EA_TORG_CAP
 stat['удалено: площадка исключена'] = dropped if dropped.positive?
 # коды символов в названиях, записанных раньше, чем их стал понимать Src.decode (05.10: «Orenstein &#038; Koppel», «&lt;ГС-14.02&gt;»)
@@ -210,6 +223,7 @@ end
         next if plat == 'beltorgi.by' && !c['open']          # ещё не принимают заявки
         next if plat == 'minskestate.by' && c['status'] !~ /Приём заявок/   # в списке и завершённые — их берёт архив площадок
         next if plat == 'butb.by' && c['status'] !~ /Прием заявлений/       # и здесь: «Ожидание торгов», только что завершённые
+        next if closed[c['key']] && !db[c['key']]                           # gostorg: приём заявок уже закрыт — карточку не открываем
         # у konfiskat в карточке — дата аукциона, заявки закрываются в 12:00 накануне: закрытые не качаем
         next if c['day'] && plat == 'konfiskat.by' && c['day'] - 12 * 3600 < Time.now.to_i
         s = c['sec'] || (sec == 'auto' ? kf_kind(c['name']) : (sec || ipm_kind(c['name'])))   # belauction — раздел из категории лота
@@ -311,6 +325,7 @@ end
               end
             end
           else
+            next if NEW_CAP[c['platform']] && mx.synchronize { (new_left[c['platform']] -= 1).negative? }   # остальные — в следующий прогон
             d = fetch_detail(c) or next
             # butb: точный раздел — по категории в карточке лота (в списке — догадка по названию); порог цены — по нему
             if d['sec'] && d['sec'] != sec
@@ -319,7 +334,10 @@ end
               next if min.positive? && d['price_byn'].to_f.positive? && d['price_byn'] < min
             end
             rec = new_lot(c, sec, d, src, now)
-            next unless rec['req_to'].to_i > now
+            unless rec['req_to'].to_i > now
+              mx.synchronize { closed[c['key']] = rec['req_to'].to_i.positive? ? rec['req_to'] : now } if NEW_CAP[c['platform']]
+              next
+            end
             if plat == 'e-auction.by' && c['eid']
               rec['eid'] = c['eid']
               t = Res.ea_torg(Res.ea_info(c['eid']))
@@ -432,6 +450,9 @@ def fetch_result(l)
   when 'butb.by'
     sleep 1
     (html = Src.get(l['url'])) ? [Res.bu_result(html), {}] : [nil, {}]
+  when 'gostorg.by'
+    sleep 1
+    (html = Src.get(l['url'])) ? [Res.gs_result(html), {}] : [nil, {}]
   else [nil, {}]
   end
 rescue StandardError => e
@@ -443,7 +464,7 @@ end
 # Площадки публикуют итог обычно в день торгов — раньше мы смотрели только в часы обхода, итог появлялся у нас с опозданием на часы.
 due = db.values.select do |l|
   next false unless l['status'] == 'archive' && l['why'] == 'deadline'
-  next false if l['platform'] == 'mgcn.by'   # очные аукционы: итоги онлайн не публикуются
+  next false if l['platform'] == 'mgcn.by' || l['off']   # очные аукционы (МГЦН, очные торги gostorg): итоги онлайн не публикуются
   r = l['result'] || {}
   next false if Res::FINAL.include?(r['st']) && r['v'].to_i >= 2
   age = now - (l['torg'] || l['req_to'].to_i + 86_400)
@@ -499,6 +520,7 @@ db.delete_if do |k, l|
 end
 
 Store.save(db.values)
+File.write(CLOSED_FILE, JSON.generate(closed)) unless RESULTS_ONLY || YEAR_ARCH
 act = db.values.count { |l| l['status'] == 'active' }
 # отчёт для админки: что нового по каждой площадке и какие разделы не прочитались
 FileUtils.mkdir_p(File.join(Store::ROOT, 'tmp'))
