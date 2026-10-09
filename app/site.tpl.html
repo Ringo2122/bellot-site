@@ -99,14 +99,16 @@ applyTheme(window.THEME);
   .logo:hover .nm{text-shadow:0 2px 8px rgba(16,22,30,.18)}
   /* ссылки в шапке */
   /* «Весь каталог» и ссылки — с отступом от логотипа и пошире друг от друга: меньше пустоты до кнопок справа */
-  .hnav{margin-left:clamp(4px,2.2vw,30px)}
-  .hnav ul{display:flex;align-items:center;gap:clamp(2px,.9vw,12px);list-style:none;margin:0;padding:0}
-  .hnav li.cm-li{margin-right:clamp(4px,1vw,14px)}
+  /* с «Новостями» ссылок шесть — отступы плотнее, чтобы строка помещалась от 1141 px */
+  .hnav{margin-left:clamp(4px,1.2vw,18px)}
+  .hnav ul{display:flex;align-items:center;gap:clamp(0px,.3vw,4px);list-style:none;margin:0;padding:0}
+  .hnav li.cm-li{margin-right:clamp(2px,.6vw,8px)}
   .hnav a{display:block;padding:8px 10px;border-radius:9px;color:var(--ink);font-weight:600;font-size:14px;white-space:nowrap;text-decoration:none;
     transition:color .2s,background .2s}
   .hnav a:hover{background:var(--bg);color:var(--brand)}
   .hnav a.on{color:var(--brand)}
-  @media (max-width:1180px){ .hnav a{padding-inline:7px;font-size:13.5px} .logo .sub{display:none} }
+  @media (max-width:1300px){ .hnav a{padding-inline:8px} }
+  @media (max-width:1180px){ .hnav a{padding-inline:6px;font-size:13.5px} .logo .sub{display:none} .hnav ul{gap:0} }
   /* «Весь каталог» */
   .cbtn{position:relative;display:flex;align-items:center;gap:8px;height:40px;padding:0 15px 0 6px;border:0;border-radius:10px;background:var(--brand);color:#fff;
     font:inherit;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;transition:background .2s,box-shadow .25s,transform .25s cubic-bezier(.2,.8,.2,1)}
@@ -1295,7 +1297,7 @@ $('#f-upd').textContent = dtm(SNAP);
   $('#fcont').innerHTML = out.length ? `<p class="fcont">${out.join('<br>')}</p>` : '';
 })();
 /* шапка: «Весь каталог» и ссылки; на телефоне ссылки — в меню под тремя полосками */
-const NAV_LINKS = [['#/','Главная'],['#/catalog','Все лоты'],['#/catalog?st=arch','Архив'],['#/calc','Калькулятор'],['#/about','О платформе']];
+const NAV_LINKS = [['#/','Главная'],['#/catalog','Все лоты'],['#/catalog?st=arch','Архив'],['#/calc','Калькулятор'],['#/news','Новости'],['#/about','О платформе']];
 $('#nav').innerHTML = `<li class="cm-li"><button class="cbtn" id="cbtn" type="button" aria-expanded="false" aria-controls="cm-panel" aria-label="Весь каталог">`
   + '<span class="cg"><svg class="g" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/>'
   + '<rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span>'
