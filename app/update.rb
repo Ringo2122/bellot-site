@@ -341,6 +341,31 @@ unless RESULTS_ONLY || YEAR_ARCH
   Bav.run(bav_mg)
 end
 
+# ── belauction: лот пропал с первых страниц активных аукционов — смотрим его страницу ──
+# Списки у belauction читаем только первыми страницами (robots.txt), поэтому пропажа из них — не снятие. Но торги там
+# закрывают и раньше объявленного: у лота 194724 (трактор «Беларус 82.1») 26.09 стояло «Завершение торгов: 09 октября»,
+# а 02.10 его закрыли с победителем — у нас он неделю висел активным с промежуточной ставкой. Теперь: закрыт — в архив
+# с итогом; ещё идёт — сверяем срок. Не больше 12 страниц за обход, пауза 2 с (Crawl-delay).
+if lists['belauction.by active']
+  db.values.select { |l| l['status'] == 'active' && l['platform'] == 'belauction.by' && !seen[l['key']] }.first(12).each do |l|
+    sleep 2
+    html = Src.get(l['url']) or next
+    r = Res.ba_result(html)
+    end_t = html[/id=ending[^>]*>\s*(\d{9,})/, 1].to_i
+    end_t = Src.ru_date(Res.text(html)[/Завершение торгов:\s*(\d{1,2} [а-я]+ \d{4})/, 1]).to_i unless end_t.positive?
+    if r['st'] != 'pending'
+      t = end_t.positive? && end_t < now ? end_t : now
+      l.merge!('status' => 'archive', 'closed' => t, 'why' => 'deadline', 'req_to' => t, 'torg' => t,
+               'result' => r.merge('checked' => now, 'tries' => 1, 'sweep' => SWEEP))
+      stat['belauction: торги закрыты раньше срока'] += 1
+      pstat['belauction.by']['archived'] += 1
+    elsif end_t.positive? && (end_t - l['req_to'].to_i).abs > 3600
+      l['req_to'] = l['torg'] = end_t
+      stat['belauction: срок уточнён по странице лота'] += 1
+    end
+  end
+end
+
 # ── архив ──
 active_by_src = Hash.new(0)
 db.each_value { |l| active_by_src[l['src']] += 1 if l['status'] == 'active' }
