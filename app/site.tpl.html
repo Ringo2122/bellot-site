@@ -2292,7 +2292,9 @@ function pageLot(id){
           <div class="lbl">${l.platform==='belauction.by' ? (arch ? 'Последняя ставка' : 'Текущая ставка') : l.section==='arenda' ? (l.platform==='auction24.by' ? 'Начальная арендная плата в месяц' : 'Начальная цена права аренды') : 'Стартовая цена'}</div>
           <div class="bigprice">${nf(l.price)} BYN</div>
           ${usdTxt(l.price)?`<div class="bigalt">${usdTxt(l.price)}</div>`:''}
-          ${pc?`<div class="pchg">${pc<0?'↓ снижена на '+(-pc)+'%':'↑ выросла на '+pc+'%'} — было ${nf(l.prices[0][1])} BYN</div>`:''}
+          ${pc?`<div class="pchg">${l.platform==='belauction.by'&&pc>0   /* у belauction цена — текущая ставка: растёт по ходу торгов */
+            ? `↑ Ставки выросли на ${pc}% — стартовая ${nf(l.prices[0][1])} BYN`
+            : `${pc<0?'↓ снижена на '+(-pc)+'%':'↑ выросла на '+pc+'%'} — было ${nf(l.prices[0][1])} BYN`}</div>`:''}
           <dl class="facts">
             <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
               :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
