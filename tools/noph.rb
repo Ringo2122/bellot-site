@@ -27,7 +27,7 @@ def frame(id, bg1, bg2, body, dark1 = '#1a2129', dark2 = '#141a21')
     </defs>
     <rect width="400" height="300" fill="url(#bg)"/>
     #{body[:svg]}
-    <text x="200" y="274" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="17" font-weight="600" letter-spacing=".6" class="cap">нет фото</text>
+    <text x="200" y="27" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="15" font-weight="600" letter-spacing=".6" class="cap">нет фото</text>
     </svg>
   SVG
 end
@@ -49,30 +49,30 @@ def poly(pts, attrs)
   %(<polygon points="#{pts.map { |x, y| "#{x},#{y}" }.join(' ')}" #{attrs}/>)
 end
 
+# ── недвижимость: дом спереди, стоит на земле (как машина и грузовик: без изометрии; 09.10 — просьба Артёма) ──
 house = {
   defs: <<~D,
-    <linearGradient id="wf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffdf8"/><stop offset="1" stop-color="#eee3cf"/></linearGradient>
-    <linearGradient id="ws" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e3d6bd"/><stop offset="1" stop-color="#c9b894"/></linearGradient>
-    <linearGradient id="rf" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#5aa2f0"/><stop offset="1" stop-color="#1d5aa6"/></linearGradient>
+    <linearGradient id="wf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf8"/><stop offset="1" stop-color="#eadfca"/></linearGradient>
+    <linearGradient id="rf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa2f0"/><stop offset="1" stop-color="#1d5aa6"/></linearGradient>
     <linearGradient id="dr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9b6a3a"/><stop offset="1" stop-color="#6a4220"/></linearGradient>
+    <linearGradient id="ch" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d7c6a6"/><stop offset="1" stop-color="#b9a47e"/></linearGradient>
   D
   svg: [
-    %(<ellipse cx="196" cy="214" rx="118" ry="17" fill="url(#sh)"/>),
-    poly([iso(0, 0, 0), iso(0, 70, 0), iso(0, 70, 60), iso(0, 35, 105), iso(0, 0, 60)], 'fill="url(#ws)"'),          # торец с фронтоном
-    poly([iso(0, 0, 0), iso(100, 0, 0), iso(100, 0, 60), iso(0, 0, 60)], 'fill="url(#wf)"'),                           # фасад
-    poly([iso(0, 0, 0), iso(100, 0, 0), iso(100, 0, 6), iso(0, 0, 6)], 'fill="#d9ccb2"'),                                # цоколь
-    poly([iso(-4, -4, 57), iso(104, -4, 57), iso(104, 35, 107), iso(-4, 35, 107)], 'fill="url(#rf)"'),                 # скат крыши
-    poly([iso(-4, -4, 57), iso(104, -4, 57), iso(104, -4, 51), iso(-4, -4, 51)], 'fill="#164a8c"'),                     # край крыши
-    poly([iso(-4, -4, 57), iso(-4, 35, 107), iso(-4, 74, 57), iso(-4, 74, 51), iso(-4, 35, 101), iso(-4, -4, 51)], 'fill="#12407a"'), # торец крыши
-    poly([iso(8, -4, 58), iso(96, -4, 58), iso(96, 12, 78), iso(8, 12, 78)], 'fill="url(#gl)" opacity=".45"'),         # блик на крыше
-    poly([iso(60, 0, 0), iso(78, 0, 0), iso(78, 0, 40), iso(60, 0, 40)], 'fill="url(#dr)"'),                            # дверь
-    %(<circle cx="#{iso(74, 0, 20)[0]}" cy="#{iso(74, 0, 20)[1]}" r="1.8" fill="#f3d27a"/>),
-    poly([iso(14, 0, 18), iso(42, 0, 18), iso(42, 0, 44), iso(14, 0, 44)], 'fill="#fff"'),
-    poly([iso(16, 0, 20), iso(40, 0, 20), iso(40, 0, 42), iso(16, 0, 42)], 'fill="url(#glass)"'),
-    poly([iso(16, 0, 34), iso(26, 0, 42), iso(20, 0, 42), iso(16, 0, 38)], 'fill="#fff" opacity=".7"'),
-    poly([iso(0, 18, 18), iso(0, 48, 18), iso(0, 48, 44), iso(0, 18, 44)], 'fill="#f4ecdc"'),
-    poly([iso(0, 20, 20), iso(0, 46, 20), iso(0, 46, 42), iso(0, 20, 42)], 'fill="#8fbbe3"'),
-    poly([iso(0, 26, 58), iso(0, 44, 58), iso(0, 44, 76), iso(0, 26, 76)], 'fill="#8fbbe3" opacity=".9"')
+    %(<ellipse cx="200" cy="214" rx="124" ry="12" fill="url(#sh)"/>),
+    %(<rect x="244" y="74" width="18" height="44" rx="2" fill="url(#ch)"/>),                                   # труба
+    %(<rect x="240" y="70" width="26" height="8" rx="2" fill="#a8936c"/>),
+    %(<rect x="122" y="126" width="156" height="82" fill="url(#wf)"/>),                                       # стены
+    %(<rect x="116" y="204" width="168" height="10" rx="2" fill="#d9ccb2"/>),                                # цоколь — дом стоит на земле
+    %(<path d="M104 134 L200 66 L296 134 Z" fill="url(#rf)"/>),                                              # крыша
+    %(<path d="M104 134 L296 134 L288 142 L112 142 Z" fill="#164a8c"/>),                                     # свес крыши
+    %(<path d="M122 126 L200 72 L214 82 L140 134 Z" fill="url(#gl)" opacity=".4"/>),                         # блик
+    %(<circle cx="200" cy="108" r="12" fill="#fff"/>), %(<circle cx="200" cy="108" r="9" fill="url(#glass)"/>),
+    %(<rect x="181" y="158" width="38" height="50" rx="3" fill="url(#dr)"/>),                                # дверь
+    %(<circle cx="211" cy="184" r="2.2" fill="#f3d27a"/>),
+    [[134, 156], [234, 156]].map { |x, y| %(<rect x="#{x}" y="#{y}" width="34" height="30" rx="2" fill="#fff"/>) +
+      %(<rect x="#{x + 3}" y="#{y + 3}" width="28" height="24" rx="1" fill="url(#glass)"/>) +
+      %(<path d="M#{x + 17} #{y + 3} V#{y + 27} M#{x + 3} #{y + 15} H#{x + 31}" stroke="#fff" stroke-width="2"/>) +
+      %(<path d="M#{x + 3} #{y + 3} L#{x + 13} #{y + 3} L#{x + 3} #{y + 13} Z" fill="#fff" opacity=".6"/>) }.join
   ].join("\n")
 }
 

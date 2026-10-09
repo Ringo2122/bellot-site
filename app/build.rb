@@ -31,6 +31,7 @@ require_relative 'sb'
 require_relative 'similar'
 require_relative 'zones'
 require_relative 'bav'
+require_relative 'cats'
 
 OUT  = ENV['OUT'] || File.join(Store::ROOT, '_site')
 TMP  = File.join(Store::ROOT, 'tmp')
@@ -41,7 +42,7 @@ PACKS = 1000
 # свежий архив — arch.js (календарь на главной, недавние лоты), старше — arch2.js
 ARCH_NEW = 45
 KEEP = %w[id art name price req_to torg url location region debtor area_num platform section
-          photo pk market prices status closed why first_seen alt pin result phx land].freeze
+          photo pk market prices status closed why first_seen alt pin result phx land sub].freeze
 SECS = %w[nedvizhimost avto gruz spec oborud arenda].freeze
 
 # Персональные данные: MASK=1 скрывает ФИО должников-физлиц и контактных лиц по осмотру.
@@ -154,6 +155,9 @@ lots.each do |l|
   end
   l['pin'] = 1 if o['pinned'] && l['status'] == 'active'
 end
+
+# раздел и подраздел каталога («transport/legkovye») — после правок человека: раздел мог смениться (app/cats.rb)
+lots.each { |l| l['sub'] = Cats.of(l, ->(k) { Store.details(k) }) }
 
 # фото, загруженные в админке
 FileUtils.mkdir_p(File.join(TMP, 'ph'))
@@ -309,7 +313,8 @@ end
 
 # настройки, которые нужны страницам: тексты, правила калькулятора, выключенные разделы, форма заявки
 pub = { 'texts' => CFG['texts'] || {}, 'calc' => CFG['calc'] || {}, 'sec_off' => sec_off,
-        'bav' => Bav.load.slice('v', 'from', 'src', 'url') }   # действующая БАВ — для расчёта аренды
+        'bav' => Bav.load.slice('v', 'from', 'src', 'url'),   # действующая БАВ — для расчёта аренды
+        'cats' => Cats.tree }                                  # разделы и подразделы каталога
 pub['sb'] = { 'url' => ENV['SB_URL'], 'key' => ENV['SB_KEY'] } if Sb.on?
 # курс доллара Нацбанка на сегодня: ориентир в долларах под ценой и фильтр по цене в USD. Не ответил — сайт без долларов
 def nbrb_usd
@@ -381,6 +386,8 @@ end
 arch_cut = now - ARCH_NEW * 86_400
 arch1, arch2 = arch.partition { |l| l['closed'].to_i >= arch_cut }
 archn = arch.group_by { |l| l['section'] }.map { |k, v| [k, v.size] }.to_h.merge('_' => arch.size, 'cut' => arch_cut)
+# архив по разделам и подразделам каталога — для фильтра «Активные / Архив» до загрузки самого архива
+archn['tree'] = arch.each_with_object(Hash.new(0)) { |l, h| next unless l['sub']; h[l['sub']] += 1; h[l['sub'].split('/').first] += 1 }
 slim = ->(l) { KEEP.each_with_object({}) { |k, h| h[k] = l[k] unless l[k].nil? }.tap { |h| h['np'] = l['pics'].size if (l['pics'] || []).size > 1 } }
 tpl = File.read(File.join(__dir__, 'site.tpl.html'), encoding: 'UTF-8')
 html = tpl.sub('__DATA__') { JSON.generate(active.map(&slim)) }

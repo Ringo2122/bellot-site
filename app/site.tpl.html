@@ -83,32 +83,154 @@ applyTheme(window.THEME);
   button,input,select{font:inherit}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-  /* ── шапка ── */
-  header.main{background:var(--card);border-bottom:1px solid var(--hair);position:relative;z-index:50}
-  .hrow{display:flex;align-items:center;gap:14px;padding-block:13px;position:relative}
+  /* ── шапка: логотип, «Весь каталог» и ссылки, поиск, кабинет — одной строкой, закреплена сверху (решение Артёма 09.10) ── */
+  header.main{background:var(--card);border-bottom:1px solid var(--hair);position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+  .hrow{display:flex;align-items:center;gap:12px;padding-block:11px}
   .logo{display:flex;align-items:center;gap:10px;flex:none}
   .logo .mark{width:38px;height:38px;border-radius:10px;background:var(--brand);color:#fff;
     display:grid;place-items:center;font-weight:700;font-size:17px;letter-spacing:-.02em}
-  .logo .nm{font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
-  .logo .sub{font-size:11px;color:var(--ink-3);line-height:1.2}
-  /* поиск: лупа, по нажатию — поле с подсказками поверх шапки */
+  .logo .lt{display:flex;flex-direction:column;justify-content:center}
+  .logo .nm{font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--ink);line-height:1.05}
+  .logo .sub{font-size:11px;color:var(--ink-3);line-height:1.2;margin-top:2px}
+  /* ссылки в шапке */
+  /* «Весь каталог» и ссылки — с отступом от логотипа и пошире друг от друга: меньше пустоты до кнопок справа */
+  .hnav{margin-left:clamp(4px,2.2vw,30px)}
+  .hnav ul{display:flex;align-items:center;gap:clamp(2px,.9vw,12px);list-style:none;margin:0;padding:0}
+  .hnav li.cm-li{margin-right:clamp(4px,1vw,14px)}
+  .hnav a{display:block;padding:8px 10px;border-radius:9px;color:var(--ink);font-weight:600;font-size:14px;white-space:nowrap;text-decoration:none;
+    transition:color .2s,background .2s}
+  .hnav a:hover{background:var(--bg);color:var(--brand)}
+  .hnav a.on{color:var(--brand);background:var(--brand-l)}
+  @media (max-width:1180px){ .hnav a{padding-inline:7px;font-size:13.5px} .logo .sub{display:none} }
+  /* «Весь каталог» */
+  .cbtn{position:relative;display:flex;align-items:center;gap:8px;height:40px;padding:0 15px 0 6px;border:0;border-radius:10px;background:var(--brand);color:#fff;
+    font:inherit;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;transition:background .2s,box-shadow .25s,transform .25s cubic-bezier(.2,.8,.2,1)}
+  .cbtn:hover{background:var(--accent-h);box-shadow:0 8px 18px rgba(244,81,30,.32);transform:translateY(-1px)}
+  .cbtn .cg{position:relative;width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,.2);display:grid;place-items:center;overflow:hidden}
+  .cbtn svg{position:absolute;width:17px;height:17px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;
+    transition:transform .35s cubic-bezier(.2,.8,.2,1),opacity .25s}
+  .cbtn svg.x{opacity:0;transform:rotate(-90deg) scale(.5)}
+  .cbtn:hover svg.g{transform:rotate(45deg) scale(.92)}
+  .cm-open .cbtn svg.g{opacity:0;transform:rotate(90deg) scale(.5)}
+  .cm-open .cbtn svg.x{opacity:1;transform:none}
+  /* поиск: лупа, по нажатию — полоса с полем во всю ширину под шапкой */
   .hsearch{margin-left:auto}
-  /* свёрнутое поле поиска — ширина 0, но значок и крестик внутри торчали за край: на iPhone страница становилась шире экрана
-     и Safari её уменьшал — «половина экрана пустая» (29.09) */
-  .hsearch:not(.open) .hs-form{overflow:hidden}
   .hs-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--hair-2);background:var(--card);color:var(--ink);
-    display:grid;place-items:center;cursor:pointer;transition:border-color .15s,color .15s}
+    display:grid;place-items:center;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
   .hs-btn:hover{border-color:var(--brand);color:var(--brand)}
+  .hsearch.open #hs-open{border-color:var(--brand);color:var(--brand);background:var(--brand-l)}
   .hs-btn svg,.hs-ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-  .hs-form{position:absolute;right:var(--hs-r,16px);top:50%;z-index:2;transform:translateY(-50%);width:0;opacity:0;pointer-events:none;
-    display:flex;align-items:center;background:var(--card);border:1.5px solid var(--brand);border-radius:23px;
-    box-shadow:var(--sh-2);transition:width .3s cubic-bezier(.2,.7,.3,1),opacity .18s}
-  .hsearch.open .hs-form{width:min(580px,calc(100% - var(--hs-r,16px) - 16px));opacity:1;pointer-events:auto}
-  .hs-ico{padding:0 4px 0 14px;color:var(--ink-3);display:grid;place-items:center}
-  .hs-form input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);padding:11px 6px;font-size:15px;outline:none}
+  .hs-form{position:absolute;left:0;right:0;top:100%;z-index:2;display:flex;align-items:center;gap:6px;background:var(--card);border-top:1px solid var(--hair);
+    box-shadow:0 16px 32px rgba(16,22,30,.12);padding:12px max(16px,calc((100% - 1220px) / 2 + 16px));
+    opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-8px);transition:opacity .2s,transform .28s cubic-bezier(.2,.8,.2,1),visibility .2s}
+  .hsearch.open .hs-form{opacity:1;visibility:visible;pointer-events:auto;transform:none}
+  .hs-ico{display:none}
+  .hs-form input{flex:1;min-width:0;border:1.5px solid var(--brand);border-radius:12px;background:var(--card);color:var(--ink);padding:12px 16px;font-size:16px;
+    outline:none;box-shadow:0 0 0 4px var(--brand-l)}
     .hs-form input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}   /* свой крестик уже есть */
-  .hs-x{border:0;background:none;color:var(--ink-3);font-size:17px;padding:0 15px;cursor:pointer}
+  .hs-x{border:0;background:none;color:var(--ink-3);font-size:19px;padding:0 10px;cursor:pointer}
   .hs-x:hover{color:var(--ink)}
+  .hsearch .sugg{left:max(16px,calc((100% - 1220px) / 2 + 16px));right:max(16px,calc((100% - 1220px) / 2 + 16px));top:calc(100% - 4px)}
+  /* меню «Весь каталог»: слева разделы, справа подразделы наведённого (на телефоне — списком с раскрытием) */
+  .cm-panel{position:fixed;left:0;right:0;top:64px;background:var(--card);border-top:1px solid var(--hair);box-shadow:0 24px 48px rgba(16,22,30,.16);
+    max-height:calc(100vh - 64px);overflow:auto;opacity:0;visibility:hidden;transform:translateY(-10px);
+    transition:opacity .22s,transform .3s cubic-bezier(.2,.8,.2,1),visibility .22s;z-index:3}
+  .cm-open .cm-panel{opacity:1;visibility:visible;transform:none}
+  .cm-dim{position:fixed;inset:0;background:rgba(16,22,30,.32);opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s;z-index:45}
+  .cm-open .cm-dim{opacity:1;visibility:visible}
+  .cm-panel .wrap{padding-block:20px 24px}
+  .cm-panel a{text-decoration:none}
+  .cm-two{display:grid;grid-template-columns:300px 1fr;gap:30px;min-height:290px}
+  .cm-ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--cl);color:var(--c);flex:none;
+    transition:transform .3s cubic-bezier(.2,.8,.2,1),background .2s,color .2s}
+  .cm-ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .cm-left{display:flex;flex-direction:column;gap:4px;border-right:1px solid var(--hair);padding-right:16px}
+  .cm-left a{position:relative;display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:11px;color:var(--ink);font-weight:600;font-size:14.5px;
+    isolation:isolate;transition:color .2s}
+  .cm-left a::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--brand-l);transform:scaleX(.6);transform-origin:left;opacity:0;z-index:-1;
+    transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .2s}
+  .cm-left a.on::before{transform:none;opacity:1}
+  .cm-left a.on{color:var(--brand-d)}
+  .cm-left a.on .cm-ic{transform:scale(1.08) rotate(-4deg);background:var(--card);color:var(--brand)}
+  .cm-left a small{margin-left:auto;color:var(--ink-3);font-size:12.5px;font-weight:600;transition:color .2s}
+  .cm-left a.on small{color:var(--brand)}
+  .cm-chev{width:16px;height:16px;fill:none;stroke:var(--ink-3);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;transition:transform .25s,stroke .2s}
+  .cm-left a.on .cm-chev{stroke:var(--brand);transform:translateX(3px)}
+  .cm-open .cm-left a{animation:cmIn .35s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:var(--d)}
+  .cm-rh{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .cm-rh b{font-size:19px;font-weight:700}
+  .cm-arr{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  .cm-all{display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:13.5px;font-weight:700;color:var(--brand);padding:6px 12px;border-radius:8px;
+    border:1px solid var(--brand);transition:background .2s,color .2s}
+  .cm-all .cm-arr{transition:transform .25s}
+  .cm-all:hover{background:var(--brand);color:#fff}
+  .cm-all:hover .cm-arr{transform:translateX(3px)}
+  .cm-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:22px;row-gap:4px}
+  .cm-grid2 a{position:relative;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--ink);font-size:14.5px;isolation:isolate;
+    transition:color .2s,transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s}
+  .cm-grid2 a::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--bg);border:1px solid var(--hair);z-index:-1;transition:background .2s,border-color .2s}
+  .cm-grid2 a .cm-sn{transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+  .cm-grid2 a small{margin-left:auto;color:var(--ink-3);font-size:12.5px;font-weight:600;transition:color .2s}
+  .cm-grid2 a .cm-arr{width:0;opacity:0;color:var(--brand);transform:translateX(-6px);transition:width .25s,opacity .2s,transform .25s}
+  .cm-grid2 a:hover{color:var(--brand-d);transform:translateY(-2px);box-shadow:0 8px 18px rgba(16,22,30,.08)}
+  .cm-grid2 a:hover::before{background:var(--brand-l);border-color:transparent}
+  .cm-grid2 a:hover .cm-sn{transform:translateX(3px)}
+  .cm-grid2 a:hover small{color:var(--brand)}
+  .cm-grid2 a:hover .cm-arr{width:15px;opacity:1;transform:none}
+  .cm-right.swap .cm-rh{animation:cmIn .3s cubic-bezier(.2,.8,.2,1) backwards}
+  .cm-right.swap .cm-grid2 a,.cm-open .cm-grid2 a{animation:cmIn .32s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:var(--d)}
+  @keyframes cmIn{from{opacity:0;transform:translateX(10px)}}
+  .mburg,.mmenu,.cm-acc{display:none}
+  /* небольшой ноутбук, планшет, телефон: ссылки шапки — в меню под тремя полосками (в строку не помещаются) */
+  @media (max-width:1140px){
+    .hnav li:not(.cm-li){display:none}
+    .mburg{display:grid;position:relative}
+    .mburg svg{position:absolute;transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .2s}
+    .mburg svg.x{opacity:0;transform:rotate(-90deg) scale(.6)}
+    .mm-open .mburg{border-color:var(--brand);color:var(--brand);background:var(--brand-l)}
+    .mm-open .mburg svg.b{opacity:0;transform:rotate(90deg) scale(.6)}
+    .mm-open .mburg svg.x{opacity:1;transform:none}
+    .mmenu{display:flex;flex-direction:column;gap:2px;position:absolute;top:calc(100% + 8px);right:12px;width:min(270px,calc(100vw - 24px));padding:8px;
+      background:var(--card);border:1px solid var(--hair);border-radius:16px;box-shadow:var(--sh-2);z-index:4;
+      opacity:0;visibility:hidden;transform:translateY(-8px) scale(.97);transform-origin:top right;transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1),visibility .2s}
+    .mm-open .mmenu{opacity:1;visibility:visible;transform:none}
+    .mmenu a{display:block;padding:11px 14px;border-radius:10px;color:var(--ink);font-weight:600;font-size:15px;text-decoration:none}
+    .mmenu a.on{background:var(--brand-l);color:var(--brand-d)}
+    .mmenu .btn.pri{margin-top:6px;text-align:center;color:#fff}
+  }
+  /* телефон: в шапке логотип, кнопка каталога значком, лупа, кабинет и меню; «Помощь в аукционе» — в меню и на первом экране */
+  @media (max-width:760px){
+    .hrow{gap:8px;padding-block:9px}
+    .logo .nm{font-size:18px}
+    .hnav li.cm-li{margin:0}
+    .hnav .cbtn{width:40px;height:40px;padding:0;justify-content:center}
+    .hnav .cbtn > span:last-child{display:none}
+    .hnav .cbtn .cg{background:none}
+    .hacts .btn.pri{display:none}
+    .hacts{gap:6px}
+    .hs-btn{width:40px;height:40px}
+    .hs-form{padding:10px 16px}
+    .hsearch .sugg{left:16px;right:16px}
+    .cm-panel .wrap{padding-block:10px 18px}
+    .cm-panel .cm-two{display:none}
+    .cm-acc{display:flex;flex-direction:column;gap:6px}
+    .cm-sh{display:flex;align-items:center;gap:12px;width:100%;padding:10px;border:1px solid var(--hair);border-radius:12px;background:var(--card);font:inherit;
+      font-weight:700;font-size:15px;color:var(--ink);text-align:left;cursor:pointer;transition:background .2s,border-color .2s,color .2s}
+    .cm-sh small{margin-left:auto;color:var(--ink-3);font-size:12.5px;font-weight:600}
+    .cm-sh .cm-chev{transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+    .cm-sec.open .cm-sh{background:var(--brand-l);border-color:transparent;color:var(--brand-d)}
+    .cm-sec.open .cm-sh .cm-chev{transform:rotate(180deg);stroke:var(--brand)}
+    .cm-sec.open .cm-ic{background:var(--card);color:var(--brand)}
+    .cm-sub{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.2,.8,.2,1)}
+    .cm-sub > div{overflow:hidden;display:flex;flex-direction:column;gap:4px;padding-inline:4px}
+    .cm-sec.open .cm-sub{grid-template-rows:1fr}
+    .cm-sec.open .cm-sub > div{padding-block:6px 4px}
+    .cm-sub a{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:var(--bg);color:var(--ink);font-size:14.5px}
+    .cm-sub a small{color:var(--ink-3);font-size:12.5px;font-weight:600}
+    .cm-sub a:active{background:var(--brand-l);color:var(--brand-d)}
+    .cm-sub a.cm-sall{justify-content:center;background:none;border:1px solid var(--brand);color:var(--brand);font-weight:700}
+  }
+  @media (prefers-reduced-motion:reduce){.cm-panel,.cm-left a,.cm-grid2 a,.cm-right .cm-rh,.cm-sub{animation:none !important;transition:none !important}}
   .sugg{position:absolute;left:0;right:0;top:calc(100% + 7px);background:var(--card);border:1px solid var(--hair);
     border-radius:12px;box-shadow:0 14px 40px rgba(24,24,27,.2),0 2px 8px rgba(24,24,27,.08);overflow:hidden;display:none;z-index:60;text-align:left}
   .sugg.on{display:block}
@@ -137,37 +259,6 @@ applyTheme(window.THEME);
   .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
   .btn.pri:hover{background:var(--accent-h);border-color:var(--accent-h);color:#fff;box-shadow:0 8px 20px rgba(244,81,30,.35)}
 
-  nav.main{background:var(--card);border-bottom:1px solid var(--hair);overflow-x:auto;position:sticky;top:0;z-index:40;box-shadow:0 2px 10px rgba(0,0,0,.05)}
-  nav.main ul{display:flex;justify-content:space-between;list-style:none;margin:0;padding:0;gap:0;min-width:max-content}
-  nav.main a{display:block;padding:11px 9px;color:var(--ink);font-size:13.5px;font-weight:600;white-space:nowrap;
-    border-bottom:3px solid transparent}
-  nav.main a:hover{color:var(--brand);text-decoration:none}
-  nav.main a.on{color:var(--brand);border-bottom-color:var(--brand)}
-  nav.main li:first-child a{padding-left:0}
-  /* ноутбуки: сайт уже 1 220 px — пункты плотнее; на планшете и телефоне меню листается */
-  @media (max-width:1200px){ nav.main a{font-size:13px;padding-inline:7px} }
-  @media (max-width:1100px){ nav.main a{font-size:12.5px;padding-inline:6px} }
-  /* телефон: разделы — не полосой, которую листают вбок, а списком под круглой кнопкой в правом верхнем углу.
-     Кнопка остаётся на месте при прокрутке; список раскрывается под ней, закрывается выбором раздела, касанием мимо или Esc */
-  .mnav-btn,.mnav-ov{display:none}
-  @media (max-width:760px){
-    nav.main{position:fixed;top:calc(66px + env(safe-area-inset-top));left:auto;right:12px;bottom:auto;z-index:58;
-      width:min(290px,calc(100vw - 32px));max-height:min(68vh,560px);overflow:auto;border:1px solid var(--hair);border-radius:16px;
-      box-shadow:var(--sh-2);visibility:hidden;opacity:0;transform:translateY(-10px) scale(.97);transform-origin:top right;
-      transition:opacity .18s,transform .18s,visibility 0s .18s}
-    body.mnav nav.main{visibility:visible;opacity:1;transform:none;transition:opacity .18s,transform .18s}
-    nav.main .wrap{padding:6px}
-    nav.main ul{flex-direction:column;min-width:0}
-    nav.main a,nav.main li:first-child a{padding:11px 14px;font-size:15px;border-bottom:0;border-radius:10px}
-    nav.main a.on{background:var(--brand-l);color:var(--brand-d)}
-    .mnav-btn{display:grid;place-items:center;position:fixed;right:12px;top:calc(8px + env(safe-area-inset-top));z-index:59;
-      width:48px;height:48px;border:0;border-radius:50%;background:var(--accent);color:#fff;cursor:pointer;
-      box-shadow:0 8px 20px rgba(244,81,30,.35)}
-    .mnav-btn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
-    header.main .hrow{padding-right:64px}   /* место под кнопкой меню, пока страница не прокручена */
-    .mnav-ov{display:block;position:fixed;inset:0;z-index:57;background:rgba(10,15,22,.32);opacity:0;pointer-events:none;transition:opacity .18s}
-    body.mnav .mnav-ov{opacity:1;pointer-events:auto}
-  }
 
   /* ── общее ── */
   main{padding-block:22px 56px;min-height:60vh}
@@ -552,6 +643,31 @@ applyTheme(window.THEME);
   .land .sky-m{display:none}
   @media (max-width:760px){ .land .sky-d{display:none} .land .sky-m{display:block;opacity:.8} }
   .land-in{position:relative}
+  /* компьютер: первый экран — ровно на высоту окна под шапкой (--hh — высота шапки), заголовок и поиск — посередине */
+  @media (min-width:761px){
+    .land{min-height:calc(100svh - var(--hh,66px));display:flex;align-items:center;padding:48px 0}
+    .land > .land-in{width:100%}
+    /* большой монитор — крупнее заголовок, текст и поиск (на ноутбуке — прежние размеры) */
+    .land .land-in h1{font-size:clamp(44px,3.5vw,76px)}
+    .land .land-in p{font-size:clamp(17px,1.2vw,23px);margin-bottom:clamp(26px,1.8vw,38px)}
+    .land .land-search{max-width:clamp(620px,44vw,860px);padding:clamp(5px,.35vw,7px)}
+    .land .land-search input{font-size:clamp(16px,1.05vw,20px);padding-block:clamp(12px,.9vw,17px)}
+    .land .land-search button{font-size:clamp(15px,.95vw,18px);padding-inline:clamp(22px,1.5vw,32px)}
+    .land .land-live{font-size:clamp(14px,.9vw,17px);margin-top:clamp(18px,1.2vw,24px)}
+  }
+  /* телефон: первый экран — на всю высоту под шапкой; текст и поиск крупнее и с отступами — занимают экран,
+     внизу немного места под рисунок с кварталами */
+  .land-help{display:none}
+  @media (max-width:760px){
+    .land{min-height:calc(100svh - var(--hh,58px));display:flex;flex-direction:column;justify-content:center}
+    .land > .land-in{width:100%}
+    .land .land-in h1{font-size:clamp(33px,10.4vw,44px);margin-bottom:22px}
+    .land .land-in p{font-size:18.5px;margin-bottom:34px}
+    .land .land-search input{padding-block:17px;font-size:17px}
+    .land .land-search button{font-size:16px}
+    .land-help{display:block;margin-top:16px;padding-block:17px;font-size:16px;text-align:center;background:var(--card);border-color:#a1a1aa;color:var(--ink)}
+    .land .land-live{margin-top:26px;font-size:15.5px}
+  }
   .land h1{font-size:44px;line-height:1.1;letter-spacing:-.02em;font-weight:700;max-width:17ch;margin:0 0 16px;text-wrap:balance}
   .land p{font-size:17px;line-height:1.55;color:var(--ink-2);max-width:58ch;margin:0 0 26px}
   .land-search{position:relative;display:flex;max-width:620px;background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:5px;box-shadow:var(--sh-2)}
@@ -559,14 +675,13 @@ applyTheme(window.THEME);
   .land-search button{border:0;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;padding:0 22px;cursor:pointer;font-size:15px;
     transition:background-color .2s,box-shadow .2s}
   .land-search button:hover{background:var(--accent-h);box-shadow:0 6px 16px rgba(244,81,30,.35)}
-  .land-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}
+
   .land-live{margin-top:18px;font-size:14px;color:var(--ink-2)}
   .land-live b{color:var(--ink)}
   .btn.big{padding:13px 22px;font-size:15.5px;border-radius:10px}
-  .btn.ghost{background:var(--card);border-color:#a1a1aa;color:var(--ink)}
-  .btn.ghost:hover{border-color:var(--brand);color:var(--brand)}
+
   /* плитки разделов: рисованные в стиле иконок, у каждого раздела свой цвет */
-  .stiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .stiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
   .stile{position:relative;display:flex;flex-direction:column;gap:10px;padding:16px;min-height:134px;border-radius:16px;
     overflow:hidden;background:var(--card);border:1px solid var(--hair);color:var(--ink);
     transition:transform .18s,box-shadow .18s}
@@ -720,14 +835,14 @@ applyTheme(window.THEME);
     .help,.cx-grid{grid-template-columns:1fr}
     .hform{position:static}
     .how{grid-template-columns:repeat(2,1fr)}
-    .stiles{grid-template-columns:repeat(3,1fr)}
+    .stiles{grid-template-columns:repeat(2,1fr)}
     .car-track{grid-auto-columns:calc((100% - 28px)/3)}
     .car-b.prev{left:-8px}
     .car-b.next{right:-8px}
     .cx-time{grid-template-columns:repeat(2,1fr)}
   }
   @media (max-width:760px){
-    .land{padding:40px 0 100px}
+    .land{padding:2svh 0 9svh}
     .land h1{font-size:30px}
     .land p{font-size:15.5px}
     .svc{grid-template-columns:1fr}
@@ -985,8 +1100,9 @@ applyTheme(window.THEME);
 <header class="main"><div class="wrap hrow">
   <a class="logo" href="#/">
     <span class="mark">МТ</span>
-    <span><span class="nm">МониТорг</span><br><span class="sub">агрегатор торгов Беларуси</span></span>
+    <span class="lt"><span class="nm">МониТорг</span><span class="sub">Первый агрегатор<br>торгов Беларуси</span></span>
   </a>
+<nav class="hnav" aria-label="Разделы сайта"><ul id="nav"></ul></nav>
 <div class="hsearch" id="hs">
   <button class="hs-btn" id="hs-open" type="button" aria-label="Поиск по лотам"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg></button>
   <form class="hs-form" id="hs-form" role="search">
@@ -999,12 +1115,13 @@ applyTheme(window.THEME);
   <div class="hacts">
     <a class="hs-btn ubtn" id="ubtn" href="#/me" aria-label="Личный кабинет" title="Личный кабинет"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span class="udot" id="udot" hidden></span></a>
     <a class="btn pri" href="#/help"><span class="h-long">Помощь в аукционе</span><span class="h-short">Помощь</span></a>
+    <button class="hs-btn mburg" id="mburg" type="button" aria-label="Меню" aria-expanded="false" aria-controls="mmenu"><svg class="b" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
-</div></header>
-
-<nav class="main"><div class="wrap"><ul id="nav"></ul></div></nav>
-<button class="mnav-btn" id="mnav-btn" type="button" aria-label="Разделы сайта" aria-expanded="false" aria-controls="nav"></button>
-<div class="mnav-ov" id="mnav-ov"></div>
+</div>
+<div class="mmenu" id="mmenu"></div>
+<div class="cm-panel" id="cm-panel" aria-label="Весь каталог"></div>
+</header>
+<div class="cm-dim" id="cm-dim"></div>
 
 <main id="app"></main>
 
@@ -1089,13 +1206,22 @@ const fUsd = f => f.cur==='USD' && USD > 0;   // фильтр: цена «от/�
 const usdTxt = b => USD && b > 0 ? '≈ ' + nf(b / USD) + ' USD' : '';
 const p2 = n => String(n).padStart(2,'0');
 const dt = ts => { const d=new Date(ts*1000); return p2(d.getDate())+'.'+p2(d.getMonth()+1)+'.'+d.getFullYear(); };
-// «сегодня в 12:08», «вчера в 18:40», иначе дата
-const updLabel = ts => { const d = new Date(ts*1000), n = new Date(), y = new Date(n.getFullYear(), n.getMonth(), n.getDate()-1);
-  const hm = p2(d.getHours())+':'+p2(d.getMinutes());
-  return d.toDateString()===n.toDateString() ? 'сегодня в '+hm : d.toDateString()===y.toDateString() ? 'вчера в '+hm : dtm(ts); };
 const dtm = ts => { const d=new Date(ts*1000); return dt(ts)+' '+p2(d.getHours())+':'+p2(d.getMinutes()); };
 const plural = (n,a,b,c) => { const m=n%10, h=n%100; return m===1&&h!==11?a : m>=2&&m<=4&&(h<10||h>=20)?b : c; };
 const secName = s => (SECTIONS.find(x=>x[0]===s)||[,s])[1];
+/* разделы и подразделы каталога: дерево и подраздел лота (l.sub = «transport/legkovye») даёт робот (app/cats.rb) */
+const CATS = CFG.cats || [];
+const catTop = k => CATS.find(t=>t.k===k);
+const catSub = (t, s) => t && s ? t.subs.find(x=>x.k===s) : null;
+// область каталога: { top, sub } или null — по пути «transport/legkovye»
+const scOf = p => { const [top, sub] = String(p||'').split('/'); const t = catTop(top); return t ? { top, sub: catSub(t, sub) ? sub : undefined } : null; };
+const scPath = sc => sc.top + (sc.sub ? '/' + sc.sub : '');
+const scName = sc => { const t = catTop(sc.top), s = catSub(t, sc.sub); return s ? s.n : t ? t.n : ''; };
+const inScope = (l, sc) => !sc || (sc.sub ? l.sub === sc.top + '/' + sc.sub : String(l.sub||'').startsWith(sc.top + '/'));
+// подраздел лота для подписи на карточке; нет — прежний раздел площадки
+const subName = l => { const sc = scOf(l.sub); return sc && sc.sub ? scName(sc) : secName(l.section); };
+// старые адреса разделов (#/s/avto) — в новые
+const OLD_SEC = { nedvizhimost:'nedvizhimost', avto:'transport/legkovye', gruz:'transport', spec:'transport', oborud:'oborudovanie', arenda:'arenda' };
 const cnt = s => DATA.filter(l=>l.section===s).length;
 /* календарных дней до конца приёма заявок: 0 — сегодня, 1 — завтра, -1 — уже закрыт */
 const day0 = t => { const d = new Date(t); d.setHours(0,0,0,0); return d.getTime(); };
@@ -1160,11 +1286,14 @@ $('#f-upd').textContent = dtm(SNAP);
   if(c.address) out.push(esc(c.address));
   $('#fcont').innerHTML = out.length ? `<p class="fcont">${out.join('<br>')}</p>` : '';
 })();
-$('#nav').innerHTML = '<li><a href="#/">Главная</a></li><li><a href="#/catalog">Все лоты</a></li>'
-  + SECTIONS.map(([s,n])=>`<li><a href="#/s/${s}">${n}</a></li>`).join('')
-  + '<li><a href="#/catalog?st=arch">Архив</a></li>'
-  + '<li><a href="#/calc">Калькулятор</a></li><li><a href="#/about">О платформе</a></li>';
-$('#fnav').innerHTML = SECTIONS.map(([s,n])=>`<li><a href="#/s/${s}">${n}</a></li>`).join('');
+/* шапка: «Весь каталог» и ссылки; на телефоне ссылки — в меню под тремя полосками */
+const NAV_LINKS = [['#/','Главная'],['#/catalog','Все лоты'],['#/catalog?st=arch','Архив'],['#/calc','Калькулятор'],['#/about','О платформе']];
+$('#nav').innerHTML = `<li class="cm-li"><button class="cbtn" id="cbtn" type="button" aria-expanded="false" aria-controls="cm-panel" aria-label="Весь каталог">`
+  + '<span class="cg"><svg class="g" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/>'
+  + '<rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span>'
+  + '<span>Весь каталог</span></button></li>' + NAV_LINKS.map(([h,n])=>`<li><a href="${h}">${n}</a></li>`).join('');
+$('#mmenu').innerHTML = NAV_LINKS.map(([h,n])=>`<a href="${h}">${n}</a>`).join('') + '<a class="btn pri" href="#/help">Помощь в аукционе</a>';
+$('#fnav').innerHTML = CATS.map(t=>`<li><a href="#/c/${t.k}">${esc(t.n)}</a></li>`).join('');
 
 /* ───────── поиск с подсказками ───────── */
 const norm = s => String(s||'').toLowerCase().replace(/ё/g,'е');
@@ -1272,18 +1401,50 @@ document.addEventListener('click', e=>{
   document.querySelectorAll('.sugg.on').forEach(b=>{ if(!b.parentElement.contains(e.target)) b.classList.remove('on'); });
   if($('#hs').classList.contains('open') && !$('#hs').contains(e.target)) hsClose();
 });
-/* телефон: разделы под кнопкой в углу (на компьютере кнопки не видно — меню полосой, как было) */
-const MNAV_IC = ['<svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>', '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>'];
-const mnav = on => { document.body.classList.toggle('mnav', on); $('#mnav-btn').setAttribute('aria-expanded', on); $('#mnav-btn').innerHTML = MNAV_IC[on ? 1 : 0]; };
-mnav(false);
-$('#mnav-btn').onclick = () => mnav(!document.body.classList.contains('mnav'));
-$('#mnav-ov').onclick = () => mnav(false);
-$('#nav').addEventListener('click', e => { if(e.target.closest('a')) mnav(false); });
-document.addEventListener('keydown', e => { if(e.key === 'Escape' && document.body.classList.contains('mnav')) mnav(false); });
+/* меню «Весь каталог»: на компьютере — слева разделы, справа подразделы наведённого; на телефоне — списком с раскрытием.
+   Собирается при первом открытии (числа — по нынешним активным лотам) */
+const CM_ARR = '<svg class="cm-arr" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg>';
+const cmCnt = p => DATA.filter(l=>inScope(l, scOf(p))).length;
+const cmRight = t => { const n = cmCnt(t.k);
+  return `<div class="cm-rh"><span class="cm-ic s-${t.ic}">${ICON[t.ic]}</span><b>${esc(t.n)}</b><a class="cm-all" href="#/c/${t.k}">Все ${nf(n)} ${plural(n,'лот','лота','лотов')}${CM_ARR}</a></div>
+    <div class="cm-grid2">${t.subs.map((s,i)=>`<a href="#/c/${t.k}/${s.k}" style="--d:${i*28}ms"><span class="cm-sn">${esc(s.n)}</span><small>${nf(cmCnt(t.k+'/'+s.k))}</small>${CM_ARR}</a>`).join('')}</div>`; };
+let cmBuilt = false;
+function cmBuild(){
+  if(cmBuilt) return; cmBuilt = true;
+  $('#cm-panel').innerHTML = `<div class="wrap"><div class="cm-two">
+    <div class="cm-left">${CATS.map((t,i)=>`<a href="#/c/${t.k}" class="${i?'':'on'}" data-i="${i}" style="--d:${i*45}ms"><span class="cm-ic s-${t.ic}">${ICON[t.ic]}</span><span>${esc(t.n)}</span><small>${nf(cmCnt(t.k))}</small><svg class="cm-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></a>`).join('')}</div>
+    <div class="cm-right" id="cm-right" data-i="0">${CATS[0] ? cmRight(CATS[0]) : ''}</div></div>
+    <div class="cm-acc">${CATS.map(t=>{ const n = cmCnt(t.k); return `<div class="cm-sec"><button type="button" class="cm-sh"><span class="cm-ic s-${t.ic}">${ICON[t.ic]}</span><span>${esc(t.n)}</span><small>${nf(n)}</small><svg class="cm-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="cm-sub"><div>${t.subs.map(s=>`<a href="#/c/${t.k}/${s.k}"><span>${esc(s.n)}</span><small>${nf(cmCnt(t.k+'/'+s.k))}</small></a>`).join('')}<a class="cm-sall" href="#/c/${t.k}">Все ${nf(n)} ${plural(n,'лот','лота','лотов')} →</a></div></div></div>`; }).join('')}</div></div>`;
+  // наведение на раздел слева — справа его подразделы
+  document.querySelectorAll('.cm-left a').forEach(a=>a.addEventListener('mouseenter', () => { const r = $('#cm-right'), i = +a.dataset.i;
+    if(+r.dataset.i === i) return; r.dataset.i = i;
+    document.querySelectorAll('.cm-left a').forEach(x=>x.classList.toggle('on', x===a));
+    r.innerHTML = cmRight(CATS[i]); r.classList.remove('swap'); void r.offsetWidth; r.classList.add('swap'); }));
+  // телефон: открыт один раздел за раз
+  document.querySelectorAll('.cm-sh').forEach(b=>b.onclick = () => { const s = b.parentElement, o = !s.classList.contains('open');
+    document.querySelectorAll('.cm-sec').forEach(x=>x.classList.remove('open')); s.classList.toggle('open', o); });
+}
+const cmPlace = () => { const p = $('#cm-panel'), b = $('header.main').getBoundingClientRect().bottom;
+  p.style.top = b + 'px'; p.style.maxHeight = (innerHeight - b) + 'px'; };
+const cmenu = on => { if(on){ cmBuild(); cmPlace(); mmenu(false); hsClose(); }
+  document.documentElement.classList.toggle('cm-open', on); $('#cbtn').setAttribute('aria-expanded', on); };
+const mmenu = on => { if(on) cmenu(false);
+  document.documentElement.classList.toggle('mm-open', on); $('#mburg').setAttribute('aria-expanded', on); };
+$('#cbtn').onclick = () => cmenu(!document.documentElement.classList.contains('cm-open'));
+$('#cm-dim').onclick = () => cmenu(false);
+$('#cm-panel').addEventListener('click', e => { if(e.target.closest('a')) cmenu(false); });
+$('#mburg').onclick = () => mmenu(!document.documentElement.classList.contains('mm-open'));
+$('#mmenu').addEventListener('click', e => { if(e.target.closest('a')) mmenu(false); });
+// высота шапки — первому экрану главной (он занимает окно под шапкой)
+const setHH = () => document.documentElement.style.setProperty('--hh', $('header.main').offsetHeight + 'px');
+setHH();
+addEventListener('resize', () => { setHH(); if(document.documentElement.classList.contains('cm-open')) cmPlace(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape'){ cmenu(false); mmenu(false); } });
+document.addEventListener('click', e => { if(document.documentElement.classList.contains('mm-open') && !e.target.closest('#mmenu, #mburg')) mmenu(false); });
 const hsClose = () => { $('#hs').classList.remove('open'); $('#hs-q').value = ''; $('#hs-sugg').classList.remove('on'); };
-$('#hs-open').onclick = () => {
-  $('#hs').style.setProperty('--hs-r', ($('.hacts').offsetWidth + 16 + 10) + 'px');   // отступ справа (16) + кнопки + зазор
-  $('#hs').classList.add('open'); setTimeout(()=>$('#hs-q').focus(), 80); };
+$('#hs-open').onclick = () => { if($('#hs').classList.contains('open')){ hsClose(); return; }
+  cmenu(false); mmenu(false); $('#hs').classList.add('open'); setTimeout(()=>$('#hs-q').focus(), 80); };
 $('#hs-close').onclick = hsClose;
 attachSuggest($('#hs-q'), $('#hs-sugg'), hsClose);
 
@@ -1325,7 +1486,7 @@ function lotCard(l, inArch){
       ${favBtn(l)}
     </div>
     <div class="body">
-      <div class="kind">${esc(secName(l.section))}</div>
+      <div class="kind">${esc(subName(l))}</div>
       <div class="nm">${esc(l.name)}</div>
       <div class="pr">${nf(l.price)} <span>BYN</span>${pc!==null&&pc<0?`<em class="down">↓ ${-pc}%</em>`:''}</div>
       ${usdTxt(l.price)?`<div class="pr2">${usdTxt(l.price)}</div>`:''}
@@ -1411,7 +1572,7 @@ const CARRY_KEYS = ['st','q','region','pmin','pmax','cur','dfrom','dto','plat','
 function fitFilters(){
   const fp = $('#fp'); if(!fp) return;
   if(innerWidth <= 760){ fp.style.top = ''; return; }
-  const top = (document.querySelector('nav.main')||{offsetHeight:48}).offsetHeight + 12;
+  const top = (document.querySelector('header.main')||{offsetHeight:64}).offsetHeight + 12;
   // не помещается — прилипает низом: отрицательный top у sticky держит низ панели у края экрана
   fp.style.top = Math.min(top, innerHeight - fp.offsetHeight - 12) + 'px';
 }
@@ -1477,11 +1638,12 @@ function dd(sel){
     else if((e.key === 'Enter' || e.key === ' ') && ul){ e.preventDefault(); pick(act); } };
 }
 
-function filterPanel(list, f, section){
-  const arch = f.st==='arch';
+function filterPanel(list, f, sc){
+  const arch = f.st==='arch', src = arch ? (ARCH||[]) : DATA;
   const regions=[...new Set(list.map(l=>l.region).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
   const plats=[...new Set(list.flatMap(l=>l.alt?l.alt.map(a=>a.platform):[l.platform]))].sort();
-  const nA = section ? cnt(section) : DATA.length, nX = ARCHN[section||'_']||0;
+  const nA = sc ? DATA.filter(l=>inScope(l, sc)).length : DATA.length, nX = sc ? (ARCHN.tree||{})[scPath(sc)]||0 : ARCHN['_']||0;
+  const top = sc && catTop(sc.top);
   return `<aside class="panel filters" id="fp">
     <div class="fh"><span>Фильтры</span><button class="lnk" id="f-reset">Сбросить</button>
       <button class="fclose" id="f-close" aria-label="Закрыть">✕</button></div>
@@ -1492,9 +1654,12 @@ function filterPanel(list, f, section){
       ${arch?`<div class="fg"><label for="f-res">Итог торгов</label><select id="f-res"><option value="">Все · ${nf(list.length)}</option>
         ${RES_F.map(([k,t])=>{ const n = list.filter(l=>resMatch(l,k)).length; return n||f.res===k ? `<option value="${k}"${f.res===k?' selected':''}>${t} · ${nf(n)}</option>` : ''; }).join('')}</select></div>`:''}
       <div class="fg"><label for="f-q">Поиск</label><input id="f-q" type="search" value="${esc(f.q||'')}" placeholder="название, адрес, VIN, кадастровый №"></div>
-      <div class="fg"><label for="f-cat">Категория</label><select id="f-cat"><option value="">Все категории</option>
-        ${SECTIONS.map(([s,n])=>{ const c = (arch?(ARCH||[]):DATA).filter(l=>l.section===s).length;
-          return `<option value="${s}"${(section||f.cat)===s?' selected':''}>${n} · ${nf(c)}</option>`; }).join('')}</select></div>
+      <div class="fg"><label for="f-top">Раздел</label><select id="f-top"><option value="">Все разделы</option>
+        ${CATS.map(t=>{ const c = src.filter(l=>String(l.sub||'').startsWith(t.k+'/')).length;
+          return `<option value="${t.k}"${top===t?' selected':''}>${esc(t.n)} · ${nf(c)}</option>`; }).join('')}</select></div>
+      ${top?`<div class="fg"><label for="f-sub">Подраздел</label><select id="f-sub"><option value="">Все подразделы</option>
+        ${top.subs.map(s=>{ const c = src.filter(l=>l.sub===top.k+'/'+s.k).length;
+          return `<option value="${s.k}"${sc.sub===s.k?' selected':''}>${esc(s.n)} · ${nf(c)}</option>`; }).join('')}</select></div>`:''}
       <div class="fg"><label for="f-region">Регион</label><select id="f-region"><option value="">Любой</option>
         ${regions.map(r=>`<option${f.region===r?' selected':''}>${esc(r)}</option>`).join('')}</select></div>
       <div class="fg"><div class="lrow"><label>Цена${USD?'':', BYN'}</label>${USD?`<span class="cursw" id="f-cur" role="group" aria-label="Валюта цены">${['BYN','USD'].map(c=>
@@ -1507,7 +1672,7 @@ function filterPanel(list, f, section){
       <div class="fg"><label>Площадка</label><input type="hidden" id="f-plat" value="${esc(f.plat||'')}"><div class="pchips" id="f-pchips">
         <button type="button" class="pchip${f.plat?'':' on'}" data-p="">Все</button>
         ${plats.map(p=>`<button type="button" class="pchip ${pslug(p)}${f.plat===p?' on':''}" data-p="${esc(p)}"><i class="pdot"></i>${esc(p)}</button>`).join('')}</div></div>
-      <div class="fg">${(section||f.cat)==='nedvizhimost'?`<label class="chk"><input type="checkbox" id="f-land"${f.land?' checked':''}> только земельные участки</label>`:''}
+      <div class="fg">${(top&&top.k==='nedvizhimost')||f.cat==='nedvizhimost'?`<label class="chk"><input type="checkbox" id="f-land"${f.land?' checked':''}> только земельные участки</label>`:''}
         <label class="chk"><input type="checkbox" id="f-photo"${f.photo?' checked':''}> только с фото</label>
         <label class="chk"><input type="checkbox" id="f-mkt"${f.mkt?' checked':''}> только с рыночным ориентиром</label></div>
     </div>
@@ -1525,7 +1690,7 @@ function crumbs(parts){
 const FKEYS = ['st','sort','q','cat','res','region','pmin','pmax','cur','dfrom','dto','plat','photo','mkt','land'];
 const CAT_POS = {};   // адрес каталога → { y, show, t }
 let CAT_NOW = null;   // открытый каталог: { hash, show }
-function pageCatalog(section, params){
+function pageCatalog(sc, params){
   FSTATE = CARRY || {}; CARRY = null;
   FKEYS.forEach(k=>{ const v = params.get(k); if(v) FSTATE[k] = v; });
   // валюта цены: из адреса; суммы без пометки — в рублях; иначе — последний выбор посетителя
@@ -1534,7 +1699,7 @@ function pageCatalog(section, params){
   if(view==='soon') FSTATE.soon = 1;
   if(view==='new'){ FSTATE.fresh = 1; FSTATE.sort = FSTATE.sort || 'new'; }
   if(view==='pin') FSTATE.pin = 1;
-  const basePath = section ? '/s/' + section : '/catalog';
+  const basePath = sc ? '/c/' + scPath(sc) : '/catalog';
   const defSort = () => FSTATE.st==='arch' ? 'closed' : view==='new' ? 'new' : 'deadline';
   // адрес страницы по текущим фильтрам — replaceState: без новой записи в истории и без перерисовки
   const syncUrl = () => { const p = new URLSearchParams(); if(view) p.set('view', view);
@@ -1542,7 +1707,7 @@ function pageCatalog(section, params){
     const h = basePath + (p.toString() ? '?' + p : '');
     if(h !== CUR){ CUR = h; history.replaceState(history.state, '', '#' + h); }
     CAT_NOW = { hash:h, show }; };
-  const titleOf = () => section ? secName(section) : view==='soon' ? 'Истекающие торги' : view==='new' ? 'Новые лоты' : view==='pin' ? 'Рекомендуем'
+  const titleOf = () => sc ? scName(sc) : view==='soon' ? 'Истекающие торги' : view==='new' ? 'Новые лоты' : view==='pin' ? 'Рекомендуем'
     : (FSTATE.q ? 'Поиск по каталогу' : FSTATE.st==='arch' ? 'Архив торгов' : 'Все лоты');
   const title = titleOf();
   const STEP = 36; let show = STEP;
@@ -1550,10 +1715,11 @@ function pageCatalog(section, params){
   const pos = CAT_POS[CUR];
   if(pos && (PREV||'').startsWith('/lot/') && Date.now() - pos.t < 3*3600e3){ show = pos.show; RESTORE_Y = pos.y; }
   const baseOf = () => { const src = FSTATE.st==='arch' ? (ARCH||[]) : DATA;
-    return section ? src.filter(l=>l.section===section) : src; };
+    return sc ? src.filter(l=>inScope(l, sc)) : src; };
+  const ct = sc && catTop(sc.top);
   $('#app').innerHTML = `<div class="wrap">
-    ${crumbs(section?[[title]]:[[title]])}
-    <div class="cat-head"><h1>${section?`<span class="hico s-${section}">${ICON[section]}</span>`:''}${esc(title)}</h1><p class="lede" id="c-lede"></p></div>
+    ${crumbs(sc && sc.sub ? [[ct.n, '#/c/'+ct.k], [title]] : [[title]])}
+    <div class="cat-head"><h1>${ct?`<span class="hico s-${ct.ic}">${ICON[ct.ic]}</span>`:''}${esc(title)}</h1><p class="lede" id="c-lede"></p></div>
     <div class="layout"><div id="fwrap"></div><div><div class="toolbar" id="tb"></div><div id="res"></div></div></div></div>`;
   document.title = title + ' — МониТорг';
 
@@ -1563,20 +1729,20 @@ function pageCatalog(section, params){
     const v = id => (document.getElementById(id)||{}).value || '';
     const c = id => (document.getElementById(id)||{}).checked ? '1' : '';
     FSTATE = {st:FSTATE.st, sort:FSTATE.sort, soon:FSTATE.soon, fresh:FSTATE.fresh, pin:FSTATE.pin, q:v('f-q').trim(), region:v('f-region'), pmin:v('f-pmin'), cur:FSTATE.cur,
-      pmax:v('f-pmax'), dfrom:v('f-dfrom'), dto:v('f-dto'), plat:v('f-plat'), photo:c('f-photo'), mkt:c('f-mkt'), land:c('f-land'), cat:section?'':v('f-cat'),
+      pmax:v('f-pmax'), dfrom:v('f-dfrom'), dto:v('f-dto'), plat:v('f-plat'), photo:c('f-photo'), mkt:c('f-mkt'), land:c('f-land'), cat:FSTATE.cat,
       res:FSTATE.st==='arch'?v('f-res'):''};
   };
   const drawPanel = () => {
-    $('#fwrap').innerHTML = filterPanel(baseOf(), FSTATE, section);
-    ['f-q','f-cat','f-res','f-region','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt','f-land'].forEach(id=>{
+    $('#fwrap').innerHTML = filterPanel(baseOf(), FSTATE, sc);
+    ['f-q','f-top','f-sub','f-res','f-region','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt','f-land'].forEach(id=>{
       const el = document.getElementById(id); if(!el) return;
       el.addEventListener(el.tagName==='SELECT'||el.type==='checkbox'||el.type==='date'?'change':'input', ()=>{
         read();
-        // на странице раздела категория — это сам раздел: переходим, забрав остальные фильтры с собой
-        if(id==='f-cat' && section){ const v = el.value; CARRY = {};
+        // раздел и подраздел — это страница каталога: переходим, забрав остальные фильтры с собой
+        if(id==='f-top' || id==='f-sub'){ const t = $('#f-top').value, s = id==='f-sub' ? el.value : ''; CARRY = {};
           CARRY_KEYS.forEach(k=>{ if(FSTATE[k]) CARRY[k] = FSTATE[k]; });
-          location.hash = v ? '#/s/' + v : '#/catalog'; return; }
-        if(id==='f-cat'){ if(FSTATE.cat!=='nedvizhimost') FSTATE.land = ''; drawPanel(); }   // «только земельные участки» — у недвижимости
+          if(t!=='nedvizhimost') delete CARRY.land;   // «только земельные участки» — у недвижимости
+          location.hash = t ? '#/c/' + t + (s ? '/' + s : '') : '#/catalog'; return; }
         render(); });
     });
     document.querySelectorAll('#fp select').forEach(dd);
@@ -1613,7 +1779,7 @@ function pageCatalog(section, params){
     if(more!==true) show = STEP;
     const arch = FSTATE.st==='arch';
     // «Активные / Архив» и поиск меняют заголовок: «Все лоты», «Архив торгов», «Поиск по каталогу»
-    if(!section && document.title !== titleOf() + ' — МониТорг'){ const t = titleOf(); document.title = t + ' — МониТорг';
+    if(!sc && document.title !== titleOf() + ' — МониТорг'){ const t = titleOf(); document.title = t + ' — МониТорг';
       $('.cat-head h1').textContent = t; $('#app .crumbs').outerHTML = crumbs([[t]]); }
     $('#c-lede').textContent = arch
       ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним год — для истории цен, похожих торгов и аналитики.'
@@ -1628,14 +1794,14 @@ function pageCatalog(section, params){
       <select id="f-sort" aria-label="Сортировка">${sorts.map(([v,t])=>`<option value="${v}"${cur===v?' selected':''}>${t}</option>`).join('')}</select>`;
     $('#f-sort').onchange = e => { FSTATE.sort = e.target.value; render(); };
     dd($('#f-sort'));
-    const sv = $('#f-save'); if(sv) sv.onclick = () => saveSearch(section);
+    const sv = $('#f-save'); if(sv) sv.onclick = () => saveSearch(sc);
     $('#f-open').onclick = () => { $('#fp').classList.add('open'); $('#ov').classList.add('open'); };
     let hint = '';
     if(FSTATE.q && !SRCH) loadSrch().then(()=>{ if($('#res')) render(true); });
     if(!arch && FSTATE.q){
       // по свежему архиву, если весь ещё не загружен: ради подсказки 2 МБ не грузим
       const ar = ARCH || ARCH1;
-      if(ar){ const n = applyFilters(section?ar.filter(l=>l.section===section):ar, {...FSTATE, st:'arch'}).length;
+      if(ar){ const n = applyFilters(sc?ar.filter(l=>inScope(l, sc)):ar, {...FSTATE, st:'arch'}).length;
         if(n) hint = `<div class="hint">В архиве ещё <b>${n}</b> ${plural(n,'совпадение','совпадения','совпадений')} — <a href="#" id="to-arch">показать архив</a></div>`; }
       else loadArch1().then(()=>{ if($('#res')) render(); });
     }
@@ -2107,9 +2273,11 @@ function pageLot(id){
   const arch = l.status==='archive', d = left(l), pc = pchg(l);
   document.title = l.name.slice(0,60) + ' — МониТорг';
   $('#app').innerHTML = `<div class="wrap">
-    ${crumbs([[secName(l.section), '#/s/'+l.section], ...(arch?[['Архив', `#/s/${l.section}?st=arch`]]:[]), ['Лот '+l.art]])}
+    ${(() => { const sc = scOf(l.sub), t = sc && catTop(sc.top);
+      const tr = t ? [[t.n, '#/c/'+t.k], ...(sc.sub ? [[scName(sc), '#/c/'+scPath(sc)]] : [])] : [[secName(l.section), '#/s/'+l.section]];
+      return crumbs([...tr, ...(arch?[['Архив', `#/${t ? 'c/'+scPath(sc) : 's/'+l.section}?st=arch`]]:[]), ['Лот '+l.art]]); })()}
     <div class="lothead">
-      <div class="tags"><span class="tag">${esc(secName(l.section))}</span>${(l.alt?l.alt.map(a=>a.platform):[l.platform]).map(p=>`<span class="tag g">${esc(p)}</span>`).join('')}
+      <div class="tags"><span class="tag">${esc(subName(l))}</span>${(l.alt?l.alt.map(a=>a.platform):[l.platform]).map(p=>`<span class="tag g">${esc(p)}</span>`).join('')}
         <span class="tag g mono">№ ${esc(String(l.art))}</span>${l.platform==='mgcn.by'?'<span class="tag">Очный аукцион</span>':''}${arch?'<span class="tag a">Архив</span>':''}${!arch&&isNew(l)?'<span class="tag n">Новый</span>':''}</div>
       <h1 class="lotname">${esc(l.name)}</h1>
       <div class="where">${esc(l.location||'')}</div>
@@ -2153,8 +2321,9 @@ function pageLot(id){
     <div id="xsim"></div>
     ${arch?'':'<section class="panel calcx" id="calcx"><div class="skel"></div></section>'}
     <div class="accs" id="accs"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
-    ${arch?'':`<div class="sec"><div class="sec-h"><h2>Похожие лоты</h2><a href="#/s/${l.section}">Весь раздел →</a></div>
-      <div class="grid">${DATA.filter(x=>x.section===l.section&&x.id!==l.id).slice(0,4).map(lotCard).join('')}</div></div>`}
+    ${arch?'':(() => { const same = x => l.sub ? x.sub===l.sub : x.section===l.section;
+      return `<div class="sec"><div class="sec-h"><h2>Похожие лоты</h2><a href="#/${l.sub ? 'c/'+l.sub : 's/'+l.section}">Весь подраздел →</a></div>
+      <div class="grid">${DATA.filter(x=>same(x)&&x.id!==l.id).slice(0,4).map(lotCard).join('')}</div></div>`; })()}
   </div>`;
   bindLotUser(l);
   bindLotReport(l);
@@ -2487,11 +2656,13 @@ const ICON = {
   arenda:'<svg viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L20 3M16 7l3 3M13.5 9.5l2 2"/></svg>'
 };
 
-// imgs — свои значки разделов из конструктора главной: { nedvizhimost:'media/…jpg', … }
+// плитки четырёх разделов каталога; imgs — свои значки из конструктора главной по прежним ключам разделов
+// ({ nedvizhimost:'media/…png', avto:…, oborud:…, arenda:… } — у раздела это его значок t.ic)
 function sectionTiles(imgs){
-  return `<div class="stiles">${SECTIONS.map(([s,n])=>{ const k = cnt(s), ic = imgs && imgs[s] ? `<img src="${esc(imgs[s])}" alt="" loading="lazy">` : ICON[s];
-    return `<a class="stile s-${s}" href="#/s/${s}"><span class="bg">${ic}</span><span class="ti">${ic}</span>
-      <span class="tt">${n}</span><span class="tn">${k} ${plural(k,'активный лот','активных лота','активных лотов')}</span></a>`;
+  return `<div class="stiles">${CATS.map(t=>{ const k = DATA.filter(l=>inScope(l, {top:t.k})).length;
+    const ic = imgs && imgs[t.ic] ? `<img src="${esc(imgs[t.ic])}" alt="" loading="lazy">` : ICON[t.ic];
+    return `<a class="stile s-${t.ic}" href="#/c/${t.k}"><span class="bg">${ic}</span><span class="ti">${ic}</span>
+      <span class="tt">${esc(t.n)}</span><span class="tn">${k} ${plural(k,'активный лот','активных лота','активных лотов')}</span></a>`;
   }).join('')}</div>`;
 }
 
@@ -2574,13 +2745,11 @@ function heroHtml(b){
     ${b.art === false || b.img ? '' : heroArt()}
     <div class="wrap land-in${b.img ? ' has-img' : ''}">${b.img ? '<div>' : ''}
       <h1>${esc(TX('hero_title','Агрегатор торгов по имуществу со всех площадок Беларуси'))}</h1>
-      <p>${esc(TX('hero_text','Недвижимость, автомобили, техника и право аренды в одном месте.'))}</p>
+      <p>${esc(TX('hero_text','Недвижимость, автомобили, техника и право аренды на одной платформе.'))}</p>
       <form class="land-search" id="ls"><input id="ls-q" type="search" placeholder="Например: квартира в Минске, Volkswagen, экскаватор" aria-label="Поиск лота" autocomplete="off"><button type="submit">Найти лот</button><div class="sugg" id="ls-sugg"></div></form>
-      <div class="land-cta">
-        <a class="btn pri big" href="#/catalog">Смотреть ${nf(DATA.length)} лотов</a>
-        <a class="btn ghost big" href="#/help">Помощь в аукционе</a>
-      </div>
-      <div class="land-live"><b>${nf(DATA.length)}</b> ${plural(DATA.length,'активный лот','активных лота','активных лотов')} с <b>${plats}</b> ${plural(plats,'площадки','площадок','площадок')} · обновлено ${updLabel(SNAP)}</div>
+
+      <a class="btn big land-help" href="#/help">Помощь в аукционе</a>
+      <div class="land-live"><b>${nf(DATA.length)}</b> ${plural(DATA.length,'активный лот','активных лота','активных лотов')} с <b>${plats}</b> ${plural(plats,'площадки','площадок','площадок')}</div>
     ${b.img ? `</div><img class="hero-img" src="${esc(b.img)}" alt="">` : ''}</div>
   </section>`;
 }
@@ -2860,17 +3029,19 @@ function bindLotUser(l){
 const SS_KEYS = ['cat','q','region','pmin','pmax','dfrom','dto','plat','photo','mkt'];
 const dRu = s => s.split('-').reverse().join('.');
 function searchTitle(p){
-  const a = [], s = p.sec || p.cat;
-  if(s) a.push(secName(s)); if(p.q) a.push('«' + p.q + '»'); if(p.region) a.push(p.region);
+  const a = [], s = p.sec || p.cat, sc = scOf(p.sub);
+  if(sc) a.push(scName(sc)); else if(s) a.push(secName(s)); if(p.q) a.push('«' + p.q + '»'); if(p.region) a.push(p.region);
   if(p.pmin || p.pmax) a.push((p.pmin ? 'от ' + nf(+p.pmin) : '') + (p.pmax ? ' до ' + nf(+p.pmax) : '') + ' BYN');
   if(p.plat) a.push(p.plat); if(p.dfrom || p.dto) a.push('торги' + (p.dfrom ? ' с ' + dRu(p.dfrom) : '') + (p.dto ? ' по ' + dRu(p.dto) : ''));
   if(p.photo) a.push('с фото'); if(p.mkt) a.push('с ориентиром');
   return a.join(', ') || 'Все лоты';
 }
-const searchList = p => applyFilters(p.sec ? DATA.filter(l=>l.section===p.sec) : DATA, p);
-async function saveSearch(section){
+const searchList = p => { const sc = scOf(p.sub); return applyFilters(sc ? DATA.filter(l=>inScope(l, sc)) : p.sec ? DATA.filter(l=>l.section===p.sec) : DATA, p); };
+// раздел площадки, который целиком покрывает подраздел каталога: по нему база отбирает новые лоты для уведомлений
+const SEC_OF = { nedvizhimost:'nedvizhimost', arenda:'arenda', oborudovanie:'oborud', 'transport/legkovye':'avto' };
+async function saveSearch(sc){
   if(!ME){ needLogin(); return; }
-  const p = {}; if(section) p.sec = section;
+  const p = {}; if(sc){ p.sub = scPath(sc); const s = SEC_OF[p.sub] || SEC_OF[sc.top]; if(s) p.sec = s; }
   SS_KEYS.forEach(k=>{ if(FSTATE[k]) p[k] = String(FSTATE[k]); });
   // база сравнивает цены в рублях — доллары переводим по сегодняшнему курсу
   if(fUsd(FSTATE)){ if(p.pmin) p.pmin = String(Math.max(0, Math.floor((+p.pmin - .5) * USD))); if(p.pmax) p.pmax = String(Math.ceil((+p.pmax + .5) * USD)); }
@@ -2879,7 +3050,8 @@ async function saveSearch(section){
   try{ await uapi('saved_searches', { method:'POST', body:[{ name:name.trim() || searchTitle(p), params:p, notify:true }], prefer:'return=minimal' });
     utoast('Поиск сохранён — он в личном кабинете'); }catch(e){ utoast(e.message, true); }
 }
-function openSearch(p){ CARRY = {}; SS_KEYS.forEach(k=>{ if(p[k]) CARRY[k] = p[k]; }); location.hash = p.sec ? '#/s/' + p.sec : '#/catalog'; }
+function openSearch(p){ CARRY = {}; SS_KEYS.forEach(k=>{ if(p[k]) CARRY[k] = p[k]; });
+  location.hash = scOf(p.sub) ? '#/c/' + p.sub : p.sec ? '#/s/' + p.sec : '#/catalog'; }
 
 /* вход, регистрация, подтверждение почты кодом, смена забытого пароля */
 const REG_PURPOSES = ['Купить недвижимость для себя', 'Купить автомобиль или технику для себя', 'Инвестиции и перепродажа',
@@ -3388,12 +3560,16 @@ async function meProfile(M){
 /* ───────── роутер с переходом страниц ───────── */
 let CUR = null, PREV = null, RESTORE_Y = null;
 function render(path, params){
-  const links = [...document.querySelectorAll('nav.main a')], full = location.hash || '#/';
-  const cur = links.find(a=>a.getAttribute('href')===full) || links.find(a=>a.getAttribute('href')==='#'+path);
-  links.forEach(a=>a.classList.toggle('on', a===cur));
+  for(const box of ['#nav', '#mmenu']){
+    const links = [...document.querySelectorAll(box + ' a:not(.btn)')], full = location.hash || '#/';
+    const cur = links.find(a=>a.getAttribute('href')===full) || links.find(a=>a.getAttribute('href')==='#'+path);
+    links.forEach(a=>a.classList.toggle('on', a===cur));
+  }
+  cmenu(false); mmenu(false);
   $('#ov').classList.remove('open');
   if(path.startsWith('/lot/')) pageLot(decodeURIComponent(path.slice(5)));
-  else if(path.startsWith('/s/')) pageCatalog(SECTIONS.some(x=>x[0]===path.slice(3)) ? path.slice(3) : null, params);   // нет такого раздела — все лоты
+  else if(path.startsWith('/c/')) pageCatalog(scOf(decodeURIComponent(path.slice(3))), params);   // нет такого раздела — все лоты
+  else if(path.startsWith('/s/')) pageCatalog(scOf(OLD_SEC[path.slice(3)]), params);              // старый адрес раздела
   else if(path==='/catalog') pageCatalog(null, params);
   else if(path==='/calc') pageCalc(params.get('price'));
   else if(path==='/about') pageAbout();

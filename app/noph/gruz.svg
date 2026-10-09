@@ -31,5 +31,5 @@
 <circle cx="124" cy="196" r="23" fill="url(#tire)"/><circle cx="124" cy="196" r="12.9" fill="url(#rim)"/><circle cx="124" cy="196" r="4.6" fill="#8a949f"/><circle cx="124" cy="196" r="12.9" fill="none" stroke="#5d6772" stroke-width="1.5" stroke-opacity=".5"/>
 <circle cx="174" cy="196" r="23" fill="url(#tire)"/><circle cx="174" cy="196" r="12.9" fill="url(#rim)"/><circle cx="174" cy="196" r="4.6" fill="#8a949f"/><circle cx="174" cy="196" r="12.9" fill="none" stroke="#5d6772" stroke-width="1.5" stroke-opacity=".5"/>
 <circle cx="286" cy="196" r="23" fill="url(#tire)"/><circle cx="286" cy="196" r="12.9" fill="url(#rim)"/><circle cx="286" cy="196" r="4.6" fill="#8a949f"/><circle cx="286" cy="196" r="12.9" fill="none" stroke="#5d6772" stroke-width="1.5" stroke-opacity=".5"/>
-<text x="200" y="274" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="17" font-weight="600" letter-spacing=".6" class="cap">нет фото</text>
+<text x="200" y="27" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="15" font-weight="600" letter-spacing=".6" class="cap">нет фото</text>
 </svg>

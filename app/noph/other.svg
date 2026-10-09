@@ -22,5 +22,5 @@
 <polygon points="185.0,120.0 254.3,80.0 185.0,40.0 115.7,80.0" fill="url(#bt)"/>
 <polygon points="214.4,103.0 224.8,97.0 155.6,57.0 145.2,63.0" fill="#f6e7c8"/>
 <polygon points="214.4,103.0 224.8,97.0 224.8,127.0 214.4,133.0" fill="#f1dcb2"/>
-<text x="200" y="274" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="17" font-weight="600" letter-spacing=".6" class="cap">нет фото</text>
+<text x="200" y="27" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="15" font-weight="600" letter-spacing=".6" class="cap">нет фото</text>
 </svg>
