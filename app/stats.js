@@ -20,7 +20,7 @@
   const ADMIN_ONLY = ['quality', 'demand'];   // в кабинет не отдаются, даже если отмечены
   const SECS = [['nedvizhimost','Недвижимость'],['avto','Легковые авто'],['gruz','Грузовые и автобусы'],['spec','Спецтехника'],['oborud','Оборудование'],['arenda','Право аренды']];
   const SEC_RU = Object.fromEntries(SECS);
-  const PLATS = ['e-auction.by','ipmtorgi.by','beltorgi.by','konfiskat.by','belauction.by','minskestate.by','mgcn.by','auction24.by'];
+  const PLATS = ['e-auction.by','ipmtorgi.by','beltorgi.by','konfiskat.by','belauction.by','minskestate.by','mgcn.by','auction24.by','butb.by','lotsale.by'];
   const COL = { nedvizhimost:'#12508f', avto:'#d9761f', gruz:'#1d7a4d', spec:'#7a4fa3', oborud:'#7b8794', arenda:'#a0572a' };
   const REG = ['г. Минск','Минская область','Брестская область','Витебская область','Гомельская область','Гродненская область','Могилевская область'];
 
@@ -270,7 +270,7 @@
     const byKindRows = (xs, g) => Object.entries(xs.reduce((m,x)=>{ (m[kOf(x)] ||= []).push(x); return m; }, {}))
       .sort((a,b)=>b[1].filter(g.sold).length - a[1].filter(g.sold).length || b[1].length - a[1].length).slice(0,30)
       .map(([k,a])=>statRow(esc(k.split('|')[1]) + (sec ? '' : ` <small class="mut">${esc(SEC_RU[k.split('|')[0]]||'')}</small>`), a, g));
-    const BF = '<p class="mut">Торги с октября 2025 года загружены из архивов площадок (konfiskat.by — с июля 2026, auction24.by хранит их только с апреля 2026, belauction.by открыт роботам примерно на месяц назад, «Оборудование» — за месяц); с 25.09.2026 робот собирает итоги сам после даты торгов.</p>';
+    const BF = '<p class="mut">Торги с октября 2025 года загружены из архивов площадок (konfiskat.by — с июля 2026, auction24.by хранит их только с апреля 2026, belauction.by открыт роботам примерно на месяц назад, «Оборудование» — за месяц; butb.by и lotsale.by подключены 09.10.2026 — их архив за год догружается ночами); с 25.09.2026 робот собирает итоги сам после даты торгов.</p>';
     if(on.has('results')){
       // итоги торгов по лотам, торги которых закончились в выбранный период
       const ST = { sold:['Продан','#1d7a4d'], single:['Продан единственному участнику','#4cae7d'], failed:['Не состоялись','#d9761f'], cancelled:['Отменены','#9aa3ad'] };

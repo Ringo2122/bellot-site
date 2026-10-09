@@ -29,7 +29,7 @@ require 'fileutils'
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 365).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
 WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfiskat.by' => 1, 'belauction.by' => 1,
-            'minskestate.by' => 1, 'mgcn.by' => 1, 'auction24.by' => 1 }.freeze   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
+            'minskestate.by' => 1, 'mgcn.by' => 1, 'auction24.by' => 1, 'lotsale.by' => 1, 'butb.by' => 1 }.freeze   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
 MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
 # Настройки из админки: выключенные площадки не обходим, минимальная цена по разделам — своя.
 # База недоступна — работаем по умолчаниям.
@@ -81,7 +81,11 @@ PLAN = {
   # mgcn.by: очные аукционы МГЦН; земельные участки — в аренду или в собственность по тексту поста (mgcn.rb)
   'mgcn.by' => [['rent', 'arenda'], ['place', nil], ['sale', 'nedvizhimost']],
   # auction24.by: каталог «приём заявок» по разделам площадки, раздел сайта — по разделу и названию (a24_sec)
-  'auction24.by' => [['catalog', nil]]
+  'auction24.by' => [['catalog', nil]],
+  # lotsale.by: все активные из API, раздел — по категории и названию (ls_sec); лотов мало, пустой список — норма
+  'lotsale.by' => [['auctions', nil]],
+  # butb.by (et.butb.by): весь список «Торги» одной страницей, раздел — по категории в карточке лота (bu_sec)
+  'butb.by' => [['auctions', nil]]
 }.freeze
 # Площадки, которые больше не собираем: их лоты удаляются из памяти вместе с подробностями и фото.
 # cpo.by (ЦПО) — рекламная витрина торгов ИПМ-Торгов, те же лоты (решение Артёма 25.09.2026)
@@ -110,12 +114,14 @@ def list(plat, path)
   when 'minskestate.by' then Src.me_list
   when 'mgcn.by' then Mg.list(path)   # nil — список не прочитан, [] — предстоящих аукционов нет
   when 'auction24.by' then Src.a24_list
+  when 'lotsale.by' then Src.ls_list     # nil — API не ответил, [] — торгов сейчас нет
+  when 'butb.by' then Src.bu_list
   else Src.bt_list(path)
   end
 end
 
 def fetch_detail(c)
-  return c['d'] if c['platform'] == 'mgcn.by'   # подробности — из того же поста, он уже прочитан
+  return c['d'] if %w[mgcn.by lotsale.by].include?(c['platform'])   # подробности уже прочитаны вместе со списком
   html = Src.get(c['url']) or return nil
   d = case c['platform']
       when 'e-auction.by' then Src.ea_detail(html)
@@ -124,9 +130,10 @@ def fetch_detail(c)
       when 'belauction.by' then Src.ba_detail(html)
       when 'minskestate.by' then Src.me_detail(html)
       when 'auction24.by' then Src.a24_detail(html)
+      when 'butb.by' then Src.bu_detail(html)
       else Src.bt_detail(html)
       end
-  sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2, 'minskestate.by' => 1, 'auction24.by' => 1 }[c['platform']] || 0.4)
+  sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2, 'minskestate.by' => 1, 'auction24.by' => 1, 'butb.by' => 1 }[c['platform']] || 0.4)
   d
 end
 
@@ -145,7 +152,7 @@ def new_lot(c, sec, d, src, now)
   price = c['price'].to_f.positive? ? c['price'] : d['price_byn'].to_f
   { 'key' => c['key'], 'status' => 'active', 'src' => src, 'first_seen' => now, 'last_seen' => now,
     'art' => plat == 'ipmtorgi.by' && !d['lotno'].to_s.empty? ? d['lotno'] : c['art'],
-    'name' => plat == 'beltorgi.by' && !d['title'].to_s.empty? ? d['title'] : c['name'],
+    'name' => plat == 'beltorgi.by' && !d['title'].to_s.empty? ? d['title'] : plat == 'butb.by' && !d['name'].to_s.empty? ? d['name'] : c['name'],
     'price' => price, 'prices' => [[now, price]],
     # у ИПМ точное время — в карточке лота; у beltorgi в списке его нет вовсе
     'req_to' => plat == 'e-auction.by' ? c['req_to'] : (d['req_to'] || c['req_to']),
@@ -191,8 +198,9 @@ end
       src = "#{plat} #{path}"
       cards = list(plat, path)
       mx.synchronize do
-        # у МГЦН и konfiskat раздел может быть пуст — это не сбой (их списки отличают пустой раздел от непрочитанного: nil)
-        lists[src] = cards.nil? || (cards.empty? && !%w[mgcn.by konfiskat.by].include?(plat)) ? nil : cards.size
+        # у МГЦН, konfiskat и lotsale раздел может быть пуст — это не сбой (их списки отличают пустой раздел от непрочитанного: nil);
+        # у lotsale торгов нет по нескольку дней — иначе сигнализация присылала бы «не читается список»
+        lists[src] = cards.nil? || (cards.empty? && !%w[mgcn.by konfiskat.by lotsale.by].include?(plat)) ? nil : cards.size
         (cards || []).each { |c| seen[c['key']] = true }
         (cards || []).each { |c| bav_mg << (c['bav'] + [c['url']]) if c['bav'] }
       end
@@ -201,6 +209,7 @@ end
       cards.each do |c|
         next if plat == 'beltorgi.by' && !c['open']          # ещё не принимают заявки
         next if plat == 'minskestate.by' && c['status'] !~ /Приём заявок/   # в списке и завершённые — их берёт архив площадок
+        next if plat == 'butb.by' && c['status'] !~ /Прием заявлений/       # и здесь: «Ожидание торгов», только что завершённые
         # у konfiskat в карточке — дата аукциона, заявки закрываются в 12:00 накануне: закрытые не качаем
         next if c['day'] && plat == 'konfiskat.by' && c['day'] - 12 * 3600 < Time.now.to_i
         s = c['sec'] || (sec == 'auto' ? kf_kind(c['name']) : (sec || ipm_kind(c['name'])))   # belauction — раздел из категории лота
@@ -303,6 +312,12 @@ end
             end
           else
             d = fetch_detail(c) or next
+            # butb: точный раздел — по категории в карточке лота (в списке — догадка по названию); порог цены — по нему
+            if d['sec'] && d['sec'] != sec
+              sec = d['sec']
+              min = MINP[sec].to_f
+              next if min.positive? && d['price_byn'].to_f.positive? && d['price_byn'] < min
+            end
             rec = new_lot(c, sec, d, src, now)
             next unless rec['req_to'].to_i > now
             if plat == 'e-auction.by' && c['eid']
@@ -411,6 +426,12 @@ def fetch_result(l)
   when 'auction24.by'
     sleep 1
     (html = Src.get(l['url'])) ? [Res.a24_result(html), {}] : [nil, {}]
+  when 'lotsale.by'
+    sleep 0.5
+    (a = Src.ls_json("/auctions/#{l['art']}/public")) ? [Res.ls_result(a), {}] : [nil, {}]
+  when 'butb.by'
+    sleep 1
+    (html = Src.get(l['url'])) ? [Res.bu_result(html), {}] : [nil, {}]
   else [nil, {}]
   end
 rescue StandardError => e

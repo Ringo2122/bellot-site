@@ -1,7 +1,7 @@
 # encoding: utf-8
 #
 # Разбор площадок: e-auction.by, ipmtorgi.by, beltorgi.by, konfiskat.by (торги — на torgikonfiskat.by), belauction.by,
-# auction24.by, minskestate.by (очные аукционы МГЦН — mgcn.rb).
+# auction24.by, minskestate.by, lotsale.by, butb.by (et.butb.by) (очные аукционы МГЦН — mgcn.rb).
 # Для каждой — список активных карточек раздела, разбор страницы лота и список завершённых торгов (архив).
 # cpo.by (ЦПО) с 25.09.2026 не собираем: это рекламная витрина торгов ИПМ.
 # Карточка списка: key, platform, art, name, price, req_to, url, thumb (+ служебные поля).
@@ -9,6 +9,7 @@
 require 'json'
 require 'time'
 require 'tmpdir'
+require 'uri'
 require_relative 'pdftext'
 Encoding.default_external = Encoding::UTF_8
 Encoding.default_internal = Encoding::UTF_8
@@ -768,6 +769,241 @@ module Src
                    'fee_pct' => f['Вознаграждение организатору торгов'].to_s[/[\d.,]+/]&.tr(',', '.')&.to_f,
                    'vat' => f['Начальная цена'].to_s =~ /без НДС/ ? 'Начальная цена указана без НДС' : nil, 'v' => 2 }
                  .reject { |k, v| v.nil? || (v == 0.0 && k != 'fee_pct') } }
+  end
+
+  # ---------------- lotsale.by (ЭТП LotSale) ----------------
+  # Сайт — приложение на JS, лоты берёт из открытого API api.lotsale.by (JSON; robots.txt закрывает лишь несколько
+  # старых аукционов, у API его нет). Лотов мало — обычно 0–15 активных: техника и госимущество организаций.
+  # Активные — /auctions/public (все сразу), лот — /auctions/<id>/public (условия, ставки, итог), имущество лота —
+  # /property/<id> (адрес и все фото). Завершённые — /auctions/public/completed, от поздних к ранним.
+  # Пустой список — не сбой: у площадки по нескольку дней нет торгов (сбой — когда API не ответил: nil).
+  LS = 'https://lotsale.by'
+  LS_API = 'https://api.lotsale.by'
+  LS_TYPE = { 'BaseAuction' => 'Аукцион', 'DownwardAuction' => 'Аукцион со снижением цены', 'StatePropertyAuction' => 'Продажа госимущества' }.freeze
+
+  def ls_json(path)
+    out = get(LS_API + path, min: 2) or return nil
+    JSON.parse(out)
+  rescue JSON::ParserError
+    nil
+  end
+
+  def ls_t(s)
+    s ? Time.parse(s).to_i : nil
+  end
+
+  # ссылка как у самой площадки: /auction/<id>/<название латиницей через дефис>
+  def ls_url(id, name)
+    slug = name.to_s.strip.downcase.gsub(/[а-яё]/) { |c| c == 'ё' ? 'yo' : c == 'щ' ? 'shh' : (LAT[c] || '') }
+               .gsub(%r{[\\/]}, '').gsub(/\s+/, '-').gsub(/[^a-z0-9.()\-]/) { |c| format('%%%02X', c.ord) if c.ord < 128 }
+    "#{LS}/auction/#{id}/#{slug}"
+  end
+
+  # раздел: 1 «Недвижимость», 2 «Транспорт и запчасти» — по названию, остальное (оборудование, мебель, техника…) — оборудование
+  def ls_sec(cat, name)
+    return 'nedvizhimost' if cat == 1
+    return 'oborud' unless cat == 2
+    n = name.to_s.downcase
+    return 'spec' if n =~ /трактор|погрузчик|экскаватор|грейдер|бульдозер|комбайн|кран|каток|john deere|claas|мтз|беларус/
+    n =~ /груз|автобус|тягач|самосвал|прицеп|фургон|цистерн|бортов|маз|камаз|зил|краз/ ? 'gruz' : 'avto'
+  end
+
+  # лот целиком: аукцион + имущество; подробности готовы сразу (как у МГЦН — c['d'])
+  def ls_lot(id)
+    a = ls_json("/auctions/#{id}/public") or return nil
+    lot = a['lot'] || {}
+    pr = (lot['property'] || [])[0] || {}
+    sleep 0.5
+    prop = pr['id'] ? ls_json("/property/#{pr['id']}") || {} : {}
+    name = lot['name'].to_s.gsub(/\s+/, ' ').strip
+    loc = [pr.dig('region', 'name'), prop['Address'].to_s.strip].reject { |x| x.to_s.empty? }.join(', ')
+    desc = lot['description'].to_s.gsub(/\s+/, ' ').strip
+    pics = (prop['PropertyImages'] || []).sort_by { |i| i['IsFirst'] ? 0 : 1 }.map { |i| i['Url'] }.compact
+    pics = [pr.dig('image', 'url')].compact if pics.empty?
+    dt = ->(s) { (t = ls_t(s)) && Time.at(t).strftime('%d.%m.%Y %H:%M') }
+    byn = ->(v) { v.to_f.positive? ? format('%.2f', v).sub(/\A\d+/) { |i| i.reverse.scan(/\d{1,3}/).join(' ').reverse }.sub('.', ',') + ' BYN' : nil }
+    terms = lot['dealTerms'] || {}
+    init = lot['initialPrice'].to_f
+    min = lot['minimalPrice'].to_f
+    cond = [['Вид торгов', LS_TYPE[a['auctionType']]], ['Начальная цена', byn.(init)],
+            ['Минимальная цена', min.positive? && min < init ? byn.(min) : nil], ['Шаг торгов', byn.(a['step'])],
+            ['Задаток', byn.(a['deposit'])], ['Приём заявок с', dt.(a['applicationStartDateOnUtc'])],
+            ['Приём заявок до', dt.(a['applicationDeadlineOnUtc'])], ['Начало торгов', dt.(a['dateStartOnUtc'])],
+            ['Окончание торгов', dt.(a['dateFinishOnUtc'])],
+            ['Срок возмещения затрат, дней', terms['reimbursementTerm']], ['Срок заключения договора, дней', terms['contractTerm']],
+            ['Срок оплаты, дней', terms['paymentTerm']], ['Условия', terms['moreDetails'].to_s.gsub(/\s+/, ' ').strip]]
+    cat = [pr.dig('category', 'name'), pr.dig('subCategory', 'name')].compact.join(' / ')
+    org = a['organizer'] || {}
+    secs = [{ 'h' => 'Условия торгов', 'rows' => cond.map { |k, v| [k, v.to_s] }.reject { |_, v| v.empty? } },
+            { 'h' => 'Сведения о лоте', 'rows' => [['Описание', desc], ['Местонахождение', loc], ['Категория', cat]].reject { |_, v| v.empty? } },
+            { 'h' => 'Организатор торгов', 'rows' => [['Наименование', org['name']], ['Адрес', org['address']], ['Телефон', org['contacts']]]
+                .map { |k, v| [k, v.to_s.strip] }.reject { |_, v| v.empty? } }]
+    { 'a' => a, 'name' => name, 'sec' => ls_sec(pr.dig('category', 'id'), name),
+      'details' => secs.reject { |s| s['rows'].empty? }, 'location' => loc.empty? ? nil : loc,
+      'debtor' => (lot.dig('owner', 'name') || org['name']).to_s.strip, 'req_to' => ls_t(a['applicationDeadlineOnUtc']),
+      'torg' => ls_t(a['dateStartOnUtc']), 'price_byn' => init,
+      'area_num' => (x = desc[/площадью\s+([\d\s]+[.,]?\d*)\s*кв\.?\s*м/, 1]) && num(x),
+      'photo_url' => pics.first, 'photos' => pics,
+      'terms' => { 'deposit' => a['deposit'].to_f, 'step_abs' => a['step'].to_f, 'min_price' => min.positive? && min < init ? min : nil,
+                   'pay_term' => terms['paymentTerm'] && "#{terms['paymentTerm']} дней", 'fee_later' => true, 'v' => 2 }
+                 .reject { |_, v| v.nil? || v == 0.0 } }
+  end
+
+  # карточка — из строки списка; подробности (d) — если страница лота ответила (нет — лот всё равно «виден» в списке)
+  def ls_card(i, d)
+    name = i['lotName'].to_s.gsub(/\s+/, ' ').strip
+    { 'key' => "ls-#{i['id']}", 'platform' => 'lotsale.by', 'art' => i['id'].to_s, 'name' => name, 'sec' => d && d['sec'],
+      'url' => ls_url(i['id'], name), 'price' => i['price'].to_f, 'req_to' => ls_t(i['applicationDeadlineOnUtc']),
+      'thumb' => i.dig('lotImage', 'url'), 'd' => d }
+  end
+
+  # активные лоты: nil — API не ответил, [] — торгов сейчас нет
+  def ls_list
+    items = []
+    (1..10).each do |p|
+      j = ls_json("/auctions/public?PageNumber=#{p}&PageSize=100") or return nil
+      page = j.dig('data', 'items') or return nil
+      items.concat(page)
+      break unless j.dig('data', 'hasNext')
+    end
+    items.uniq { |i| i['id'] }.map do |i|
+      sleep 0.5
+      ls_card(i, ls_lot(i['id']))
+    end
+  end
+
+  # архив: завершённые торги с окончанием после since — [id, …]
+  def ls_done(since)
+    out = []
+    (1..60).each do |p|
+      j = ls_json("/auctions/public/completed?PageNumber=#{p}&PageSize=100") or break
+      items = j.dig('data', 'items') || []
+      fresh = items.select { |i| ls_t(i['dateFinishOnUtc']).to_i >= since }
+      out.concat(fresh.map { |i| i['id'] })
+      break if fresh.size < items.size || !j.dig('data', 'hasNext')
+      sleep 0.5
+    end
+    out.uniq
+  end
+
+  # ---------------- butb.by (ЭТП «БУТБ-Имущество» Белорусской универсальной товарной биржи, et.butb.by) ----------------
+  # Госимущество: облимущества и райисполкомы продают здания, «неиспользуемые объекты» (часто за 1 базовую величину),
+  # технику; есть торги на право аренды. robots.txt у площадки нет. Сайт на JSF: список «Торги» показывает по 10 лотов,
+  # остальные — через запрос пагинатора; ему можно сказать «все на одной странице» (rows=600) — весь список за 2 запроса.
+  # Архив торгов (archiveAuctions.xhtml, ≈ 14,7 тыс. с 2016 г.) устроен так же, от поздних торгов к ранним.
+  # Лот — lotcard.xhtml?lotid=<id>: «Состояние лота», сроки, цены, панели «Сведения о предмете торгов» и др.
+  # Фото — во временной папке tmp_files/, которую площадка создаёт при открытии карточки: главное фото скачиваем сразу,
+  # галерею ссылками не храним (ссылки со временем перестают открываться). Повторные торги — новый lotid.
+  BU = 'https://et.butb.by'
+
+  # таблица лотов страницы (auctions.xhtml или archiveAuctions.xhtml): page — номер страницы по rows лотов
+  def bu_table(path, rows, page = 1)
+    Dir.mktmpdir do |dir|
+      jar = File.join(dir, 'c')
+      h = IO.popen([*CURL, '-m', '60', '-A', UA, '-c', jar, '-b', jar, "#{BU}/et/#{path}"], err: File::NULL, &:read).to_s.force_encoding('UTF-8')
+      f = h[/<form[^>]*id="f_lots".*?<\/form>/m] or return nil
+      act = f[/action="([^"]+)"/, 1] or return nil
+      vs = h[/name="javax\.faces\.ViewState"[^>]*value="([^"]*)"/, 1] or return nil
+      form = { 'f_lots' => 'f_lots', 'javax.faces.ViewState' => vs, 'javax.faces.source' => 'f_lots:tableLot',
+               'javax.faces.partial.execute' => 'f_lots:tableLot', 'javax.faces.partial.render' => 'f_lots:tableLot',
+               'javax.faces.partial.ajax' => 'true', 'f_lots:tableLot_paging' => 'true',
+               'f_lots:tableLot_rows' => rows.to_s, 'f_lots:tableLot_page' => page.to_s }
+      out = IO.popen([*CURL, '-m', '120', '-A', UA, '-c', jar, '-b', jar, '-H', 'Faces-Request: partial/ajax',
+                      '-H', "Referer: #{BU}/et/#{path}", '--data-raw', URI.encode_www_form(form), BU + decode(act)],
+                     err: File::NULL, &:read).to_s.force_encoding('UTF-8')
+      out.include?('lotid=') ? out : (out =~ /partial-response/ ? '' : nil)   # пустая таблица — '', сбой — nil
+    end
+  end
+
+  def bu_cards(html)
+    html.split(/<div class="lot-item(?: lot-item-arch)?">/).drop(1).map do |ch|   # в архиве карточка — «lot-item lot-item-arch»
+      id = ch[/lotcard\.xhtml[^"]*?lotid=(\d+)/, 1] or next
+      box = ->(t) { txt(ch[%r{lot-item-title">\s*#{t}\s*</div>\s*<div class="info-block-value2?">(.*?)</div>}m, 1]) }
+      name = txt(ch[%r{class="lot-name"[^>]*>(.*?)</span>}m, 1])
+      { 'key' => "bu-#{id}", 'platform' => 'butb.by', 'art' => txt(ch[/Торги №\s*([A-ZА-Я]?\d+)/, 1]), 'name' => name,
+        'url' => "#{BU}/et/lotcard.xhtml?lotid=#{id}", 'status' => txt(ch[%r{class="lot-status\d*">(.*?)</div>}m, 1]),
+        'price' => num(box.('Начальная цена')), 'sold' => num(box.('Цена продажи')),
+        'req_to' => ts(box.('Окончание приема заявлений')), 'day' => ts(box.('Дата и время торгов')),
+        # раздел по названию — предварительно (точный — по категории в карточке лота); у биржи почти всё — недвижимость,
+        # поэтому «непонятное» не считаем оборудованием: иначе порог цены оборудования отсеял бы здания за 1 базовую величину
+        'sec' => (s = a24_sec(name)) == 'oborud' ? 'nedvizhimost' : s,
+        'thumb' => (u = ch[/<img src="(tmp_files\/[^"]+)"/, 1]) && "#{BU}/et/#{u}" }
+    end.compact.uniq { |c| c['key'] }
+  end
+
+  # активные: весь список «Торги» одной страницей; nil — не прочитан
+  def bu_list
+    html = bu_table('auctions.xhtml', 600) or return nil
+    bu_cards(html)
+  end
+
+  # архив: завершённые торги с датой после since (страницы по 100, от поздних к ранним)
+  def bu_done(since, stop = nil)
+    out = []
+    (1..200).each do |p|
+      break if stop && Time.now > stop
+      html = bu_table('archiveAuctions.xhtml', 100, p) or break
+      cards = bu_cards(html)
+      fresh = cards.select { |c| c['day'].to_i >= since }
+      out.concat(fresh)
+      break if cards.empty? || fresh.empty?
+      sleep 1
+    end
+    out.uniq { |c| c['key'] }
+  end
+
+  # раздел по «Категории предмета торгов» — только первая часть до «/» (дальше бывает «…с предоставлением земельного участка
+  # в аренду» и у зданий); движимое имущество — по названию
+  def bu_sec(cat, name)
+    c = cat.to_s.split('/').first.to_s.downcase
+    return 'arenda' if c =~ /аренд/
+    return 'nedvizhimost' if c =~ /недвижим|земельн|жилые дома|строительств|доля/
+    s = a24_sec(name)
+    s == 'nedvizhimost' ? 'oborud' : s
+  end
+
+  def bu_detail(html)
+    top = html.scan(%r{lot-block-text">(.*?)</div>\s*<span class="lot-block-value[^"]*"[^>]*>(.*?)</span>}m).map { |k, v| [txt(k), txt(v)] }.to_h
+    secs = html.split('class="ui-panel-title">').drop(1).map do |p|
+      h = txt(p[/\A(.*?)</m, 1])
+      rows = p.split('<div class="param-item">').drop(1).map do |it|
+        k = txt(it[%r{class="param-name[^"]*"[^>]*>(.*?)</span>}m, 1])
+        v = txt(it.sub(%r{.*?class="param-name[^"]*"[^>]*>.*?</span>}m, '').split(/<div class="ui-panel|<span class="ui-panel-title/)[0])
+        [k, v]
+      end.reject { |k, v| k.empty? || v.empty? || k =~ /Расчетный счет|Валюта счета|^Банк$|Адрес банка|Назначение платежа|Бенефициар/ }
+      { 'h' => h, 'rows' => rows }
+    end.reject { |s| s['rows'].empty? || s['h'] =~ /Банковские реквизиты/ }
+    f = secs.flat_map { |s| s['rows'] }.to_h
+    find = ->(re) { (f.find { |k, _| k =~ re } || [])[1] }
+    title = txt(html[%r{<h1[^>]*>(.*?)</h1>}m, 1])
+    name = find.(/\AНаименование предмета торгов/) || title
+    cond = [['Торги №', html[/Торги №\s*([A-ZА-Я]?\d+)/, 1]], ['Состояние лота', top['Состояние лота']],
+            ['Приём заявок до', top['Прием заявлений до']], ['Дата и время торгов', top['Дата и время торгов']],
+            ['Начальная цена', find.(/\AНачальная цена предмета торгов/)], ['Размер задатка', find.(/\AРазмер задатка/)],
+            ['Первый шаг торгов', find.(/\AПервый шаг торгов, бел/)],
+            ['Затраты на организацию торгов', find.(/\AИнформация о затратах/)]].reject { |_, v| v.to_s.empty? }
+            .map { |k, v| [k, k =~ /цена|задат|шаг|затрат/i && v =~ /\A[\d\s,.]+\z/ ? "#{v} BYN" : v] }
+    cond << ['Определение начальной цены', find.(/\AОпределение начальной цены/)] if find.(/\AОпределение начальной цены/)
+    secs.unshift({ 'h' => 'Условия торгов', 'rows' => cond })
+    # фото этого лота — полноразмерные (у соседних лотов тех же торгов на странице только уменьшенные «_sc»)
+    pics = html.scan(%r{(tmp_files/[^"'\s]+\.(?:jpe?g|png|webp))}i).flatten.uniq.reject { |u| u =~ /_sc\.\w+\z/ }.map { |u| "#{BU}/et/#{u}" }
+    price = num(find.(/\AНачальная цена предмета торгов/) || top['Начальная цена'])
+    # продавец, арендодатель или сельисполком («Наименование местного исполнительного комитета»)
+    seller = (find.(/\AНаименование (продавца|арендодателя)/) || find.(/\AНаименование местного исполнительного комитета/)).to_s
+    # «аг. Ореховка», «ул. Каменногорская, 104» — без области: добавляем «Район нахождения» («Могилевская область, Кличевский район»)
+    loc = find.(/\AМестонахождение предмета торгов/).to_s
+    dist = find.(/\AРайон нахождения/).to_s
+    loc = [dist, loc].reject(&:empty?).join(', ') if loc !~ /обл|Минск/ && !dist.empty?
+    # продавец — без адреса и УНП: «…«Баума». 231345 Гродненская область, …», «…, аг. Гервяты, …», «… (УНП 100364025)»
+    seller = seller.sub(/\s*\(?УНП[^)]*\)?\s*\z/, '')
+                   .sub(/(?:[,.:]\s*|(?<=[“”»"])\s+)(?:УНП|\d{6}\b|аг\.|г\.|ул\.|д\.|[А-ЯЁ][а-яё]+ск(?:ая|ий)\s+(?:обл|р-н|район)).*\z/m, '').strip
+    { 'details' => secs, 'name' => name, 'sec' => bu_sec(find.(/\AКатегория предмета торгов/), name),
+      'location' => loc.empty? ? nil : loc, 'debtor' => seller.empty? ? nil : seller,
+      'req_to' => ts(top['Прием заявлений до']), 'torg' => ts(top['Дата и время торгов'] || top['Начало торгов']),
+      'price_byn' => price, 'area_num' => (a = find.(/\AОбщая площадь/)) && num(a.split(';')[0]),
+      'photo_url' => pics.first, 'photos' => [], 'status' => top['Состояние лота'],
+      'terms' => { 'deposit' => num(find.(/\AРазмер задатка/)), 'step_abs' => num(find.(/\AПервый шаг торгов, бел/)),
+                   'fee_abs' => num(find.(/\AИнформация о затратах/)), 'v' => 2 }.reject { |_, v| v.nil? || v == 0.0 } }
   end
 
 end

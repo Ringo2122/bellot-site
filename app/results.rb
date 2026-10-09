@@ -23,6 +23,8 @@
 #   belauction.by страница лота после закрытия: «Аукцион закрыт по цене», таблица ставок с победителем
 #   minskestate.by статус на странице лота («Продано», «Торги не состоялись») и «Хронология торгов»
 #   auction24.by  «Статус» на странице лота и вкладка «Ход торгов»
+#   lotsale.by    API лота: статус лота и аукциона, ставки, число участников
+#   butb.by       «Состояние лота», «Цена продажи» и «Зарегистрировано заявлений» в карточке лота
 #   mgcn.by       очные аукционы — итоги онлайн не публикуются, не проверяем
 require 'json'
 require_relative 'sources'
@@ -203,6 +205,48 @@ module Res
     else
       r['st'] = st =~ /Отмен/i ? 'cancelled' : 'failed'
     end
+    r.reject { |_, v| v.nil? || v == 0 }
+  end
+
+  # ── lotsale.by ──
+  # API лота (Src.ls_lot → 'a'): статус лота «Продан» / «Не продан», статус аукциона «Завершён»; ставки — bids (номер участника,
+  # сумма), участников — biddersCount. Продан единственному участнику — «Торги не состоялись» с лотом «Продан».
+  def ls_result(a)
+    return { 'st' => 'pending' } unless a
+    lot = a['lot'] || {}
+    lst = lot.dig('status', 'name').to_s
+    ast = a.dig('auctionStatus', 'name').to_s
+    return { 'st' => 'pending' } unless lst =~ /продан|отмен/i || ast =~ /заверш|отмен/i
+    bids = a['bids'] || []
+    users = [a['biddersCount'].to_i, bids.map { |b| b['bidder'] }.uniq.size].max
+    r = { 'v' => V, 'start' => lot['initialPrice'].to_f, 'bids' => bids.size, 'users' => users,
+          'at' => Src.ls_t(a['dateFinishOnUtc']), 'note' => a.dig('biddingResult', 'justification') }
+    if lst =~ /\Aпродан/i
+      r['st'] = users == 1 ? 'single' : 'sold'
+      r['price'] = bids.map { |b| b['value'].to_f }.max || a['currentPrice'].to_f
+    else
+      r['st'] = "#{lst} #{ast}" =~ /отмен/i ? 'cancelled' : 'failed'
+    end
+    r.reject { |_, v| v.nil? || v == 0 || v == '' }
+  end
+
+  # ── butb.by (et.butb.by) ──
+  # «Состояние лота»: «Результативные» — продан; «Несостоявшиеся (лот продан)» — единственному участнику по цене +5%;
+  # «Несостоявшиеся», «Нерезультативные» — не состоялись; «Торги отменены». Ставок площадка не показывает —
+  # только «Цена продажи» и «Зарегистрировано заявлений».
+  def bu_result(html)
+    top = html.to_s.scan(%r{lot-block-text">(.*?)</div>\s*<span class="lot-block-value[^"]*"[^>]*>(.*?)</span>}m)
+              .map { |k, v| [Src.txt(k), Src.txt(v)] }.to_h
+    st = top['Состояние лота'].to_s
+    r = { 'v' => V, 'start' => Src.num(top['Начальная цена']), 'users' => top['Зарегистрировано заявлений'].to_i,
+          'at' => Src.ts(top['Окончание торгов'] || top['Начало торгов']) }
+    r['st'] = if st =~ /лот продан/i then 'single'
+              elsif st =~ /\AРезультативн/i then r['users'] == 1 ? 'single' : 'sold'
+              elsif st =~ /несостоявш|нерезультативн/i then 'failed'
+              elsif st =~ /отмен/i then 'cancelled'
+              else return { 'st' => 'pending' }
+              end
+    r['price'] = Src.num(top['Цена продажи']) if %w[sold single].include?(r['st'])
     r.reject { |_, v| v.nil? || v == 0 }
   end
 

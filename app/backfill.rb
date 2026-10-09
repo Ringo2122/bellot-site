@@ -9,6 +9,8 @@
 #   belauction.by первые страницы «Проданные лоты» (≈ месяц) и «Завершённые аукционы» (≈ 10 дней) — дальше robots.txt не пускает
 #   minskestate.by список раздела — в нём и завершённые торги со статусом («Продано», «Торги не состоялись»)
 #   auction24.by  список аукционов /auction (от поздних к ранним) → страницы аукционов за месяц → завершённые лоты
+#   lotsale.by    API завершённых торгов /auctions/public/completed (от поздних к ранним)
+#   butb.by       «Архив торгов» биржи (archiveAuctions.xhtml) страницами по 100, от поздних торгов к ранним
 # mgcn.by (очные аукционы МГЦН) — итогов онлайн нет, архив площадки не собираем
 # Правила те же, что для новых лотов: разделы площадок, минимальная цена по разделу, выключенные площадки.
 # За прогон — не больше BACK_CAP лотов с площадки и не дольше BACK_MIN минут: первый месяц загрузится
@@ -22,14 +24,15 @@
 # на 365 дней назад, до 4,5 часа за ночь, без ограничения числа лотов. Глубина площадок (02.10): e-auction, ИПМ,
 # beltorgi, torgikonfiskat — год и больше; konfiskat берём только за YEAR_KF_DAYS = 3 месяца (решение Артёма 02.10:
 # за год ≈ 9 тыс. машин, 1 200 страниц списка по 8, у старых площадка удалила фото);
-# auction24 хранит торги только с 03.04.2026; minskestate — всё на одной странице раздела. Не берём: «Оборудование»
+# auction24 хранит торги только с 03.04.2026; minskestate — всё на одной странице раздела; lotsale — ≈ 100 торгов в год;
+# butb — архив биржи с 2016 г. (≈ 1,5 тыс. лотов в год, у каждого — страница лота и фото). Не берём: «Оборудование»
 # (архив раздела — только за месяц), belauction.by (robots.txt — только первые страницы, ≈ месяц), mgcn.by (итогов нет).
 # Фото: главное — 320 px (≈ 12 КБ, только для карточки; 400 px — ≈ 22 КБ), в галерее — до 5 фото ссылками на площадку:
 # 5 фото × 20 тыс. лотов своими файлами — 2–5 ГБ, больше лимита GitHub Pages (1 ГБ). Скачать их — после переезда на свой сервер.
 # Площадка, чей список пройден до конца за отведённое время, отмечается в data/backfill_year.json и больше не обходится.
 YEAR_ARCH = !ENV['YEAR_ARCH'].to_s.empty?
 YEAR_DONE = File.join(Store::DATA, 'backfill_year.json')
-YEAR_PLATS = %w[e-auction.by ipmtorgi.by beltorgi.by konfiskat.by minskestate.by auction24.by].freeze
+YEAR_PLATS = %w[e-auction.by ipmtorgi.by beltorgi.by konfiskat.by minskestate.by auction24.by lotsale.by butb.by].freeze
 YEAR_PH = [320, 40].freeze   # ширина и качество главного фото
 YEAR_PICS = 5
 YEAR_KF_DAYS = 90
@@ -215,6 +218,41 @@ def backfill(db, stat, pstat, now)
         next drop.(c['key'], 'min') unless back_min_ok?(c['sec'], r['start'] || c['price'])
         d = Src.a24_detail(html)
         add.(back_rec(c, c['sec'], d, r, 'auction24.by архив', now), d, [d['photo_url'], c['thumb']])
+        left -= 1
+      end
+    end,
+    'lotsale.by' => lambda do |left|
+      Src.ls_done(since).each do |id|
+        break if left.zero? || Time.now > stop
+        key = "ls-#{id}"
+        next if known.(key) || skipped.(key)
+        sleep 0.5
+        d = Src.ls_lot(id) or next
+        next if YEAR_ARCH && d['sec'] == 'oborud'
+        r = Res.ls_result(d['a'])
+        next if r['st'] == 'pending'
+        next drop.(key, 'min') unless back_min_ok?(d['sec'], r['start'] || d['price_byn'])
+        c = Src.ls_card({ 'id' => id, 'lotName' => d['name'], 'price' => d['price_byn'],
+                          'applicationDeadlineOnUtc' => d['a']['applicationDeadlineOnUtc'] }, d)
+        add.(back_rec(c, d['sec'], d, r, 'lotsale.by архив', now), d, [d['photo_url']])
+        left -= 1
+      end
+    end,
+    'butb.by' => lambda do |left|
+      # архив биржи от поздних торгов к ранним; раздел — по категории в карточке лота (bu_sec)
+      Src.bu_done(since, stop).each do |c|
+        break if left.zero? || Time.now > stop
+        next if known.(c['key']) || skipped.(c['key']) || c['status'] !~ /состоявш|результативн|отмен|продан/i
+        sleep 1
+        html = Src.get(c['url']) or next
+        r = Res.bu_result(html)
+        next if r['st'] == 'pending'
+        d = Src.bu_detail(html)
+        next if YEAR_ARCH && d['sec'] == 'oborud'
+        next drop.(c['key'], 'min') unless back_min_ok?(d['sec'], r['start'] || c['price'])
+        c['name'] = d['name'] unless d['name'].to_s.empty?
+        c['req_to'] ||= d['torg'] || c['day']   # у завершённых срока заявок на странице уже нет — берём дату торгов
+        add.(back_rec(c, d['sec'], d, r, 'butb.by архив', now), d, [d['photo_url'], c['thumb']])   # фото — сразу: ссылки временные
         left -= 1
       end
     end,

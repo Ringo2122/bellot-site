@@ -1041,6 +1041,10 @@ applyTheme(window.THEME);
      по фирменному цвету сайта площадки; совпали — фирменный у более крупной, у второй — другой цвет из её стиля */
   .p-eauction{--pc:#0f9d58} .p-konfiskat{--pc:#555e90} .p-beltorgi{--pc:#c0282d} .p-ipmtorgi{--pc:#1f8fdc}
   .p-mgcn{--pc:#1a4fc4} .p-belauction{--pc:#b8860b} .p-minskestate{--pc:#1c7182} .p-auction24{--pc:#6b5bd2}
+  /* lotsale — оливковый (их фирменный); БУТБ — малиновый: их зелёный занят e-auction, золотой — belauction */
+  .p-lotsale{--pc:#8a8f1c} .p-butb{--pc:#ad1457}
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .p-lotsale{--pc:#c3c94a} :root:not([data-theme="light"]) .p-butb{--pc:#f06292} }
+  :root[data-theme="dark"] .p-lotsale{--pc:#c3c94a} :root[data-theme="dark"] .p-butb{--pc:#f06292}
   @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .p-eauction{--pc:#3ccf82} :root:not([data-theme="light"]) .p-konfiskat{--pc:#9aa3dd}
     :root:not([data-theme="light"]) .p-beltorgi{--pc:#f06a6e} :root:not([data-theme="light"]) .p-ipmtorgi{--pc:#5cb6f5} :root:not([data-theme="light"]) .p-mgcn{--pc:#6f95f2}
     :root:not([data-theme="light"]) .p-belauction{--pc:#e2b34a} :root:not([data-theme="light"]) .p-minskestate{--pc:#4fb3c4} :root:not([data-theme="light"]) .p-auction24{--pc:#a597f0} }
@@ -1159,6 +1163,8 @@ applyTheme(window.THEME);
       <li><a href="https://minskestate.by" target="_blank" rel="noopener">Минск-Недвижимость (МГЦН)</a></li>
       <li><a href="https://mgcn.by/auctions/" target="_blank" rel="noopener">МГЦН — очные аукционы</a></li>
       <li><a href="https://auction24.by" target="_blank" rel="noopener">Госторги (auction24.by)</a></li>
+      <li><a href="https://et.butb.by/et/index.xhtml" target="_blank" rel="noopener">БУТБ-Имущество (товарная биржа)</a></li>
+      <li><a href="https://lotsale.by" target="_blank" rel="noopener">LotSale</a></li>
       <li><a href="https://bankrot.gov.by" target="_blank" rel="noopener">Реестр банкротств</a></li>
     </ul></div>
   </div>
@@ -1927,6 +1933,10 @@ function calcBlock(l, det){
       ? 'Из карточки лота на площадке: ориентировочная сумма затрат на организацию торгов и вознаграждение организатора.'
     : l.platform==='mgcn.by'
       ? 'Очный аукцион МГЦН: шаг торгов и затраты на организацию указаны в извещении — уточните у организатора и впишите.'
+    : l.platform==='lotsale.by'
+      ? 'Победитель возмещает затраты на организацию торгов — сумма в условиях лота на площадке (может уточняться до начала торгов). Впишите её.'
+    : l.platform==='butb.by'
+      ? 'Из карточки лота на бирже: затраты на организацию и проведение торгов (организатор может уточнить сумму до начала торгов).'
       : 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.';
   const feesHtml = `<div class="cx-fees"><div class="cx-fh">Расходы сверх цены лота</div>
       <label class="cx-f"><span>${feeName}, % от итоговой цены</span><input type="number" id="cx-fp" min="0" max="30" step="0.1" value="${t.fee_pct!=null?t.fee_pct:''}" placeholder="0"></label>
@@ -2180,7 +2190,7 @@ function drawMap(g){
    Все фото — в полном качестве с площадки. Пока грузится первое, видна наша копия 400 px (размыто).
    Фото сменяется только когда загружено (до этого — индикатор); следующие два и предыдущее грузятся заранее. */
 const thumbOf = (p, u) => p==='beltorgi.by' ? u.replace('/big/','/small/') : p==='belauction.by' ? u.replace(/(\.\w+)$/, '-150x150$1')
-  : p==='minskestate.by' ? u.replace('/full_','/thumb_') : null;
+  : p==='minskestate.by' ? u.replace('/full_','/thumb_') : p==='lotsale.by' ? u.replace(/(\.\w+)$/, '_sm$1') : null;
 const GIMG = {};   // адрес → загрузка (общая для страницы и полноэкранного просмотра)
 function gload(u){
   return GIMG[u] || (GIMG[u] = new Promise((res, rej)=>{
@@ -2309,10 +2319,10 @@ function pageLot(id){
           <dl class="facts">
             <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
               :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
-            <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(['e-auction.by','minskestate.by'].includes(l.platform)?' · онлайн':l.platform==='mgcn.by'?' · очно, г. Минск, ул. К. Маркса, 39':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
+            <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(['e-auction.by','minskestate.by','lotsale.by','butb.by'].includes(l.platform)?' · онлайн':l.platform==='mgcn.by'?' · очно, г. Минск, ул. К. Маркса, 39':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
             <dt>Регион</dt><dd>${esc(l.region||'—')}</dd>
             ${l.area_num?`<dt>Площадь</dt><dd>${nf(l.area_num)} м²</dd>`:''}
-            <dt>${l.section==='arenda' ? 'Арендодатель' : ['minskestate.by','mgcn.by'].includes(l.platform) ? 'Продавец' : 'Должник'}</dt><dd>${esc(l.debtor||'—')}</dd>
+            <dt>${l.section==='arenda' ? 'Арендодатель' : ['minskestate.by','mgcn.by','lotsale.by','butb.by'].includes(l.platform) ? 'Продавец' : 'Должник'}</dt><dd>${esc(l.debtor||'—')}</dd>
           </dl>
           <div class="cta">
             <a class="btn" href="${esc(l.url)}" target="_blank" rel="noopener">На площадке ↗</a>
