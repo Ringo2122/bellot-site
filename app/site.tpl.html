@@ -92,6 +92,11 @@ applyTheme(window.THEME);
   .logo .lt{display:flex;flex-direction:column;justify-content:center}
   .logo .nm{font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--ink);line-height:1.05}
   .logo .sub{font-size:11px;color:var(--ink-3);line-height:1.2;margin-top:2px}
+  /* наведение на логотип — без подчёркивания, лёгкая тень (решение Артёма 09.10) */
+  .logo:hover{text-decoration:none}
+  .logo .mark,.logo .nm{transition:box-shadow .2s,text-shadow .2s}
+  .logo:hover .mark{box-shadow:0 4px 12px rgba(244,81,30,.35)}
+  .logo:hover .nm{text-shadow:0 2px 8px rgba(16,22,30,.18)}
   /* ссылки в шапке */
   /* «Весь каталог» и ссылки — с отступом от логотипа и пошире друг от друга: меньше пустоты до кнопок справа */
   .hnav{margin-left:clamp(4px,2.2vw,30px)}
@@ -100,7 +105,7 @@ applyTheme(window.THEME);
   .hnav a{display:block;padding:8px 10px;border-radius:9px;color:var(--ink);font-weight:600;font-size:14px;white-space:nowrap;text-decoration:none;
     transition:color .2s,background .2s}
   .hnav a:hover{background:var(--bg);color:var(--brand)}
-  .hnav a.on{color:var(--brand);background:var(--brand-l)}
+  .hnav a.on{color:var(--brand)}
   @media (max-width:1180px){ .hnav a{padding-inline:7px;font-size:13.5px} .logo .sub{display:none} }
   /* «Весь каталог» */
   .cbtn{position:relative;display:flex;align-items:center;gap:8px;height:40px;padding:0 15px 0 6px;border:0;border-radius:10px;background:var(--brand);color:#fff;
@@ -258,6 +263,9 @@ applyTheme(window.THEME);
   .btn:active{transform:translateY(0);box-shadow:none}
   .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
   .btn.pri:hover{background:var(--accent-h);border-color:var(--accent-h);color:#fff;box-shadow:0 8px 20px rgba(244,81,30,.35)}
+  /* «Помощь в аукционе» в шапке — спокойнее: оранжевая рамка и обычный текст, заливка при наведении (решение Артёма 09.10) */
+  .hacts .btn.pri{background:transparent;border-color:var(--accent);color:var(--ink)}
+  .hacts .btn.pri:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 
 
   /* ── общее ── */
@@ -1609,8 +1617,9 @@ function dd(sel){
     ul.style.left = Math.max(8, Math.min(r.left, innerWidth - ul.offsetWidth - 8)) + 'px';
     ul.style.top = (up ? r.top - h - 4 : r.bottom + 4) + 'px'; };
   // подсветка пункта; прокручиваем только сам список (scrollIntoView двигал бы страницу — и список закрылся бы)
-  const hl = i => { act = i; [...ul.children].forEach((li, k) => li.classList.toggle('act', k === i));
-    const li = ul.children[i]; if(!li) return;
+  // мышью — только подсветка: иначе пункт у нижнего края подкручивает список сам (решение Артёма 09.10)
+  const hl = (i, noScroll) => { act = i; [...ul.children].forEach((li, k) => li.classList.toggle('act', k === i));
+    const li = ul.children[i]; if(!li || noScroll) return;
     if(li.offsetTop < ul.scrollTop) ul.scrollTop = li.offsetTop - 5;
     else if(li.offsetTop + li.offsetHeight > ul.scrollTop + ul.clientHeight) ul.scrollTop = li.offsetTop + li.offsetHeight - ul.clientHeight + 5; };
   const away = e => { if(e.type === 'scroll' && ul && ul.contains(e.target)) return;
@@ -1626,7 +1635,7 @@ function dd(sel){
     ul.innerHTML = [...sel.options].map((o, i) => `<li role="option" data-i="${i}"${i === sel.selectedIndex ? ' class="sel" aria-selected="true"' : ''}>${esc(o.text)}</li>`).join('');
     ul.style.minWidth = b.offsetWidth + 'px';
     ul.onclick = e => { const li = e.target.closest('li'); if(li) pick(+li.dataset.i); };
-    ul.onpointermove = e => { const li = e.target.closest('li'); if(li && +li.dataset.i !== act) hl(+li.dataset.i); };
+    ul.onpointermove = e => { const li = e.target.closest('li'); if(li && +li.dataset.i !== act) hl(+li.dataset.i, true); };
     document.body.append(ul); place(); hl(sel.selectedIndex);
     w.classList.add('open'); b.setAttribute('aria-expanded', 'true');
     addEventListener('pointerdown', away, true); addEventListener('scroll', away, true); addEventListener('resize', away); };
