@@ -607,7 +607,7 @@ begin
       and (coalesce(s.params->>'sec', '') = '' or l.section = s.params->>'sec')
       and (coalesce(s.params->>'cat', '') = '' or l.section = s.params->>'cat')
       and (coalesce(s.params->>'region', '') = '' or l.region = s.params->>'region')
-      and (coalesce(s.params->>'plat', '') = '' or l.platform = s.params->>'plat')
+      and (coalesce(s.params->>'plat', '') = '' or l.platform = any(string_to_array(s.params->>'plat', ',')))   -- площадок может быть несколько: «a.by,b.by»
       and (nullif(regexp_replace(coalesce(s.params->>'pmin', ''), '[^0-9.]', '', 'g'), '') is null
            or l.price >= regexp_replace(s.params->>'pmin', '[^0-9.]', '', 'g')::numeric)
       and (nullif(regexp_replace(coalesce(s.params->>'pmax', ''), '[^0-9.]', '', 'g'), '') is null

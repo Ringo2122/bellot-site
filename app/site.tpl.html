@@ -1565,7 +1565,8 @@ function applyFilters(list, f){
     if(arch && f.res && !resMatch(l, f.res)) return false;
     if(f.dfrom && torgAt(l) < new Date(f.dfrom+'T00:00:00').getTime()/1000) return false;
     if(f.dto && torgAt(l) > new Date(f.dto+'T23:59:59').getTime()/1000) return false;
-    if(f.plat && l.platform!==f.plat && !(l.alt||[]).some(a=>a.platform===f.plat)) return false;
+    // площадок можно выбрать несколько: plat — «a.by,b.by»
+    if(f.plat){ const ps = String(f.plat).split(','); if(!ps.includes(l.platform) && !(l.alt||[]).some(a=>ps.includes(a.platform))) return false; }
     if(f.photo && !l.photo && !l.phx) return false;
     if(f.land && !l.land) return false;
     if(f.mkt && !l.market) return false;
@@ -1694,7 +1695,7 @@ function filterPanel(list, f, sc){
         <input id="f-dto" type="date" value="${esc(f.dto||'')}" aria-label="Дата торгов до"></div></div>
       <div class="fg"><label>Площадка</label><input type="hidden" id="f-plat" value="${esc(f.plat||'')}"><div class="pchips" id="f-pchips">
         <button type="button" class="pchip${f.plat?'':' on'}" data-p="">Все</button>
-        ${plats.map(p=>`<button type="button" class="pchip ${pslug(p)}${f.plat===p?' on':''}" data-p="${esc(p)}"><i class="pdot"></i>${esc(p)}</button>`).join('')}</div></div>
+        ${plats.map(p=>`<button type="button" class="pchip ${pslug(p)}${String(f.plat||'').split(',').includes(p)?' on':''}" data-p="${esc(p)}"><i class="pdot"></i>${esc(p)}</button>`).join('')}</div></div>
       <div class="fg">${(top&&top.k==='nedvizhimost')||f.cat==='nedvizhimost'?`<label class="chk"><input type="checkbox" id="f-land"${f.land?' checked':''}> только земельные участки</label>`:''}
         <label class="chk"><input type="checkbox" id="f-photo"${f.photo?' checked':''}> только с фото</label>
         <label class="chk"><input type="checkbox" id="f-mkt"${f.mkt?' checked':''}> только с рыночным ориентиром</label></div>
@@ -1770,10 +1771,12 @@ function pageCatalog(sc, params){
     });
     document.querySelectorAll('#fp select').forEach(dd);
     requestAnimationFrame(fitFilters);
-    // площадка — кнопками в цвет площадки (значение — в скрытом поле f-plat)
+    // площадки — кнопками в цвет площадки, можно несколько (значение — в скрытом поле f-plat через запятую); «Все» снимает выбор
     document.querySelectorAll('#f-pchips .pchip').forEach(b=>b.onclick = () => {
-      $('#f-plat').value = b.dataset.p;
-      document.querySelectorAll('#f-pchips .pchip').forEach(x=>x.classList.toggle('on', x===b));
+      const all = [...document.querySelectorAll('#f-pchips .pchip')];
+      if(!b.dataset.p) all.forEach(x=>x.classList.toggle('on', x===b));
+      else { b.classList.toggle('on'); all[0].classList.toggle('on', !all.some(x=>x.dataset.p && x.classList.contains('on'))); }
+      $('#f-plat').value = all.filter(x=>x.dataset.p && x.classList.contains('on')).map(x=>x.dataset.p).join(',');
       read(); render(); });
     // «Сбросить» — к исходному виду этой страницы: раздел, лента («Истекающие», «Новые»), режим «Активные / Архив»
     $('#f-reset').onclick = () => { FSTATE = { st:FSTATE.st, cur:FSTATE.cur };
@@ -3066,7 +3069,7 @@ function searchTitle(p){
   const a = [], s = p.sec || p.cat, sc = scOf(p.sub);
   if(sc) a.push(scName(sc)); else if(s) a.push(secName(s)); if(p.q) a.push('«' + p.q + '»'); if(p.region) a.push(p.region);
   if(p.pmin || p.pmax) a.push((p.pmin ? 'от ' + nf(+p.pmin) : '') + (p.pmax ? ' до ' + nf(+p.pmax) : '') + ' BYN');
-  if(p.plat) a.push(p.plat); if(p.dfrom || p.dto) a.push('торги' + (p.dfrom ? ' с ' + dRu(p.dfrom) : '') + (p.dto ? ' по ' + dRu(p.dto) : ''));
+  if(p.plat) a.push(String(p.plat).split(',').join(', ')); if(p.dfrom || p.dto) a.push('торги' + (p.dfrom ? ' с ' + dRu(p.dfrom) : '') + (p.dto ? ' по ' + dRu(p.dto) : ''));
   if(p.photo) a.push('с фото'); if(p.mkt) a.push('с ориентиром');
   return a.join(', ') || 'Все лоты';
 }
