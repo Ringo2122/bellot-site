@@ -1193,7 +1193,7 @@ module Src
           'name' => l['name'].to_s.strip, 'req_to' => start, 'torg' => start, 'price_byn' => price,
           'location' => (loc = l['location'].to_s.strip) =~ /обл|Минск/ || !TG_REG[l['region'].to_i] ? loc : [TG_REG[l['region'].to_i], loc].reject(&:empty?).join(', '),
           'area_num' => (a = desc[/площадью\s*([\d\s]+[.,]?\d*)\s*(?:кв\.?\s*м|м²|м2)/i, 1]) && num(a),
-          'photo_url' => tg_ph_ok? ? img.first : nil, 'photos' => tg_ph_ok? ? img : [],
+          'photo_url' => tg_ph_ok? ? img.first : nil, 'photos' => [],   # галерею не храним: :8081 у посетителей часто не открывается (12.10)
           'terms' => { 'deposit' => dep.positive? ? (price * dep / 100).round(2) : nil, 'v' => 2 }.reject { |_, v| v.nil? } }
     { 'key' => "tg-#{l['id']}", 'platform' => 'torgi.gov.by', 'art' => l['id'].to_s, 'auc' => l['numAuction'].to_s,
       'name' => d['name'], 'url' => tg_url(l), 'sec' => sec, 'price' => price, 'req_to' => start, 'd' => d }

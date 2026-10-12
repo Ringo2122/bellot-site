@@ -2268,8 +2268,11 @@ function drawMap(g){
 }
 
 /* ───────── галерея: все фото карточки площадки (ссылками с площадки) ─────────
-   Все фото — в полном качестве с площадки. Пока грузится первое, видна наша копия 400 px (размыто).
-   Фото сменяется только когда загружено (до этого — индикатор); следующие два и предыдущее грузятся заранее. */
+   Все фото — в полном качестве с площадки. Пока грузится первое, видна наша копия 400 px (размыто); если площадка
+   не отдала фото за 2,5 с — копия показывается чётко, без индикатора (12.10: сервер фото torgi.gov.by у многих
+   не отвечает вовсе, у других площадок оригиналы по нескольку МБ — ждали по 15–60 с). Фото, не загрузившееся
+   за 25 с, считаем битым. Следующие два и предыдущее грузятся заранее. */
+const GAL_OFF = ['torgi.gov.by'];   // сервер фото площадки (:8081) у посетителей часто недоступен — только наша копия
 const thumbOf = (p, u) => p==='beltorgi.by' ? u.replace('/big/','/small/') : p==='belauction.by' ? u.replace(/(\.\w+)$/, '-150x150$1')
   : p==='minskestate.by' ? u.replace('/full_','/thumb_') : p==='lotsale.by' ? u.replace(/(\.\w+)$/, '_sm$1') : null;
 const GIMG = {};   // адрес → загрузка (общая для страницы и полноэкранного просмотра)
@@ -2278,7 +2281,7 @@ function gload(u){
     const im = new Image(); im.decoding = 'async';
     // decode() в фоновой вкладке браузер откладывает до показа — не ждём его дольше 0,15 с
     im.onload = () => Promise.race([im.decode ? im.decode().catch(()=>{}) : null, new Promise(r=>setTimeout(r, 150))]).then(()=>res(u));
-    im.onerror = () => rej(u); im.src = u; }));
+    im.onerror = () => rej(u); setTimeout(() => rej(u), 25000); im.src = u; }));
 }
 function galleryBlock(l, pics){
   const th = pics.map(u=>thumbOf(l.platform, u)), many = pics.length > 1;
@@ -2299,6 +2302,8 @@ function viewer(pics, img, box, onShow){
     i = (n + pics.length) % pics.length; const u = pics[i]; want = u;
     if(onShow) onShow(i);
     box.classList.add('ld');
+    // наша копия на экране, а площадка не отвечает — показываем копию чётко, оригинал подменит её, когда загрузится
+    if(img.classList.contains('lq')) setTimeout(()=>{ if(want === u && img.classList.contains('lq')){ img.classList.remove('lq'); box.classList.remove('ld'); } }, 2500);
     gload(u).then(()=>{ if(want !== u) return; img.src = u; img.classList.remove('lq'); box.classList.remove('ld'); })
       .catch(()=>{ if(want !== u) return; const k = pics.indexOf(u); if(k >= 0){ pics.splice(k, 1); if(onShow) onShow(-1, k); } show(i); });   // площадка удалила фото
     pre(i);
@@ -2439,7 +2444,7 @@ function pageLot(id){
     // «Право аренды»: вместо калькулятора покупки — расчёт аренды по ставке из извещения
     if(!arch) l.section==='arenda' ? rentBlock(l, det.r) : calcBlock(l, det);
     // все фото карточки площадки
-    if(det.p && det.p.length){ const pics = det.p.slice(); $('.gal').innerHTML = galleryBlock(l, pics); bindGallery(l, pics); }
+    if(det.p && det.p.length && !GAL_OFF.includes(l.platform)){ const pics = det.p.slice(); $('.gal').innerHTML = galleryBlock(l, pics); bindGallery(l, pics); }
     // похожие завершённые торги, история объекта; карта — только у активных
     $('#xsim').innerHTML = (det.c ? simBlock(l, det.c) : '') + (det.h ? histBlock(l, det.h) : '') + (!arch && det.g ? mapBlock(l, det.g) : '');
     if(!arch && det.g) drawMap(det.g);
