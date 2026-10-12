@@ -64,10 +64,40 @@ module Geo
     nil   # сбой — не запоминаем
   end
 
+  # область пункта не из списка районных центров (regions.rb): город или гп — среди городов с таким названием,
+  # деревня — все тёзки должны быть в одной области, иначе 0 (лучше без области, чем чужая)
+  def ask_region(key)
+    name, kind = key.split('|')
+    u = 'https://nominatim.openstreetmap.org/search?' +
+        URI.encode_www_form(format: 'jsonv2', limit: 10, addressdetails: 1, countrycodes: 'by', 'accept-language' => 'ru',
+                            featureType: 'settlement', q: name)
+    out = IO.popen(['curl', '-sS', '-m', '20', '-A', UA, u], err: File::NULL, &:read)
+    rs = JSON.parse(out.to_s.force_encoding('UTF-8')).select { |r| r['name'].to_s.tr('ё', 'е') == name }
+    rs.select! { |r| %w[city town].include?(r['addresstype']) } if kind == 'т'
+    st = rs.map { |r| r.dig('address', 'state').to_s.tr('ё', 'е') }.uniq
+    return 0 unless st.size == 1
+    st[0] == 'Минск' ? 'г. Минск' : st[0] =~ /\A[А-Я][а-я]+ская область\z/ ? st[0] : 0
+  rescue JSON::ParserError
+    nil
+  end
+
   # активные лоты без координат; stop — когда остановиться (общий бюджет прогона)
   def run(db, stat, stop)
     cache = File.exist?(CACHE) ? (JSON.parse(File.read(CACHE, encoding: 'UTF-8')) rescue {}) : {}
     asked = 0
+    no_reg = db.values.select { |l| l['status'] == 'active' && l['platform'] != 'konfiskat.by' && region_of(l['location']).empty? }
+    keys = no_reg.map { |l| place_key(l['location']) }.compact.uniq.reject { |k| place_reg.key?(k) }
+    keys.each do |k|
+      break if asked >= CAP || Time.now > stop
+      r = ask_region(k)
+      asked += 1
+      sleep 1.1
+      place_reg[k] = r unless r.nil?
+    end
+    unless keys.empty?
+      File.write(PLACE_REG_FILE, JSON.generate(place_reg))
+      no_reg.each { |l| l['region'] = region_of(l['location']) }
+    end
     todo = db.values.select { |l| l['status'] == 'active' && !l.key?('geo') && l['geo_try'].to_i < 2 }
     todo.each do |l|
       break if asked >= CAP || Time.now > stop
