@@ -443,6 +443,9 @@ applyTheme(window.THEME);
   @keyframes ddup{from{opacity:0;transform:translateY(4px) scale(.98)}}
   @keyframes ddout{to{opacity:0;transform:translateY(-3px)}}
   @media (prefers-reduced-motion:reduce){.dd-l,.dd-l.out{animation:none}.dd-b svg{transition:none}}
+  .mdd-l li{display:flex;align-items:center;gap:8px}
+  .mdd-l li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mdd-l li small{color:var(--ink-3);font-size:12px;font-weight:500;font-variant-numeric:tabular-nums}
 
   .lot .loc{font-size:12.5px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:1;
     -webkit-box-orient:vertical;overflow:hidden}
@@ -1052,6 +1055,9 @@ applyTheme(window.THEME);
   .p-mgcn{--pc:#1a4fc4} .p-belauction{--pc:#b8860b} .p-minskestate{--pc:#1c7182} .p-auction24{--pc:#6b5bd2}
   /* lotsale — оливковый (их фирменный); БУТБ — малиновый: их зелёный занят e-auction, золотой — belauction */
   .p-lotsale{--pc:#8a8f1c} .p-butb{--pc:#ad1457} .p-gostorg{--pc:#002c73}   /* gostorg — их тёмно-синий, темнее синего МГЦН */
+  .p-bankrottorg{--pc:#7b4b2a} .p-specrealization{--pc:#546e7a}   /* цвета временные — их всё равно уберём (решение Артёма 12.10) */
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .p-bankrottorg{--pc:#c99a72} :root:not([data-theme="light"]) .p-specrealization{--pc:#9fb3bd} }
+  :root[data-theme="dark"] .p-bankrottorg{--pc:#c99a72} :root[data-theme="dark"] .p-specrealization{--pc:#9fb3bd}
   @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .p-lotsale{--pc:#c3c94a} :root:not([data-theme="light"]) .p-butb{--pc:#f06292}
     :root:not([data-theme="light"]) .p-gostorg{--pc:#93a6cc} }
   :root[data-theme="dark"] .p-lotsale{--pc:#c3c94a} :root[data-theme="dark"] .p-butb{--pc:#f06292} :root[data-theme="dark"] .p-gostorg{--pc:#93a6cc}
@@ -1179,6 +1185,8 @@ applyTheme(window.THEME);
       <li><a href="https://et.butb.by/et/index.xhtml" target="_blank" rel="noopener">БУТБ-Имущество (товарная биржа)</a></li>
       <li><a href="https://lotsale.by" target="_blank" rel="noopener">LotSale</a></li>
       <li><a href="https://gostorg.by" target="_blank" rel="noopener">GOSTORG (Институт недвижимости и оценки)</a></li>
+      <li><a href="https://bankrot-torg.by" target="_blank" rel="noopener">БелБанкротАукцион</a></li>
+      <li><a href="https://specrealization.by" target="_blank" rel="noopener">СпецРеализация</a></li>
       <li><a href="https://bankrot.gov.by" target="_blank" rel="noopener">Реестр банкротств</a></li>
     </ul></div>
   </div>
@@ -1675,6 +1683,41 @@ function dd(sel){
     else if((e.key === 'Enter' || e.key === ' ') && ul){ e.preventDefault(); pick(act); } };
 }
 
+/* Выпадающий список с выбором нескольких значений (фильтр «Площадка»): вид и анимация — как у dd(); список не закрывается
+   после выбора — можно отметить несколько; «Все площадки» снимает выбор. items — [[значение, сколько лотов]] */
+function mdd(btn, items, sel, onChange){
+  if(!btn) return;
+  let ul = null;
+  const label = () => { const a = [...sel];
+    btn.innerHTML = `<span>${a.length ? (a.length <= 2 ? a.map(esc).join(', ') : a.length + ' ' + plural(a.length,'площадка','площадки','площадок')) : 'Все площадки'}</span>`
+      + '<svg viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>'; };
+  const draw = () => { ul.innerHTML = `<li role="option" data-p=""${sel.size ? '' : ' class="sel" aria-selected="true"'}>Все площадки</li>`
+    + items.map(([p, n]) => `<li role="option" data-p="${esc(p)}" class="${pslug(p)}${sel.has(p) ? ' sel' : ''}" aria-selected="${sel.has(p)}"><i class="pdot"></i><span>${esc(p)}</span><small>${nf(n)}</small></li>`).join(''); };
+  const place = () => { const r = btn.getBoundingClientRect(), h = ul.offsetHeight, below = innerHeight - r.bottom - 8;
+    const up = below < h && r.top - 8 > below;
+    ul.classList.toggle('up', up);
+    ul.style.left = Math.max(8, Math.min(r.left, innerWidth - ul.offsetWidth - 8)) + 'px';
+    ul.style.top = (up ? Math.max(8, r.top - h - 4) : r.bottom + 4) + 'px'; };
+  const away = e => { if(e.type === 'scroll' && ul && ul.contains(e.target)) return;
+    if(e.type === 'pointerdown' && (btn.contains(e.target) || (ul && ul.contains(e.target)))) return;
+    if(e.type === 'keydown' && e.key !== 'Escape') return; close(); };
+  const close = () => { if(!ul) return; const u = ul; ul = null;
+    btn.parentElement.classList.remove('open'); btn.setAttribute('aria-expanded', 'false');
+    u.classList.add('out'); setTimeout(() => u.remove(), reduced ? 0 : 120);
+    ['pointerdown', 'scroll', 'keydown'].forEach(t => removeEventListener(t, away, true)); removeEventListener('resize', away); };
+  const open = () => {
+    ul = document.createElement('ul'); ul.className = 'dd-l mdd-l'; ul.setAttribute('role', 'listbox'); ul.setAttribute('aria-multiselectable', 'true');
+    draw(); ul.style.minWidth = btn.offsetWidth + 'px';
+    ul.onclick = e => { const li = e.target.closest('li'); if(!li) return; const p = li.dataset.p;
+      if(!p) sel.clear(); else if(sel.has(p)) sel.delete(p); else sel.add(p);
+      draw(); label(); onChange([...sel]); };
+    document.body.append(ul); place();
+    btn.parentElement.classList.add('open'); btn.setAttribute('aria-expanded', 'true');
+    ['pointerdown', 'scroll', 'keydown'].forEach(t => addEventListener(t, away, true)); addEventListener('resize', away); };
+  btn.onclick = () => ul ? close() : open();
+  label();
+}
+
 function filterPanel(list, f, sc){
   const arch = f.st==='arch', src = arch ? (ARCH||[]) : DATA;
   const regions=[...new Set(list.map(l=>l.region).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
@@ -1708,9 +1751,9 @@ function filterPanel(list, f, sc){
       <div class="fg"><label for="f-dfrom">Дата торгов: от — до</label><div class="two">
         <input id="f-dfrom" type="date" value="${esc(f.dfrom||'')}" aria-label="Дата торгов от">
         <input id="f-dto" type="date" value="${esc(f.dto||'')}" aria-label="Дата торгов до"></div></div>
-      <div class="fg"><label>Площадка</label><input type="hidden" id="f-plat" value="${esc(f.plat||'')}"><div class="pchips" id="f-pchips">
-        <button type="button" class="pchip${f.plat?'':' on'}" data-p="">Все</button>
-        ${plats.map(p=>`<button type="button" class="pchip ${pslug(p)}${String(f.plat||'').split(',').includes(p)?' on':''}" data-p="${esc(p)}"><i class="pdot"></i>${esc(p)}</button>`).join('')}</div></div>
+      <div class="fg"><label for="f-pdd">Площадка</label><input type="hidden" id="f-plat" value="${esc(f.plat||'')}">
+        <div class="dd"><button type="button" class="dd-b" id="f-pdd" aria-haspopup="listbox" aria-expanded="false"
+          data-items="${esc(JSON.stringify(plats.map(p=>[p, list.filter(l=>l.platform===p || (l.alt||[]).some(a=>a.platform===p)).length])))}"></button></div></div>
       <div class="fg">${(top&&top.k==='nedvizhimost')||f.cat==='nedvizhimost'?`<label class="chk"><input type="checkbox" id="f-land"${f.land?' checked':''}> только земельные участки</label>`:''}
         <label class="chk"><input type="checkbox" id="f-photo"${f.photo?' checked':''}> только с фото</label>
         <label class="chk"><input type="checkbox" id="f-mkt"${f.mkt?' checked':''}> только с рыночным ориентиром</label></div>
@@ -1786,13 +1829,9 @@ function pageCatalog(sc, params){
     });
     document.querySelectorAll('#fp select').forEach(dd);
     requestAnimationFrame(fitFilters);
-    // площадки — кнопками в цвет площадки, можно несколько (значение — в скрытом поле f-plat через запятую); «Все» снимает выбор
-    document.querySelectorAll('#f-pchips .pchip').forEach(b=>b.onclick = () => {
-      const all = [...document.querySelectorAll('#f-pchips .pchip')];
-      if(!b.dataset.p) all.forEach(x=>x.classList.toggle('on', x===b));
-      else { b.classList.toggle('on'); all[0].classList.toggle('on', !all.some(x=>x.dataset.p && x.classList.contains('on'))); }
-      $('#f-plat').value = all.filter(x=>x.dataset.p && x.classList.contains('on')).map(x=>x.dataset.p).join(',');
-      read(); render(); });
+    // площадки — выпадающим списком с галочками, можно несколько (значение — в скрытом поле f-plat через запятую)
+    mdd($('#f-pdd'), JSON.parse($('#f-pdd').dataset.items), new Set(String(FSTATE.plat||'').split(',').filter(Boolean)), a => {
+      $('#f-plat').value = a.join(','); read(); render(); });
     // «Сбросить» — к исходному виду этой страницы: раздел, лента («Истекающие», «Новые»), режим «Активные / Архив»
     $('#f-reset').onclick = () => { FSTATE = { st:FSTATE.st, cur:FSTATE.cur };
       if(view==='soon') FSTATE.soon = 1; if(view==='new'){ FSTATE.fresh = 1; FSTATE.sort = 'new'; } if(view==='pin') FSTATE.pin = 1;
@@ -1964,6 +2003,8 @@ function calcBlock(l, det){
       ? 'Победитель возмещает затраты на организацию торгов — сумма в условиях лота на площадке (может уточняться до начала торгов). Впишите её.'
     : l.platform==='butb.by'
       ? 'Из карточки лота на бирже: затраты на организацию и проведение торгов (организатор может уточнить сумму до начала торгов).'
+    : ['bankrot-torg.by','specrealization.by'].includes(l.platform)
+      ? 'Из карточки лота: аукционный сбор и затраты на организацию торгов (публикация, оценка) — если площадка их указала.'
     : l.platform==='gostorg.by'
       ? 'Из карточки лота: вознаграждение организатору, % от цены продажи (если указано). Затраты на организацию торгов, если есть, — в условиях лота на площадке.'
       : 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.';
@@ -2351,7 +2392,7 @@ function pageLot(id){
           <dl class="facts">
             <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
               :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
-            <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(l.off?' · очно':['e-auction.by','minskestate.by','lotsale.by','butb.by','gostorg.by'].includes(l.platform)?' · онлайн':l.platform==='mgcn.by'?' · очно, г. Минск, ул. К. Маркса, 39':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
+            <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(l.off?' · очно':['e-auction.by','minskestate.by','lotsale.by','butb.by','gostorg.by','bankrot-torg.by','specrealization.by'].includes(l.platform)?' · онлайн':l.platform==='mgcn.by'?' · очно, г. Минск, ул. К. Маркса, 39':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
             <dt>Регион</dt><dd>${esc(l.region||'—')}</dd>
             ${l.area_num?`<dt>Площадь</dt><dd>${nf(l.area_num)} м²</dd>`:''}
             <dt>${l.section==='arenda' ? 'Арендодатель' : ['minskestate.by','mgcn.by','lotsale.by','butb.by','gostorg.by'].includes(l.platform) ? 'Продавец' : 'Должник'}</dt><dd>${esc(l.debtor||'—')}</dd>

@@ -1027,6 +1027,205 @@ module Src
                  .reject { |_, v| v.nil? || v == 0.0 } }
   end
 
+  # ---------------- bankrot-torg.by и specrealization.by (один разработчик, один движок) ----------------
+  # ЗАО «БелБанкротАукцион» и ООО «СпецРеализация»: имущество в банкротстве и ликвидации. Сайт на Laravel + Inertia:
+  # данные страницы лежат в ней же JSON-ом (атрибут data-page). robots.txt разрешает всё.
+  #   список  bankrot-torg.by/auctions — все активные одной страницей; specrealization.by/auctions?page=N — по 12,
+  #           от поздних торгов к ранним, вместе с завершёнными (в списке есть раздел и срок заявок)
+  #   лот     /auctions/show/<id>: props.auction — статус, вид торгов, цены, сроки, адрес, продавец, ставки
+  # Прямые продажи (без торгов) не берём. Ключи: bk-<id>, sr-<id>.
+  VL = { 'bankrot-torg.by' => 'https://bankrot-torg.by', 'specrealization.by' => 'https://specrealization.by' }.freeze
+  VL_KEY = { 'bankrot-torg.by' => 'bk', 'specrealization.by' => 'sr' }.freeze
+  # раздел площадки → наш (остальное — мебель, оргтехника, стройматериалы, дебиторка, одежда… — не берём)
+  VL_SEC = { 'Недвижимость' => 'nedvizhimost', 'Легковой транспорт' => 'avto', 'Легковой автомобиль' => 'avto',
+             'Грузовой транспорт' => 'gruz', 'Грузовые автомобили' => 'gruz', 'Прицепы и полуприцепы' => 'gruz', 'Прицепы, полуприцепы' => 'gruz',
+             'Автобусы, микроавтобусы' => 'gruz', 'Спецтехника' => 'spec', 'Специальная с/х техника' => 'spec',
+             'Оборудование' => 'oborud', 'Станки' => 'oborud', 'Станки,оборудование' => 'oborud', 'Оборудование для торговли' => 'oborud',
+             'Емкости' => 'oborud' }.freeze
+  # регионы bankrot-torg.by (region_id); адрес у лота часто без области
+  VL_REG = { 1 => 'г. Минск', 2 => 'Минская обл.', 4 => 'Брестская обл.', 5 => 'Витебская обл.', 6 => 'Гродненская обл.' }.freeze
+
+  def vl_props(url)
+    h = get(url) or return nil
+    d = h[/data-page="([^"]+)"/, 1] or return nil
+    JSON.parse(decode(d))['props']
+  rescue JSON::ParserError
+    nil
+  end
+
+  def vl_t(s)
+    s = s.to_s.strip
+    return nil if s.empty?
+    s =~ %r{\A\d{2}/\d{2}/\d{4}} ? ts(s.tr('/', '.')) : Time.parse(s).to_i
+  rescue ArgumentError
+    nil
+  end
+
+  def vl_sec(cat, title)
+    s = VL_SEC[cat.to_s.strip] or return nil
+    s == 'nedvizhimost' && title.to_s =~ /право (заключения договора )?аренды|право аренды/i ? 'arenda' : s
+  end
+
+  # активные лоты: nil — список не прочитан
+  def vl_list(plat)
+    host = VL[plat]
+    card = lambda do |x, sec|
+      { 'key' => "#{VL_KEY[plat]}-#{x['id']}", 'platform' => plat, 'art' => (x['number'] || x['id']).to_s,
+        'name' => x['title'].to_s.gsub(/\s+/, ' ').strip, 'url' => "#{host}/auctions/show/#{x['id']}", 'sec' => sec,
+        'price' => x['start_price'].to_f, 'req_to' => vl_t(x['date_end_requests']), 'status' => x['status'],
+        'thumb' => (i = (x['images'] || [x['image']]).compact.first) && (i =~ /\Ahttps?:/ ? i : "#{host}/storage/#{i}") }
+    end
+    if plat == 'bankrot-torg.by'
+      pr = vl_props("#{host}/auctions") or return nil
+      return pr['list']['data'].map { |x| card.(x, nil) }   # раздела в списке нет — он в карточке лота
+    end
+    out = []
+    (1..40).each do |p|
+      pr = vl_props("#{host}/auctions?page=#{p}")
+      return nil if pr.nil? && p == 1
+      items = (pr || {})['list'] || []
+      break if items.empty?
+      items.each { |x| (s = vl_sec(x['category'], x['title'])) && x['type'] !~ /прям/i and out << card.(x, s) }
+      break if items.all? { |x| vl_t(x['date_bargains']).to_i < Time.now.to_i - 3 * 86_400 }   # дальше — только завершённые
+      sleep 1
+    end
+    out.uniq { |c| c['key'] }
+  end
+
+  def vl_detail(plat, html)
+    host = VL[plat]
+    d = html[/data-page="([^"]+)"/, 1] or return nil
+    pr = JSON.parse(decode(d))['props']
+    a = pr['auction'] or return nil
+    sb = pr['subjectBidding'] || {}
+    sec = vl_sec(a['category_label'], a['title'])
+    return { 'skip' => true } if sec.nil? || "#{a['type']} #{a['type_label']}" =~ /прям|без торгов/i
+    adr = a['address'].to_s.strip.sub(/\.\z/, '').sub(/\AМинск\b/, 'г. Минск')   # «Минск» без «г.» — иначе Минская область
+    loc = [adr =~ /обл|Минск/ ? nil : VL_REG[a['region_id'].to_i], adr].compact.reject(&:empty?).join(', ')
+    loc = '' if loc =~ /\A[\s,]*\z/
+    desc = txt(a['description'] || sb['description']).strip
+    pics = (a['images'] || []).map { |i| i =~ /\Ahttps?:/ ? i : "#{host}/storage/#{i}" }
+    price = a['start_price'].to_f
+    min = a['min_price'].to_f
+    dep = num(a['deposit_amount'])
+    fee = a['organization_cost'].to_s
+    seller = pr['seller'].is_a?(Hash) ? pr['seller']['name'] : a['seller'].to_s.sub(/\s*\(УНП.*\z/m, '')
+    byn = ->(v) { v.to_f.positive? ? format('%.2f', v).sub(/\A\d+/) { |i| i.reverse.scan(/\d{1,3}/).join(' ').reverse }.sub('.', ',') + ' BYN' : nil }
+    dtm = ->(s) { (t = vl_t(s)) && Time.at(t).strftime('%d.%m.%Y %H:%M') }
+    cond = [['Номер торгов', a['full_number'] || a['number']], ['Вид торгов', [a['type_label'], a['bet_type'] == 'down' ? 'на понижение' : nil].compact.join(', ')],
+            ['Начальная цена', byn.(price)], ['Минимальная цена', min.positive? && min < price ? byn.(min) : nil],
+            ['Задаток', dep.positive? ? byn.(dep) : nil], ['Шаг торгов', a['step_price'] && "#{a['step_price'].to_s.sub(/\.0+\z/, '')} %"],
+            ['Приём заявок до', dtm.(a['end_requests'])], ['Начало торгов', dtm.(a['start_bargains'])],
+            ['Затраты и сборы', fee =~ /\A[\d.,\s]+\z/ ? byn.(num(fee)) : fee], ['Срок договора', sb['timeConcludeContact']],
+            ['Срок оплаты', sb['timePayTransaction']], ['Сведения', a['info_message']]].map { |k, v| [k, v.to_s.strip] }.reject { |_, v| v.empty? }
+    about = [['Описание', desc], ['Местонахождение', loc], ['Осмотр', a['contactNumber'] || sb['contactNumber']], ['Раздел', a['category_label']]]
+            .map { |k, v| [k, txt(v.to_s)] }.reject { |_, v| v.empty? }
+    sel = pr['seller'].is_a?(Hash) ? [['Продавец', pr['seller']['name']], ['Кто продаёт', pr['seller']['type']], ['Адрес', pr['seller']['address']]] : [['Продавец', a['seller']]]
+    secs = [{ 'h' => 'Условия торгов', 'rows' => cond }, { 'h' => 'Сведения о лоте', 'rows' => about },
+            { 'h' => 'Продавец', 'rows' => sel.map { |k, v| [k, v.to_s.strip] }.reject { |_, v| v.empty? } }].reject { |s| s['rows'].empty? }
+    { 'details' => secs, 'name' => a['title'].to_s.gsub(/\s+/, ' ').strip, 'sec' => sec, 'location' => loc.empty? ? nil : loc,
+      'debtor' => seller.to_s.strip.empty? ? nil : seller.to_s.strip, 'req_to' => vl_t(a['end_requests']), 'torg' => vl_t(a['start_bargains']),
+      'price_byn' => price, 'photo_url' => pics.first, 'photos' => pics, 'status' => a['status'],
+      'off' => a['type'].to_s == 'in-person' || a['type_label'].to_s =~ /очн/i ? true : nil,
+      'area_num' => (x = desc[/площадь[юи]?\s*([\d\s]+[.,]?\d*)\s*(?:кв\.?\s*м|м2|м²)/i, 1] || a['title'].to_s[/площадь[юи]?\s*([\d\s]+[.,]?\d*)\s*(?:кв\.?\s*м|м2|м²)/i, 1]) && num(x),
+      'terms' => { 'deposit' => dep, 'step_pct' => a['step_price'].to_f, 'min_price' => min.positive? && min < price ? min : nil,
+                   'fee_abs' => fee =~ /\A[\d.,\s]+\z/ ? num(fee) : nil, 'fee_pct' => fee[/аукционный сбор\s*([\d.,]+)\s*%/i, 1]&.tr(',', '.')&.to_f,
+                   'vat' => a['nds'].to_s == '1' ? 'Цена указана с НДС' : nil, 'v' => 2 }.reject { |_, v| v.nil? || v == 0.0 } }
+  rescue JSON::ParserError
+    nil
+  end
+
+  # ---------------- torgi.gov.by («Единая система электронных торгов») ----------------
+  # Торги по Закону «Об урегулировании неплатежеспособности»: имущество в банкротстве, продавцы — управляющие и должники.
+  # Сайт — приложение, данные — открытый API api.torgi.gov.by (robots.txt у API нет); на частые запросы отвечает 429 —
+  # читаем по разделам, по 30 лотов, с паузой 3 с. Цены — в копейках, время — «тики» .NET (100 нс с 01.01.0001, UTC).
+  # Список /api/lots?category=N&state=…: всё о лоте (название, адрес, цена, задаток %, начало торгов, описание, фото);
+  # продавец и шаг — в /api/auctions/<аукцион>/lot/<лот>/public (там же ставки и победитель — итоги).
+  # Срока подачи заявок у площадки нет: заявку и задаток принимают до начала торгов — его и считаем сроком.
+  # Фото — на api.torgi.gov.by:8081 (с нашего компьютера 12.10 не открывался: без фото — заглушка).
+  TG = 'https://torgi.gov.by'
+  TG_API = 'https://api.torgi.gov.by/api'
+  TG_STATES = '15,16,4,5,18,19,20,21,22,23'   # как у самой площадки: «идёт приём», «опубликован» и т. п.
+  # раздел площадки → наш (мебель, бытовое, спорт, сырьё, запчасти, аренда транспорта и услуги — не берём)
+  TG_SEC = { 13 => 'nedvizhimost', 14 => 'nedvizhimost', 15 => 'nedvizhimost', 16 => 'nedvizhimost', 17 => 'nedvizhimost',
+             18 => 'nedvizhimost', 19 => 'nedvizhimost', 156 => 'nedvizhimost', 162 => 'nedvizhimost', 168 => 'arenda',
+             22 => 'avto', 26 => 'avto', 20 => 'gruz', 23 => 'gruz', 24 => 'gruz', 25 => 'gruz', 139 => 'gruz',
+             154 => 'spec', 141 => 'spec', 142 => 'spec', 143 => 'spec', 144 => 'spec', 145 => 'spec', 146 => 'spec', 147 => 'spec',
+             148 => 'spec', 149 => 'spec', 150 => 'spec', 151 => 'spec', 152 => 'spec',
+             34 => 'oborud', 35 => 'oborud', 37 => 'oborud', 38 => 'oborud' }.freeze
+
+  def tg_t(ticks)
+    t = ticks.to_i
+    t.positive? ? (t - 621_355_968_000_000_000) / 10_000_000 : nil
+  end
+
+  def tg_json(path)
+    out = get(TG_API + path, min: 2) or return nil
+    j = JSON.parse(out)
+    j['status'].to_i == 200 ? j['result'] : nil
+  rescue JSON::ParserError
+    nil
+  end
+
+  def tg_url(l)
+    slug = l['name'].to_s.downcase.gsub(/[а-яё]/) { |c| c == 'ё' ? 'e' : (LAT[c] || '') }.gsub(/[^a-z0-9]+/, '-').gsub(/\A-|-\z/, '')[0, 120]
+    "#{TG}/lot/#{l['id']}/#{l['numAuction']}/#{slug}"
+  end
+
+  # карточка и подробности — сразу из списка (d); продавца и шаг добавит tg_detail
+  def tg_card(l, sec)
+    price = l['currentInitialPrice'].to_i.positive? ? l['currentInitialPrice'].to_i / 100.0 : l['initialPrice'].to_i / 100.0
+    start = tg_t(l['auctionStart'])
+    desc = l['description'].to_s.gsub(/\r/, '').strip
+    img = (l['images'] || []).sort_by { |i| [i['main'] ? 0 : 1, i['no'].to_i] }
+                              .map { |i| (i['thumbnails'] || []).max_by { |t| t['width'].to_i } }.compact.map { |t| "https://api.torgi.gov.by:8081/#{t['uid']}" }
+    dep = l['depositAuction'].to_f
+    cond = [['Лот №', l['id'].to_s], ['Аукцион №', l['numAuction'].to_s], ['Начальная цена', format('%.2f BYN', price).sub('.', ',') + (l['nds'].to_i == 1 ? ' (с НДС)' : '')],
+            ['Задаток', dep.positive? ? "#{dep.to_s.sub(/\.0\z/, '')}% от начальной цены" : nil],
+            ['Начало торгов', start && Time.at(start).strftime('%d.%m.%Y %H:%M')],
+            ['Приём заявок', 'до начала торгов: заявка и задаток — через площадку']].reject { |_, v| v.to_s.empty? }
+    d = { 'details' => [{ 'h' => 'Условия торгов', 'rows' => cond },
+                        { 'h' => 'Сведения о лоте', 'rows' => [['Описание', desc], ['Местонахождение', l['location'].to_s]].reject { |_, v| v.empty? } }],
+          'name' => l['name'].to_s.strip, 'location' => l['location'].to_s.strip, 'req_to' => start, 'torg' => start, 'price_byn' => price,
+          'area_num' => (a = desc[/площадью\s*([\d\s]+[.,]?\d*)\s*(?:кв\.?\s*м|м²|м2)/i, 1]) && num(a),
+          'photo_url' => img.first, 'photos' => [],   # ссылки на фото храним, только если порт 8081 станет доступен
+          'terms' => { 'deposit' => dep.positive? ? (price * dep / 100).round(2) : nil, 'v' => 2 }.reject { |_, v| v.nil? } }
+    { 'key' => "tg-#{l['id']}", 'platform' => 'torgi.gov.by', 'art' => l['id'].to_s, 'auc' => l['numAuction'].to_s,
+      'name' => d['name'], 'url' => tg_url(l), 'sec' => sec, 'price' => price, 'req_to' => start, 'd' => d }
+  end
+
+  # активные лоты наших разделов: nil — какой-то раздел не прочитан
+  def tg_list
+    out = []
+    TG_SEC.each do |cat, sec|
+      (0..50).each do |p|
+        r = tg_json("/lots?page=#{p}&pagesize=30&sort=start&state=#{TG_STATES}&category=#{cat}") or return nil
+        lots = r['lots'] || []
+        lots.each { |l| out << tg_card(l, sec) unless l['deleted'] || l['ads'] }
+        sleep 3
+        break if lots.size < 30 || out.size > 5000
+      end
+    end
+    out.uniq { |c| c['key'] }
+  end
+
+  # продавец, шаг торгов, сроки договора и оплаты — со страницы аукциона (один запрос на новый лот)
+  def tg_detail(c)
+    d = c['d'] || {}
+    a = tg_json("/auctions/#{c['auc']}/lot/#{c['art']}/public") or return d
+    sleep 2
+    seller = (a['organizer'] || {})['fullName'].to_s.strip
+    rows = [['Шаг торгов', a['step'].to_i.positive? ? "#{a['step']} %" : nil], ['Срок заключения договора', a['contractTimeout'].to_i.positive? ? "#{a['contractTimeout']} дней" : nil],
+            ['Срок оплаты', a['paymentTimeout'].to_i.positive? ? "#{a['paymentTimeout']} дней" : nil],
+            ['Вид торгов', a['auctionMethod'].to_s =~ /dutch|down/i ? 'на понижение' : nil]].reject { |_, v| v.nil? }
+    d = d.merge('debtor' => seller.empty? ? nil : seller)
+    d['details'] = d['details'].map { |s| s['h'] == 'Условия торгов' ? s.merge('rows' => s['rows'] + rows) : s }
+    d['details'] << { 'h' => 'Продавец', 'rows' => [['Продавец', seller]] } unless seller.empty?
+    d['terms'] = d['terms'].merge('step_pct' => a['step'].to_f, 'pay_term' => a['paymentTimeout'].to_i.positive? ? "#{a['paymentTimeout']} дней" : nil)
+                           .reject { |_, v| v.nil? || v == 0.0 }
+    d
+  end
+
   # ---------------- butb.by (ЭТП «БУТБ-Имущество» Белорусской универсальной товарной биржи, et.butb.by) ----------------
   # Госимущество: облимущества и райисполкомы продают здания, «неиспользуемые объекты» (часто за 1 базовую величину),
   # технику; есть торги на право аренды. robots.txt у площадки нет. Сайт на JSF: список «Торги» показывает по 10 лотов,

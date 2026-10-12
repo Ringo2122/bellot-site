@@ -26,6 +26,7 @@
 #   lotsale.by    API лота: статус лота и аукциона, ставки, число участников
 #   butb.by       «Состояние лота», «Цена продажи» и «Зарегистрировано заявлений» в карточке лота
 #   gostorg.by    вкладка «История аукциона»: состояние, заявки, ставки (только электронные торги)
+#   bankrot-torg.by, specrealization.by  данные страницы лота (статус, ставки с победителем, причина)
 #   mgcn.by       очные аукционы — итоги онлайн не публикуются, не проверяем
 require 'json'
 require_relative 'sources'
@@ -248,6 +249,50 @@ module Res
               else return { 'st' => 'pending' }
               end
     r['price'] = Src.num(top['Цена продажи']) if %w[sold single].include?(r['st'])
+    r.reject { |_, v| v.nil? || v == 0 }
+  end
+
+  # ── bankrot-torg.by, specrealization.by ──
+  # props.auction страницы лота: статус (accepting — приём заявок, not_finished — «Торги не состоялись», annulled — результат
+  # аннулирован, …), ставки bets [{user_id, bet, winner}], reason — причина. Победитель есть — продан; участник один — единственному.
+  def vl_result(html)
+    d = html.to_s[/data-page="([^"]+)"/, 1] or return { 'st' => 'pending' }
+    a = JSON.parse(Src.decode(d))['props']['auction'] or return { 'st' => 'pending' }
+    st = "#{a['status']} #{a['status_label']}"
+    bets = a['bets'].is_a?(Array) ? a['bets'] : []
+    win = bets.find { |b| b['winner'].to_i == 1 }
+    users = [bets.map { |b| b['user_id'] }.uniq.size, a['requests_count'].to_i].max
+    r = { 'v' => V, 'start' => a['start_price'].to_f, 'bids' => bets.size, 'users' => users, 'at' => Src.vl_t(a['end_bargains']),
+          'note' => a['reason'].to_s.strip }
+    r['st'] = if st =~ /cancel|отмен/i then 'cancelled'
+              elsif st =~ /not_finished|annul|не состоял|аннулир/i then 'failed'
+              elsif win || st =~ /finish|complete|sold|состоял|продан/i then users <= 1 ? 'single' : 'sold'
+              else return { 'st' => 'pending' }
+              end
+    r['price'] = (win ? win['bet'] : a['current_price']).to_f if %w[sold single].include?(r['st'])
+    r.reject { |_, v| v.nil? || v == 0 || v == '' }
+  rescue JSON::ParserError
+    { 'st' => 'pending' }
+  end
+
+  # ── torgi.gov.by ──
+  # /api/auctions/<аукцион>/lot/<лот>/public: state («Published» — до торгов), winners [{lot, winners: [{summ (копейки), buyer}]}],
+  # bids, bidders. Победитель с суммой — продан; иначе после торгов — не состоялись.
+  def tg_result(a, lot_id)
+    return { 'st' => 'pending' } unless a
+    st = a['state'].to_s
+    w = ((a['winners'] || []).find { |x| x['lot'].to_s == lot_id.to_s } || {})['winners'].to_a.find { |x| x['summ'].to_i.positive? }
+    bids = (a['bids'] || []).select { |b| b.is_a?(Hash) && (b['lot'].nil? || b['lot'].to_s == lot_id.to_s) }
+    users = [(a['bidders'] || []).size, bids.map { |b| b['buyer'] || b['user'] }.compact.uniq.size].max
+    r = { 'v' => V, 'bids' => bids.size, 'users' => users, 'at' => Src.tg_t(a['endAuctionDate']) }
+    lot = (a['lots'] || []).find { |x| x['id'].to_s == lot_id.to_s } || {}
+    r['start'] = lot['initialPrice'].to_i / 100.0 if lot['initialPrice']
+    r['st'] = if st =~ /cancel|отмен/i then 'cancelled'
+              elsif w then users <= 1 ? 'single' : 'sold'
+              elsif st =~ /publish|open|progress|started|registration/i then return { 'st' => 'pending' }
+              else 'failed'
+              end
+    r['price'] = w['summ'].to_i / 100.0 if w
     r.reject { |_, v| v.nil? || v == 0 }
   end
 

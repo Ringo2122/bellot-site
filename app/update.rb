@@ -29,7 +29,8 @@ require 'fileutils'
 RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 365).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
 WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfiskat.by' => 1, 'belauction.by' => 1,
-            'minskestate.by' => 1, 'mgcn.by' => 1, 'auction24.by' => 1, 'lotsale.by' => 1, 'butb.by' => 1, 'gostorg.by' => 2 }.freeze
+            'minskestate.by' => 1, 'mgcn.by' => 1, 'auction24.by' => 1, 'lotsale.by' => 1, 'butb.by' => 1, 'gostorg.by' => 2,
+            'bankrot-torg.by' => 1, 'specrealization.by' => 1 }.freeze
 # gostorg: срока заявок в списке нет, а лот висит в каталоге до дня торгов — 2/3 списка с уже закрытым приёмом заявок.
 # Новых карточек за прогон — не больше NEW_CAP (первый обход — ≈ 600 карточек, ≈ 3 с каждая); закрытые запоминаем
 # в data/closed.json и больше не открываем.
@@ -92,7 +93,10 @@ PLAN = {
   # butb.by (et.butb.by): весь список «Торги» одной страницей, раздел — по категории в карточке лота (bu_sec)
   'butb.by' => [['auctions', nil]],
   # gostorg.by: электронные и очные торги наших разделов (без «размещения объявлений»), раздел — по разделу каталога (gs_list)
-  'gostorg.by' => [['catalog', nil]]
+  'gostorg.by' => [['catalog', nil]],
+  # bankrot-torg.by, specrealization.by: банкротство и ликвидация; раздел — по разделу площадки (vl_sec), не наши — пропускаем
+  'bankrot-torg.by' => [['auctions', nil]],
+  'specrealization.by' => [['auctions', nil]]
 }.freeze
 # Площадки, которые больше не собираем: их лоты удаляются из памяти вместе с подробностями и фото.
 # cpo.by (ЦПО) — рекламная витрина торгов ИПМ-Торгов, те же лоты (решение Артёма 25.09.2026)
@@ -124,6 +128,7 @@ def list(plat, path)
   when 'lotsale.by' then Src.ls_list     # nil — API не ответил, [] — торгов сейчас нет
   when 'butb.by' then Src.bu_list
   when 'gostorg.by' then Src.gs_list
+  when 'bankrot-torg.by', 'specrealization.by' then Src.vl_list(plat)
   else Src.bt_list(path)
   end
 end
@@ -140,9 +145,11 @@ def fetch_detail(c)
       when 'auction24.by' then Src.a24_detail(html)
       when 'butb.by' then Src.bu_detail(html)
       when 'gostorg.by' then Src.gs_detail(html)
+      when 'bankrot-torg.by', 'specrealization.by' then Src.vl_detail(c['platform'], html)
       else Src.bt_detail(html)
       end
-  sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2, 'minskestate.by' => 1, 'auction24.by' => 1, 'butb.by' => 1, 'gostorg.by' => 1 }[c['platform']] || 0.4)
+  sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2, 'minskestate.by' => 1, 'auction24.by' => 1, 'butb.by' => 1, 'gostorg.by' => 1,
+          'bankrot-torg.by' => 1, 'specrealization.by' => 1 }[c['platform']] || 0.4)
   d
 end
 
@@ -329,6 +336,11 @@ end
           else
             next if NEW_CAP[c['platform']] && mx.synchronize { (new_left[c['platform']] -= 1).negative? }   # остальные — в следующий прогон
             d = fetch_detail(c) or next
+            # не наш раздел или прямая продажа (bankrot-torg: раздел виден только в карточке) — запоминаем и больше не открываем
+            if d['skip']
+              mx.synchronize { closed[c['key']] = now }
+              next
+            end
             # butb: точный раздел — по категории в карточке лота (в списке — догадка по названию); порог цены — по нему
             if d['sec'] && d['sec'] != sec
               sec = d['sec']
@@ -455,6 +467,9 @@ def fetch_result(l)
   when 'gostorg.by'
     sleep 1
     (html = Src.get(l['url'])) ? [Res.gs_result(html), {}] : [nil, {}]
+  when 'bankrot-torg.by', 'specrealization.by'
+    sleep 1
+    (html = Src.get(l['url'])) ? [Res.vl_result(html), {}] : [nil, {}]
   else [nil, {}]
   end
 rescue StandardError => e
