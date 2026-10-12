@@ -122,6 +122,14 @@ end
 hung = runs.find { |r| r['finished_at'].nil? && now - Time.parse(r['at']) > 90 * 60 && now - Time.parse(r['at']) < 24 * 3600 }
 found << { 'fp' => 'robot-hung', 'title' => 'Прогон робота завис', 'detail' => "начат #{Time.parse(hung['at']).getlocal('+03:00').strftime('%d.%m %H:%M')}, отчёта нет" } if hung
 
+# ── адрес, по которому не определилась область (regions.rb): такой лот не найти фильтром «Регион» — поправить адрес в админке ──
+nr = Sb.get('lots?status=eq.active&reasons=cs.%7Bno_city%7D&select=location&limit=200')
+unless nr.empty?
+  found << { 'fp' => 'no-region', 'title' => "Не определилась область по адресу, лотов: #{nr.size}",
+             'detail' => nr.first(5).map { |l| l['location'].to_s.strip.empty? ? 'адрес пустой' : l['location'].to_s[0, 60] }.join('; ') +
+                         ' — поправьте адрес лота в админке (Проверка → «На сайте с замечаниями»)' }
+end
+
 # ── Telegram-бот лотов ──
 bot = Sb.get('bot_runs?select=at,errors&order=at.desc&limit=1').first
 if bot

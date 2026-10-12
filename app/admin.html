@@ -253,7 +253,7 @@ const PLAT_RU = {'e-auction.by':'e-auction.by (БелЮрОбеспечение)
 const SECS = [['nedvizhimost','Недвижимость'],['avto','Легковые авто'],['gruz','Грузовые и автобусы'],['spec','Спецтехника'],['oborud','Оборудование'],['arenda','Право аренды']];
 const SEC_RU = Object.fromEntries(SECS);
 const MIN_DEF = {oborud:3000};
-const REASON = {no_photo:'нет фото', no_price:'нет цены', no_city:'нет города', rule_deadline:'срок заявок по правилу (извещение — скан)', dup_maybe:'похож на лот другой площадки'};
+const REASON = {no_photo:'нет фото', no_price:'нет цены', no_city:'не определилась область — поправьте адрес', rule_deadline:'срок заявок по правилу (извещение — скан)', dup_maybe:'похож на лот другой площадки'};
 const HIDDEN = {mod:'ждёт проверки', hidden:'скрыт вами', dup:'склеен с другим лотом', plat_off:'площадка выключена', sec_off:'раздел выключен'};
 const TRIG = {schedule:'по расписанию', admin:'из админки', push:'обновление кода', workflow_dispatch:'вручную на GitHub', manual:'вручную', setup:'подключение админки'};
 // разделы, которые читает Telegram-бот (tgbot.rb, SECTIONS)

@@ -250,7 +250,7 @@ active.each do |l|
   r = []
   r << 'no_photo' unless l['photo'] || l['phx'] || l['platform'] == 'mgcn.by'   # МГЦН фото не публикует вовсе — не замечание
   r << 'no_price' unless l['price'].to_f.positive?
-  r << 'no_city' if l['location'].to_s.strip.empty?
+  r << 'no_city' if l['location'].to_s.strip.empty? || l['region'].to_s.empty?   # нет адреса или по нему не определилась область
   # konfiskat: извещение — скан, срок заявок поставлен по правилу организатора
   if l['platform'] == 'konfiskat.by' && Store.details(l['key']).any? { |s| s['rows'].any? { |_, v| v.to_s.include?('по правилу организатора') } }
     r << 'rule_deadline'
