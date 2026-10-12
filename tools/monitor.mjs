@@ -6,7 +6,7 @@
 // пустая» на телефоне); пустая страница; у лота нет подробностей, фото или итогов; мало лотов; сайт давно не обновлялся.
 import puppeteer from 'puppeteer-core';
 
-const BASE = process.env.SITE || 'https://ringo2122.github.io/monitorg/';
+const BASE = process.env.SITE || 'https://monitorg.by/';
 const CHROME = process.env.CHROME || '/usr/bin/google-chrome';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const VIEWS = [
