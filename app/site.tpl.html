@@ -836,6 +836,9 @@ applyTheme(window.THEME);
     .fapply{display:block;position:sticky;bottom:0;margin-top:auto;padding:12px 16px;background:var(--card);
       border-top:1px solid var(--hair)}
     .fapply .btn{width:100%}
+    .filters>*{flex-shrink:0}   /* Safari сжимал содержимое выдвижной панели — кнопки площадок налезали друг на друга */
+    #tb .fsel{display:flex;flex-wrap:wrap;gap:6px;width:100%;align-items:center}   /* #tb — сильнее общего .fsel{display:none} ниже */
+    .fsel .pchip:after{content:"✕";margin-left:2px;font-size:11px;color:var(--ink-3)}
     .rows{grid-template-columns:1fr}
     .rows>.k{padding-bottom:0;border-bottom:0;font-size:12.5px}
     .lotname{font-size:21px}
@@ -1057,8 +1060,11 @@ applyTheme(window.THEME);
   .pchips{display:flex;flex-wrap:wrap;gap:6px}
   .pchip{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border:1px solid var(--hair-2);border-radius:14px;background:var(--card);
     color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}
-  .pchip:hover{border-color:var(--pc,var(--brand))}
+  /* наведение — только где есть мышь: на телефоне «залипало» после касания, и снятая площадка выглядела выбранной */
+  @media (hover:hover){ .pchip:hover{border-color:var(--pc,var(--brand))} }
   .pchip.on{border-color:var(--pc,var(--brand));box-shadow:inset 0 0 0 1px var(--pc,var(--brand));font-weight:700}
+  /* телефон: выбранные площадки — строкой под «Фильтрами» (панель закрыта — иначе выбор не видно), касание — снять */
+  .fsel{display:none}
   /* ── календарь торгов на главной ── */
   .cal{background:var(--card);border:1px solid var(--hair);border-radius:16px;box-shadow:var(--sh);padding:18px;position:relative}
   .cal-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
@@ -1665,7 +1671,9 @@ function dd(sel){
 function filterPanel(list, f, sc){
   const arch = f.st==='arch', src = arch ? (ARCH||[]) : DATA;
   const regions=[...new Set(list.map(l=>l.region).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
-  const plats=[...new Set(list.flatMap(l=>l.alt?l.alt.map(a=>a.platform):[l.platform]))].sort();
+  // выбранные площадки — всегда видны, даже если в этом разделе их лотов нет (выбор переносится между разделами:
+  // раньше он оставался невидимым — «Найдено 0» без видимой причины)
+  const plats=[...new Set(list.flatMap(l=>l.alt?l.alt.map(a=>a.platform):[l.platform]).concat(String(f.plat||'').split(',').filter(Boolean)))].sort();
   const nA = sc ? DATA.filter(l=>inScope(l, sc)).length : DATA.length, nX = sc ? (ARCHN.tree||{})[scPath(sc)]||0 : ARCHN['_']||0;
   const top = sc && catTop(sc.top);
   return `<aside class="panel filters" id="fp">
@@ -1817,7 +1825,10 @@ function pageCatalog(sc, params){
     $('#tb').innerHTML = `<button class="btn fbtn" id="f-open" type="button">Фильтры${nf_?' · '+nf_:''}</button>
       <span class="cnt">${arch?'В архиве':'Найдено'} <b>${nf(list.length)}</b> ${plural(list.length,'лот','лота','лотов')}${list.length!==base.length?` из ${nf(base.length)}`:''}</span>
       ${arch||!UB?'':`<button class="btn ssave" id="f-save" type="button" title="Новые лоты по этому поиску будут приходить в личный кабинет">${IC.save}<span>Сохранить поиск</span></button>`}
-      <select id="f-sort" aria-label="Сортировка">${sorts.map(([v,t])=>`<option value="${v}"${cur===v?' selected':''}>${t}</option>`).join('')}</select>`;
+      <select id="f-sort" aria-label="Сортировка">${sorts.map(([v,t])=>`<option value="${v}"${cur===v?' selected':''}>${t}</option>`).join('')}</select>
+      ${FSTATE.plat?`<div class="fsel">${String(FSTATE.plat).split(',').map(p=>`<button type="button" class="pchip on ${pslug(p)}" data-p="${esc(p)}" title="Убрать площадку"><i class="pdot"></i>${esc(p)}</button>`).join('')}</div>`:''}`;
+    document.querySelectorAll('#tb .fsel .pchip').forEach(b=>b.onclick = () => {
+      FSTATE.plat = String(FSTATE.plat).split(',').filter(p=>p!==b.dataset.p).join(','); drawPanel(); render(); });
     $('#f-sort').onchange = e => { FSTATE.sort = e.target.value; render(); };
     dd($('#f-sort'));
     const sv = $('#f-save'); if(sv) sv.onclick = () => saveSearch(sc);
