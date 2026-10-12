@@ -36,6 +36,8 @@ WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfis
 # Новых карточек за прогон — не больше NEW_CAP (первый обход — ≈ 600 карточек, ≈ 3 с каждая); закрытые запоминаем
 # в data/closed.json и больше не открываем.
 NEW_CAP = { 'gostorg.by' => 250, 'torgi.gov.by' => 200 }.freeze   # torgi.gov.by: на новый лот — запрос продавца, API ограничивает частоту
+# имущество не в Беларуси («Нерезидент РБ, г. Москва» у beltorgi) — не берём; «ул. Смоленская», «Москвич», «Литвенский с/с» — не то
+ABROAD = /Нерезидент|Российская Федерация|(?<![А-Яа-я])(?:Россия|РФ|Украина|Литва|Латвия|Польша|Казахстан)(?![А-Яа-я])|г\.\s*(?:Москва|Санкт-Петербург)(?![а-я])|(?:Московская|Ленинградская|Смоленская|Брянская|Псковская) обл/
 CLOSED_FILE = File.join(Store::DATA, 'closed.json')   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
 MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
 # Настройки из админки: выключенные площадки не обходим, минимальная цена по разделам — своя.
@@ -366,6 +368,10 @@ end
               next if min.positive? && d['price_byn'].to_f.positive? && d['price_byn'] < min
             end
             rec = new_lot(c, sec, d, src, now)
+            if rec['location'] =~ ABROAD
+              mx.synchronize { closed[c['key']] = now }
+              next
+            end
             unless rec['req_to'].to_i > now
               mx.synchronize { closed[c['key']] = rec['req_to'].to_i.positive? ? rec['req_to'] : now } if NEW_CAP[c['platform']]
               next
@@ -563,9 +569,10 @@ end
 
 cut = now - RETAIN_DAYS * 86_400
 db.delete_if do |k, l|
-  next false unless l['status'] == 'archive' && l['closed'].to_i < cut
+  abroad = l['location'].to_s =~ ABROAD   # в том числе пришедшие из архива площадок
+  next false unless abroad || (l['status'] == 'archive' && l['closed'].to_i < cut)
   [Store.det_path(k), Store.ph_path(k)].each { |f| File.delete(f) if File.exist?(f) }
-  stat['удалено из архива'] += 1
+  stat[abroad ? 'не в Беларуси — удалено' : 'удалено из архива'] += 1
   true
 end
 
