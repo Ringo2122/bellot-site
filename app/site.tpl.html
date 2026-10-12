@@ -936,6 +936,7 @@ applyTheme(window.THEME);
   .ltabs a.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(24,24,27,.1)}
   .fhint{font-size:12px;color:var(--ink-3);margin-top:4px}.fhint.ok{color:#2e7d32}.fhint.bad{color:#c0392b}
   .fg label .opt{text-transform:none;letter-spacing:0;font-weight:400}
+  .fg label .req{color:var(--brand);margin-left:2px}   /* обязательное поле заявки — звёздочка */
   .fg input.code{font-size:22px;letter-spacing:6px;text-align:center;font-weight:700;padding:10px}
   .login-card .lrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:13.5px}
   .login-card .lrow .lnk:disabled{color:var(--ink-3);cursor:default}
@@ -2447,11 +2448,11 @@ function pageHelp(params){
         <p class="note" style="margin:0 0 14px">Перезвоним, ответим на вопросы по лоту и предложим, чем помочь.</p>
         <form id="hf" novalidate>
           ${lotRec?`<p class="note" style="margin:0 0 12px">Лот: <a href="#/lot/${encodeURIComponent(lotRec.id)}">${esc(lotRec.name.slice(0,90))}</a></p>`:''}
-          <div class="fg"><label for="h-name">Имя</label><input id="h-name" autocomplete="name" value="${esc(mine('name'))}" required></div>
-          <div class="fg"><label for="h-phone">Номер телефона</label><input id="h-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00" value="${esc(mine('phone'))}" required></div>
-          <div class="fg"><label for="h-mail">Email <small>необязательно</small></label><input id="h-mail" type="email" autocomplete="email" value="${esc(mine('email'))}"></div>
-          <div class="fg"><label for="h-lot">Номер лота <small>необязательно</small></label><input id="h-lot" value="${esc(lot)}" placeholder="например, 34950"></div>
-          <div class="fg"><label for="h-svc">Что нужно <small>необязательно</small></label><select id="h-svc"><option value="">Пока не знаю — нужна консультация</option>
+          <div class="fg"><label for="h-name">Имя<span class="req" aria-hidden="true">*</span></label><input id="h-name" autocomplete="name" value="${esc(mine('name'))}" required aria-required="true"></div>
+          <div class="fg"><label for="h-phone">Номер телефона<span class="req" aria-hidden="true">*</span></label><input id="h-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00" value="${esc(mine('phone'))}" required aria-required="true"></div>
+          <div class="fg"><label for="h-mail">Email</label><input id="h-mail" type="email" autocomplete="email" value="${esc(mine('email'))}"></div>
+          <div class="fg"><label for="h-lot">Номер лота</label><input id="h-lot" value="${esc(lot)}" placeholder="например, 34950"></div>
+          <div class="fg"><label for="h-svc">Что нужно</label><select id="h-svc"><option value="">Пока не знаю — нужна консультация</option>
             ${svcList().map(([,t])=>`<option${t===svc?' selected':''}>${esc(t)}</option>`).join('')}</select></div>
           <input class="hp" id="h-web" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
           <div class="ferr" id="h-err"></div>
@@ -3490,13 +3491,13 @@ async function meOrderForm(M, params){
         <option value="_other">Другой лот — укажу номер или ссылку</option></select>
         ${opts.length ? '' : '<small class="muted">В списке — лоты из вашего избранного.</small>'}</div>
       <div class="fg" id="o-oth" hidden><label for="o-num">Номер или ссылка на лот</label><input id="o-num" placeholder="например, 34950 или ссылка на площадку"></div>
-      <div class="fg"><label for="o-msg">Что нужно сделать <small>необязательно</small></label>
+      <div class="fg"><label for="o-msg">Что нужно сделать</label>
         <textarea id="o-msg" rows="4" placeholder="Например: проверить обременения и съездить на осмотр до пятницы. Удобно созвониться после 18:00."></textarea></div>
       <h2>Контакты</h2>
       <div class="me-form">
-        <div class="fg"><label for="o-name">Имя</label><input id="o-name" autocomplete="name" value="${esc(mine('name'))}"></div>
-        <div class="fg"><label for="o-phone">Телефон</label><input id="o-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00" value="${esc(mine('phone'))}"></div>
-        <div class="fg"><label for="o-mail">Email <small>необязательно</small></label><input id="o-mail" type="email" autocomplete="email" value="${esc(mine('email'))}"></div></div>
+        <div class="fg"><label for="o-name">Имя<span class="req" aria-hidden="true">*</span></label><input id="o-name" autocomplete="name" value="${esc(mine('name'))}" required aria-required="true"></div>
+        <div class="fg"><label for="o-phone">Телефон<span class="req" aria-hidden="true">*</span></label><input id="o-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00" value="${esc(mine('phone'))}" required aria-required="true"></div>
+        <div class="fg"><label for="o-mail">Email</label><input id="o-mail" type="email" autocomplete="email" value="${esc(mine('email'))}"></div></div>
       <label class="chk"><input type="checkbox" id="o-keep"${mine('name') && mine('phone') ? '' : ' checked'}> Сохранить контакты в профиле — чтобы не вводить снова</label>
       <div class="ferr" id="o-err"></div>
       <button class="btn pri" type="submit">Отправить заявку</button>
