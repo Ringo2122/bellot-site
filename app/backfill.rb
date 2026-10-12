@@ -11,6 +11,10 @@
 #   auction24.by  список аукционов /auction (от поздних к ранним) → страницы аукционов за месяц → завершённые лоты
 #   lotsale.by    API завершённых торгов /auctions/public/completed (от поздних к ранним)
 #   butb.by       «Архив торгов» биржи (archiveAuctions.xhtml) страницами по 100, от поздних торгов к ранним
+#   площадки от 10.10 (решение Артёма 12.10 — архив на ARCH_DAYS: 9 месяцев, torgi.gov.by — 2 месяца):
+#   bankrot-torg.by страницы лотов по номерам вниз от последнего; specrealization.by — список, он продолжается завершёнными;
+#   torgi.gov.by API с завершёнными состояниями; etpvit.by «Завершённые» (?type=f); expert-torgi.by, realtorgi.by — список
+#   со статусами; iintorgi.by API со статусами завершённых торгов
 # mgcn.by (очные аукционы МГЦН) — итогов онлайн нет, архив площадки не собираем
 # Правила те же, что для новых лотов: разделы площадок, минимальная цена по разделу, выключенные площадки.
 # За прогон — не больше BACK_CAP лотов с площадки и не дольше BACK_MIN минут: первый месяц загрузится
@@ -32,7 +36,11 @@
 # Площадка, чей список пройден до конца за отведённое время, отмечается в data/backfill_year.json и больше не обходится.
 YEAR_ARCH = !ENV['YEAR_ARCH'].to_s.empty?
 YEAR_DONE = File.join(Store::DATA, 'backfill_year.json')
-YEAR_PLATS = %w[e-auction.by ipmtorgi.by beltorgi.by konfiskat.by minskestate.by auction24.by lotsale.by butb.by].freeze
+YEAR_PLATS = %w[e-auction.by ipmtorgi.by beltorgi.by konfiskat.by minskestate.by auction24.by lotsale.by butb.by
+                bankrot-torg.by specrealization.by torgi.gov.by etpvit.by expert-torgi.by realtorgi.by iintorgi.by].freeze
+# глубина архива, дней (по умолчанию — BACK_DAYS): torgi.gov.by за 2 месяца ≈ 5–8 тыс. торгов в год — почти все «не состоялись»
+ARCH_DAYS = { 'bankrot-torg.by' => 274, 'specrealization.by' => 274, 'etpvit.by' => 274, 'expert-torgi.by' => 274,
+              'realtorgi.by' => 274, 'iintorgi.by' => 274, 'torgi.gov.by' => 61 }.freeze
 YEAR_PH = [320, 40].freeze   # ширина и качество главного фото
 YEAR_PICS = 5
 YEAR_KF_DAYS = 90
@@ -96,7 +104,114 @@ def backfill(db, stat, pstat, now)
       pstat[rec['platform']]['backfill'] += 1
     end
   end
+  since_of = ->(plat) { [since, now - ARCH_DAYS.fetch(plat, BACK_DAYS) * 86_400].max }
+  # bankrot-torg, specrealization: от поздних к ранним; раздел, дата и итог — со страницы лота; 30 старых подряд — дальше старше
+  vl_back = lambda do |plat, left|
+    sn = since_of.(plat)
+    old = 0
+    Src.vl_archive(plat).each do |c|
+      break if left.zero? || Time.now > stop || old >= 30
+      next if known.(c['key'])
+      case skipped.(c['key'])
+      when 'old', 'old-y' then old += 1; next
+      when nil then nil
+      else next
+      end
+      sleep 1
+      html = Src.get(c['url']) or next
+      d = Src.vl_detail(plat, html)
+      next drop.(c['key'], 'none') if d.nil? || d['skip']   # не наш раздел, прямая продажа или страницы нет
+      if (d['torg'] || d['req_to']).to_i < sn
+        old += 1
+        next drop.(c['key'], old_tag)
+      end
+      old = 0
+      next if YEAR_ARCH && d['sec'] == 'oborud'
+      r = Res.vl_result(html)
+      next if r['st'] == 'pending'
+      next drop.(c['key'], 'min') unless back_min_ok?(d['sec'], r['start'] || d['price_byn'])
+      c['name'] ||= d['name']
+      add.(back_rec(c, d['sec'], d, r, "#{plat} архив", now), d, [d['photo_url'], c['thumb']])
+      left -= 1
+    end
+  end
+  # expert-torgi, realtorgi: список — вся история со статусами, от поздних к ранним; дата — со страницы лота
+  jm_back = lambda do |plat, left|
+    sn = since_of.(plat)
+    old = 0
+    (Src.jm_list(plat) || []).each do |c|
+      break if left.zero? || Time.now > stop || old >= 10
+      next if c['status'] =~ /Предстоящ|Прием|Идут/ || known.(c['key']) || (YEAR_ARCH && c['sec'] == 'oborud')
+      case skipped.(c['key'])
+      when 'old', 'old-y' then old += 1; next
+      when nil then nil
+      else next
+      end
+      sleep 1
+      html = Src.get(c['url']) or next
+      d = Src.jm_detail(plat, html) or next
+      if (d['torg'] || d['req_to']).to_i < sn
+        old += 1
+        next drop.(c['key'], old_tag)
+      end
+      old = 0
+      r = Res.jm_result(html)
+      next if r['st'] == 'pending'
+      next drop.(c['key'], 'min') unless back_min_ok?(c['sec'], r['start'] || c['price'])
+      add.(back_rec(c, c['sec'], d, r, "#{plat} архив", now), d, [d['photo_url'], c['thumb']])
+      left -= 1
+    end
+  end
   jobs = {
+    'bankrot-torg.by' => ->(left) { vl_back.('bankrot-torg.by', left) },
+    'specrealization.by' => ->(left) { vl_back.('specrealization.by', left) },
+    'expert-torgi.by' => ->(left) { jm_back.('expert-torgi.by', left) },
+    'realtorgi.by' => ->(left) { jm_back.('realtorgi.by', left) },
+    'torgi.gov.by' => lambda do |left|
+      # итог и продавец — с одной страницы аукциона; API отвечает 429 на частые запросы — пауза 3 с
+      Src.tg_done(since_of.('torgi.gov.by')).each do |c|
+        break if left.zero? || Time.now > stop
+        next if known.(c['key']) || skipped.(c['key']) || (YEAR_ARCH && c['sec'] == 'oborud')
+        next drop.(c['key'], 'min') unless back_min_ok?(c['sec'], c['price'])
+        a = Src.tg_json("/auctions/#{c['auc']}/lot/#{c['art']}/public")
+        sleep 3
+        next unless a
+        r = Res.tg_result(a, c['art'])
+        next if r['st'] == 'pending'
+        d = Src.tg_detail(c, a)
+        add.(back_rec(c, c['sec'], d, r, 'torgi.gov.by архив', now), d, [d['photo_url']])
+        left -= 1
+      end
+    end,
+    'etpvit.by' => lambda do |left|
+      Src.ev_list(since_of.('etpvit.by')).each do |c|
+        break if left.zero? || Time.now > stop
+        next if known.(c['key']) || skipped.(c['key']) || !c['eid'] || (YEAR_ARCH && c['sec'] == 'oborud')
+        sleep 1
+        info = Res.ea_info(c['eid'], Src::EV)
+        r = Res.ea_result(info) or next
+        next if r['st'] == 'pending'
+        next drop.(c['key'], 'min') unless back_min_ok?(c['sec'], r['start'] || c['price'])
+        html = Src.get(c['url']) or next
+        d = Src.ev_detail(html) or next
+        rec = back_rec(c, c['sec'], d, r, 'etpvit.by архив', now)
+        rec['eid'] = c['eid']
+        rec['torg'] = Res.ea_torg(info) || rec['torg']
+        add.(rec, d, [d['photo_url'], c['thumb']])
+        left -= 1
+      end
+    end,
+    'iintorgi.by' => lambda do |left|
+      Src.ii_done(since_of.('iintorgi.by')).each do |c, x|
+        break if left.zero? || Time.now > stop
+        next if known.(c['key']) || skipped.(c['key']) || (YEAR_ARCH && c['sec'] == 'oborud')
+        r = Res.ii_result(x)
+        next if r['st'] == 'pending'
+        next drop.(c['key'], 'min') unless back_min_ok?(c['sec'], r['start'] || c['price'])
+        add.(back_rec(c, c['sec'], c['d'], r, 'iintorgi.by архив', now), c['d'], [c['d']['photo_url']])
+        left -= 1
+      end
+    end,
     'e-auction.by' => lambda do |left|
       PLAN['e-auction.by'].each do |path, sec|
         break if left.zero? || Time.now > stop

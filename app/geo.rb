@@ -85,7 +85,8 @@ module Geo
   def run(db, stat, stop)
     cache = File.exist?(CACHE) ? (JSON.parse(File.read(CACHE, encoding: 'UTF-8')) rescue {}) : {}
     asked = 0
-    no_reg = db.values.select { |l| l['status'] == 'active' && l['platform'] != 'konfiskat.by' && region_of(l['location']).empty? }
+    # и архив: лоты из архива площадок («г. п. Логишин») — тоже в фильтре «Регион»
+    no_reg = db.values.select { |l| l['platform'] != 'konfiskat.by' && region_of(l['location']).empty? }
     keys = no_reg.map { |l| place_key(l['location']) }.compact.uniq.reject { |k| place_reg.key?(k) }
     keys.each do |k|
       break if asked >= CAP || Time.now > stop

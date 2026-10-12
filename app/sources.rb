@@ -1066,18 +1066,20 @@ module Src
     s == 'nedvizhimost' && title.to_s =~ /право (заключения договора )?аренды|право аренды/i ? 'arenda' : s
   end
 
+  def vl_card(plat, x, sec)
+    host = VL[plat]
+    { 'key' => "#{VL_KEY[plat]}-#{x['id']}", 'platform' => plat, 'art' => (x['number'] || x['id']).to_s,
+      'name' => x['title'].to_s.gsub(/\s+/, ' ').strip, 'url' => "#{host}/auctions/show/#{x['id']}", 'sec' => sec,
+      'price' => x['start_price'].to_f, 'req_to' => vl_t(x['date_end_requests']), 'status' => x['status'],
+      'thumb' => (i = (x['images'] || [x['image']]).compact.first) && (i =~ /\Ahttps?:/ ? i : "#{host}/storage/#{i}") }
+  end
+
   # активные лоты: nil — список не прочитан
   def vl_list(plat)
     host = VL[plat]
-    card = lambda do |x, sec|
-      { 'key' => "#{VL_KEY[plat]}-#{x['id']}", 'platform' => plat, 'art' => (x['number'] || x['id']).to_s,
-        'name' => x['title'].to_s.gsub(/\s+/, ' ').strip, 'url' => "#{host}/auctions/show/#{x['id']}", 'sec' => sec,
-        'price' => x['start_price'].to_f, 'req_to' => vl_t(x['date_end_requests']), 'status' => x['status'],
-        'thumb' => (i = (x['images'] || [x['image']]).compact.first) && (i =~ /\Ahttps?:/ ? i : "#{host}/storage/#{i}") }
-    end
     if plat == 'bankrot-torg.by'
       pr = vl_props("#{host}/auctions") or return nil
-      return pr['list']['data'].map { |x| card.(x, nil) }   # раздела в списке нет — он в карточке лота
+      return pr['list']['data'].map { |x| vl_card(plat, x, nil) }   # раздела в списке нет — он в карточке лота
     end
     out = []
     (1..40).each do |p|
@@ -1085,11 +1087,31 @@ module Src
       return nil if pr.nil? && p == 1
       items = (pr || {})['list'] || []
       break if items.empty?
-      items.each { |x| (s = vl_sec(x['category'], x['title'])) && x['type'] !~ /прям/i and out << card.(x, s) }
+      items.each { |x| (s = vl_sec(x['category'], x['title'])) && x['type'] !~ /прям/i and out << vl_card(plat, x, s) }
       break if items.all? { |x| vl_t(x['date_bargains']).to_i < Time.now.to_i - 3 * 86_400 }   # дальше — только завершённые
       sleep 1
     end
     out.uniq { |c| c['key'] }
+  end
+
+  # завершённые торги для архива (backfill.rb), от поздних к ранним. specrealization: список продолжается завершёнными;
+  # bankrot-torg: в списке только идущие — завершённые по номерам страниц /auctions/show/N вниз от последнего
+  # (номера идут по времени: 12.10 — № 4800, год назад — ≈ 2800). Раздел, дата и итог — со страницы лота.
+  def vl_archive(plat)
+    host = VL[plat]
+    Enumerator.new do |y|
+      if plat == 'bankrot-torg.by'
+        top = (((vl_props("#{host}/auctions") || {})['list'] || {})['data'] || []).map { |x| x['id'].to_i }.max
+        top&.downto(1) { |id| y << { 'key' => "bk-#{id}", 'platform' => plat, 'art' => id.to_s, 'url' => "#{host}/auctions/show/#{id}" } }
+      else
+        (1..400).each do |p|
+          items = (vl_props("#{host}/auctions?page=#{p}") || {})['list'] || []
+          break if items.empty?
+          items.each { |x| (s = vl_sec(x['category'], x['title'])) && x['type'] !~ /прям/i and y << vl_card(plat, x, s) }
+          sleep 1
+        end
+      end
+    end
   end
 
   def vl_detail(plat, html)
@@ -1220,11 +1242,31 @@ module Src
     out.uniq { |c| c['key'] }
   end
 
-  # продавец, шаг торгов, сроки договора и оплаты — со страницы аукциона (один запрос на новый лот)
-  def tg_detail(c)
+  # завершённые торги (backfill.rb): «торги прошли», «продан», «не продан», «продан на аукционе» (state 6, 7, 9, 17);
+  # список — от поздних торгов к ранним
+  TG_DONE = '6,7,9,17'
+  def tg_done(since)
+    Enumerator.new do |y|
+      TG_SEC.each do |cat, sec|
+        (0..300).each do |p|
+          r = tg_json("/lots?page=#{p}&pagesize=30&state=#{TG_DONE}&category=#{cat}") or break
+          lots = r['lots'] || []
+          lots.each { |l| y << tg_card(l, sec) unless l['deleted'] || l['ads'] || tg_t(l['auctionStart']).to_i < since }
+          sleep 3
+          break if lots.size < 30 || lots.map { |l| tg_t(l['auctionStart']).to_i }.max < since
+        end
+      end
+    end
+  end
+
+  # продавец, шаг торгов, сроки договора и оплаты — со страницы аукциона (один запрос на новый лот;
+  # архив передаёт её готовой — по ней же итог)
+  def tg_detail(c, a = nil)
     d = c['d'] || {}
-    a = tg_json("/auctions/#{c['auc']}/lot/#{c['art']}/public") or return d
-    sleep 2
+    unless a
+      a = tg_json("/auctions/#{c['auc']}/lot/#{c['art']}/public") or return d
+      sleep 2
+    end
     seller = (a['organizer'] || {})['fullName'].to_s.strip
     rows = [['Шаг торгов', a['step'].to_i.positive? ? "#{a['step']} %" : nil], ['Срок заключения договора', a['contractTimeout'].to_i.positive? ? "#{a['contractTimeout']} дней" : nil],
             ['Срок оплаты', a['paymentTimeout'].to_i.positive? ? "#{a['paymentTimeout']} дней" : nil],
@@ -1255,27 +1297,32 @@ module Src
   end
 
   # nil — какой-то раздел не прочитан
-  def ev_list
+  def ev_cards(html, sec)
+    html.split('class="product-item column').drop(1).map do |ch|
+      ch = ch[0, 6000]
+      href = ch[/href="(\/[^"]+)"/, 1]
+      art = txt(ch[/class="product_art"[^>]*>(.*?)<\/div>/m, 1])
+      next nil if href.nil? || art.empty?
+      name = txt(ch[/class="text-header">(.*?)<\/div>/m, 1])
+      { 'key' => "ev-#{art}", 'platform' => 'etpvit.by', 'art' => art, 'name' => name, 'url' => EV + href,
+        'sec' => sec || ev_sec(href, name), 'price' => ch[/data-price="([0-9.]+)"/, 1].to_f,
+        'req_to' => ch[/data-endrequest="(\d+)"/, 1].to_i, 'eid' => ch[/product-id="(\d+)"/, 1],
+        'kind' => txt(ch[/class="lot-type[^"]*"[^>]*>(.*?)<\/span>/m, 1]),
+        'thumb' => (u = ch[/<img src="(\/upload\/[^"]+)"/, 1]) && EV + u }
+    end.compact
+  end
+
+  # done — вкладка «Завершённые» (?type=f, как у e-auction) с торгами не раньше done (backfill.rb)
+  def ev_list(done = nil)
     out = []
     EV_PLAN.each do |path, sec|
-      (1..10).each do |p|
-        html = get("#{EV}#{path}?limit=100" + (p > 1 ? "&PAGEN_1=#{p}" : '')) or return nil
-        cards = html.split('class="product-item column').drop(1).map do |ch|
-          ch = ch[0, 6000]
-          href = ch[/href="(\/[^"]+)"/, 1]
-          art = txt(ch[/class="product_art"[^>]*>(.*?)<\/div>/m, 1])
-          next nil if href.nil? || art.empty?
-          name = txt(ch[/class="text-header">(.*?)<\/div>/m, 1])
-          { 'key' => "ev-#{art}", 'platform' => 'etpvit.by', 'art' => art, 'name' => name, 'url' => EV + href,
-            'sec' => sec || ev_sec(href, name), 'price' => ch[/data-price="([0-9.]+)"/, 1].to_f,
-            'req_to' => ch[/data-endrequest="(\d+)"/, 1].to_i, 'eid' => ch[/product-id="(\d+)"/, 1],
-            'kind' => txt(ch[/class="lot-type[^"]*"[^>]*>(.*?)<\/span>/m, 1]),
-            'thumb' => (u = ch[/<img src="(\/upload\/[^"]+)"/, 1]) && EV + u }
-        end.compact
+      (1..(done ? 30 : 10)).each do |p|
+        html = get("#{EV}#{path}?#{done ? 'type=f&' : ''}limit=100" + (p > 1 ? "&PAGEN_1=#{p}" : '')) or (done ? break : (return nil))
+        cards = ev_cards(html, sec)
         fresh = cards.reject { |c| out.any? { |o| o['key'] == c['key'] } }
-        out.concat(fresh)
+        out.concat(done ? fresh.select { |c| c['req_to'] >= done } : fresh)
         sleep 1
-        break if cards.size < 100 || fresh.empty?
+        break if cards.size < 100 || fresh.empty? || (done && fresh.map { |c| c['req_to'] }.max.to_i < done)
       end
     end
     out
@@ -1405,6 +1452,23 @@ module Src
   end
 
   # nil — список не прочитан
+  # завершённые торги (backfill.rb): [карточка, лот из API — по нему итог]
+  II_DONE = ['Торги состоялись', 'Покупка состоялась', 'Торги не состоялись', 'Отмененные торги'].freeze
+  def ii_done(since)
+    Enumerator.new do |y|
+      II_DONE.each do |st|
+        (1..40).each do |p|
+          q = URI.encode_www_form('auction_type' => 'no', 'status' => st, 'category' => 'Все', 'price_order' => 'no', 'city' => 'Город', 'page_size' => 100, 'page' => p)
+          body = get("#{II}/admin/api/admin/lot?#{q}", min: 2) or break
+          d = (JSON.parse(body)['data'] rescue nil) or break
+          (d['data'] || []).each { |x| (c = ii_card(x)) && (c['d']['torg'] || c['req_to']).to_i >= since and y << [c, x] }
+          sleep 1
+          break if p >= d['last_page'].to_i
+        end
+      end
+    end
+  end
+
   def ii_list
     out = []
     II_ST.each do |st|
