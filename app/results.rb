@@ -47,9 +47,10 @@ module Res
     html.to_s[/name="eid" value="(\d+)"/, 1]
   end
 
-  def ea_info(eid)
+  # host — e-auction.by или etpvit.by (тот же движок, тот же служебный запрос)
+  def ea_info(eid, host = Src::EA)
     out = IO.popen(['curl', '-sS', '-m', '30', '-A', Src::UA, '-H', 'X-Requested-With: XMLHttpRequest',
-                    "#{Src::EA}/local/include/ajax_auctions.php?type=get-info&eid=#{eid}"], err: File::NULL, &:read)
+                    "#{host}/local/include/ajax_auctions.php?type=get-info&eid=#{eid}"], err: File::NULL, &:read)
     JSON.parse(out.to_s.force_encoding('UTF-8'))['result']
   rescue JSON::ParserError, NoMethodError
     nil
@@ -293,6 +294,42 @@ module Res
               else 'failed'
               end
     r['price'] = w['summ'].to_i / 100.0 if w
+    r.reject { |_, v| v.nil? || v == 0 }
+  end
+
+  # ── expert-torgi.by, realtorgi.by ──
+  # «Статус:» на странице лота: «Продано», «Торги не состоялись», «Лот отменён», «Лот аннулирован»; «Текущая цена» — цена
+  # продажи, «Участников: N».
+  def jm_result(html)
+    t = Src.txt(html.to_s.gsub(/<script.*?<\/script>/m, ''))
+    st = t[/Статус:\s*(.{3,40}?)\s+Текущая цена/, 1].to_s
+    users = t[/Участников:\s*(\d+)/, 1].to_i
+    r = { 'v' => V, 'users' => users, 'start' => Src.num(t[/Начальная цена:\s*([\d\s.,]+?)\s*BYN/, 1]),
+          'at' => Src.ts(t[/Окончание торгов:\s*(\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})/, 1]) }
+    r['st'] = if st =~ /отмен/i then 'cancelled'
+              elsif st =~ /не состоял|аннулир/i then 'failed'
+              elsif st =~ /продан|состоял/i then users == 1 ? 'single' : 'sold'
+              else return { 'st' => 'pending' }
+              end
+    r['price'] = Src.num(t[/Текущая цена:\s*([\d\s.,]+?)\s*BYN/, 1]) if %w[sold single].include?(r['st'])
+    r.reject { |_, v| v.nil? || v == 0 }
+  end
+
+  # ── iintorgi.by ──
+  # /admin/api/admin/lot/<id>: status — «Торги состоялись», «Приобретен единственным участником», «Торги не состоялись»,
+  # «Отмененные торги», «Торги аннулированы»; price_current — цена продажи, users_count — участники.
+  def ii_result(x)
+    return { 'st' => 'pending' } unless x
+    st = x['status'].to_s
+    users = x['users_count'].to_i
+    r = { 'v' => V, 'start' => x['price_start'].to_f, 'users' => users, 'at' => (x['auction'] || {})['end_selling'].to_i }
+    r['st'] = if st =~ /отмен/i then 'cancelled'
+              elsif st =~ /единственн/i then 'single'
+              elsif st =~ /не состоял|аннулир/i then 'failed'
+              elsif st =~ /состоял/i then users == 1 ? 'single' : 'sold'
+              else return { 'st' => 'pending' }
+              end
+    r['price'] = x['price_current'].to_f if %w[sold single].include?(r['st'])
     r.reject { |_, v| v.nil? || v == 0 }
   end
 

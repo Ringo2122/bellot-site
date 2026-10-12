@@ -1055,9 +1055,12 @@ applyTheme(window.THEME);
   .p-mgcn{--pc:#1a4fc4} .p-belauction{--pc:#b8860b} .p-minskestate{--pc:#1c7182} .p-auction24{--pc:#6b5bd2}
   /* lotsale — оливковый (их фирменный); БУТБ — малиновый: их зелёный занят e-auction, золотой — belauction */
   .p-lotsale{--pc:#8a8f1c} .p-butb{--pc:#ad1457} .p-gostorg{--pc:#002c73}   /* gostorg — их тёмно-синий, темнее синего МГЦН */
-  .p-bankrottorg{--pc:#7b4b2a} .p-specrealization{--pc:#546e7a}   /* цвета временные — их всё равно уберём (решение Артёма 12.10) */
-  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .p-bankrottorg{--pc:#c99a72} :root:not([data-theme="light"]) .p-specrealization{--pc:#9fb3bd} }
-  :root[data-theme="dark"] .p-bankrottorg{--pc:#c99a72} :root[data-theme="dark"] .p-specrealization{--pc:#9fb3bd}
+  .p-bankrottorg{--pc:#7b4b2a} .p-specrealization{--pc:#546e7a} .p-torgi{--pc:#c79100} .p-etpvit{--pc:#00897b} .p-experttorgi{--pc:#6a1b9a} .p-realtorgi{--pc:#e65100} .p-iintorgi{--pc:#2e7d32}   /* цвета временные — их всё равно уберём (решение Артёма 12.10) */
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .p-bankrottorg{--pc:#c99a72} :root:not([data-theme="light"]) .p-specrealization{--pc:#9fb3bd}
+    :root:not([data-theme="light"]) .p-torgi{--pc:#f2c94c} :root:not([data-theme="light"]) .p-etpvit{--pc:#4db6ac}
+    :root:not([data-theme="light"]) .p-experttorgi{--pc:#ba68c8} :root:not([data-theme="light"]) .p-realtorgi{--pc:#ffa040} :root:not([data-theme="light"]) .p-iintorgi{--pc:#81c784} }
+  :root[data-theme="dark"] .p-bankrottorg{--pc:#c99a72} :root[data-theme="dark"] .p-specrealization{--pc:#9fb3bd} :root[data-theme="dark"] .p-torgi{--pc:#f2c94c} :root[data-theme="dark"] .p-etpvit{--pc:#4db6ac}
+  :root[data-theme="dark"] .p-experttorgi{--pc:#ba68c8} :root[data-theme="dark"] .p-realtorgi{--pc:#ffa040} :root[data-theme="dark"] .p-iintorgi{--pc:#81c784}
   @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .p-lotsale{--pc:#c3c94a} :root:not([data-theme="light"]) .p-butb{--pc:#f06292}
     :root:not([data-theme="light"]) .p-gostorg{--pc:#93a6cc} }
   :root[data-theme="dark"] .p-lotsale{--pc:#c3c94a} :root[data-theme="dark"] .p-butb{--pc:#f06292} :root[data-theme="dark"] .p-gostorg{--pc:#93a6cc}
@@ -1187,6 +1190,11 @@ applyTheme(window.THEME);
       <li><a href="https://gostorg.by" target="_blank" rel="noopener">GOSTORG (Институт недвижимости и оценки)</a></li>
       <li><a href="https://bankrot-torg.by" target="_blank" rel="noopener">БелБанкротАукцион</a></li>
       <li><a href="https://specrealization.by" target="_blank" rel="noopener">СпецРеализация</a></li>
+      <li><a href="https://torgi.gov.by" target="_blank" rel="noopener">Единая система электронных торгов (torgi.gov.by)</a></li>
+      <li><a href="https://etpvit.by" target="_blank" rel="noopener">ETPVIT (Витебский областной центр маркетинга)</a></li>
+      <li><a href="https://www.expert-torgi.by" target="_blank" rel="noopener">EXPERT ТОРГИ</a></li>
+      <li><a href="https://realtorgi.by" target="_blank" rel="noopener">Реалторги</a></li>
+      <li><a href="https://iintorgi.by" target="_blank" rel="noopener">ИИН Торги</a></li>
       <li><a href="https://bankrot.gov.by" target="_blank" rel="noopener">Реестр банкротств</a></li>
     </ul></div>
   </div>
@@ -2392,7 +2400,7 @@ function pageLot(id){
           <dl class="facts">
             <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
               :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
-            <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(l.off?' · очно':['e-auction.by','minskestate.by','lotsale.by','butb.by','gostorg.by','bankrot-torg.by','specrealization.by'].includes(l.platform)?' · онлайн':l.platform==='mgcn.by'?' · очно, г. Минск, ул. К. Маркса, 39':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
+            <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(l.off?' · очно':['e-auction.by','minskestate.by','lotsale.by','butb.by','gostorg.by','bankrot-torg.by','specrealization.by','torgi.gov.by','etpvit.by','expert-torgi.by','realtorgi.by','iintorgi.by'].includes(l.platform)?' · онлайн':l.platform==='mgcn.by'?' · очно, г. Минск, ул. К. Маркса, 39':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
             <dt>Регион</dt><dd>${esc(l.region||'—')}</dd>
             ${l.area_num?`<dt>Площадь</dt><dd>${nf(l.area_num)} м²</dd>`:''}
             <dt>${l.section==='arenda' ? 'Арендодатель' : ['minskestate.by','mgcn.by','lotsale.by','butb.by','gostorg.by'].includes(l.platform) ? 'Продавец' : 'Должник'}</dt><dd>${esc(l.debtor||'—')}</dd>

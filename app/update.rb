@@ -30,11 +30,12 @@ RETAIN_DAYS = (ENV['RETAIN_DAYS'] || 365).to_i
 MAXV = 800   # длинные значения (порядок оплаты, ответственность) обрезаем
 WORKERS = { 'e-auction.by' => 3, 'ipmtorgi.by' => 2, 'beltorgi.by' => 3, 'konfiskat.by' => 1, 'belauction.by' => 1,
             'minskestate.by' => 1, 'mgcn.by' => 1, 'auction24.by' => 1, 'lotsale.by' => 1, 'butb.by' => 1, 'gostorg.by' => 2,
-            'bankrot-torg.by' => 1, 'specrealization.by' => 1 }.freeze
+            'bankrot-torg.by' => 1, 'specrealization.by' => 1, 'torgi.gov.by' => 1, 'etpvit.by' => 1, 'expert-torgi.by' => 1, 'realtorgi.by' => 1,
+            'iintorgi.by' => 1 }.freeze
 # gostorg: срока заявок в списке нет, а лот висит в каталоге до дня торгов — 2/3 списка с уже закрытым приёмом заявок.
 # Новых карточек за прогон — не больше NEW_CAP (первый обход — ≈ 600 карточек, ≈ 3 с каждая); закрытые запоминаем
 # в data/closed.json и больше не открываем.
-NEW_CAP = { 'gostorg.by' => 250 }.freeze
+NEW_CAP = { 'gostorg.by' => 250, 'torgi.gov.by' => 200 }.freeze   # torgi.gov.by: на новый лот — запрос продавца, API ограничивает частоту
 CLOSED_FILE = File.join(Store::DATA, 'closed.json')   # belauction: пауза 2 с (Crawl-delay)   # konfiskat.by банит частые запросы
 MIN_PRICE = { 'oborud' => 3000 }.freeze   # в оборудовании много мелочи за сотни рублей
 # Настройки из админки: выключенные площадки не обходим, минимальная цена по разделам — своя.
@@ -96,7 +97,16 @@ PLAN = {
   'gostorg.by' => [['catalog', nil]],
   # bankrot-torg.by, specrealization.by: банкротство и ликвидация; раздел — по разделу площадки (vl_sec), не наши — пропускаем
   'bankrot-torg.by' => [['auctions', nil]],
-  'specrealization.by' => [['auctions', nil]]
+  'specrealization.by' => [['auctions', nil]],
+  # torgi.gov.by: открытый API, разделы — по категориям площадки (TG_SEC); весь лот — из списка, продавец — отдельным запросом
+  'torgi.gov.by' => [['lots', nil]],
+  # etpvit.by: движок e-auction; разделы — EV_PLAN, транспорт — по подразделу
+  'etpvit.by' => [['catalog', nil]],
+  # expert-torgi.by, realtorgi.by: шаблон JoomShopping (как minskestate), в списке и завершённые — новые берём только «Предстоящие»
+  'expert-torgi.by' => [['auctions', nil]],
+  'realtorgi.by' => [['auctions', nil]],
+  # iintorgi.by: открытый JSON, всё о лоте — в списке; «Изучение спроса» не берём
+  'iintorgi.by' => [['lots', nil]]
 }.freeze
 # Площадки, которые больше не собираем: их лоты удаляются из памяти вместе с подробностями и фото.
 # cpo.by (ЦПО) — рекламная витрина торгов ИПМ-Торгов, те же лоты (решение Артёма 25.09.2026)
@@ -129,12 +139,17 @@ def list(plat, path)
   when 'butb.by' then Src.bu_list
   when 'gostorg.by' then Src.gs_list
   when 'bankrot-torg.by', 'specrealization.by' then Src.vl_list(plat)
+  when 'torgi.gov.by' then Src.tg_list
+  when 'etpvit.by' then Src.ev_list
+  when 'expert-torgi.by', 'realtorgi.by' then Src.jm_list(plat)
+  when 'iintorgi.by' then Src.ii_list
   else Src.bt_list(path)
   end
 end
 
 def fetch_detail(c)
-  return c['d'] if %w[mgcn.by lotsale.by].include?(c['platform'])   # подробности уже прочитаны вместе со списком
+  return c['d'] if %w[mgcn.by lotsale.by iintorgi.by].include?(c['platform'])   # подробности уже прочитаны вместе со списком
+  return Src.tg_detail(c) if c['platform'] == 'torgi.gov.by'        # из списка + продавец со страницы аукциона
   html = Src.get(c['url']) or return nil
   d = case c['platform']
       when 'e-auction.by' then Src.ea_detail(html)
@@ -146,6 +161,8 @@ def fetch_detail(c)
       when 'butb.by' then Src.bu_detail(html)
       when 'gostorg.by' then Src.gs_detail(html)
       when 'bankrot-torg.by', 'specrealization.by' then Src.vl_detail(c['platform'], html)
+      when 'etpvit.by' then Src.ev_detail(html)
+      when 'expert-torgi.by', 'realtorgi.by' then Src.jm_detail(c['platform'], html)
       else Src.bt_detail(html)
       end
   sleep({ 'konfiskat.by' => 1.5, 'belauction.by' => 2, 'minskestate.by' => 1, 'auction24.by' => 1, 'butb.by' => 1, 'gostorg.by' => 1,
@@ -232,6 +249,7 @@ end
         next if plat == 'beltorgi.by' && !c['open']          # ещё не принимают заявки
         next if plat == 'minskestate.by' && c['status'] !~ /Приём заявок/   # в списке и завершённые — их берёт архив площадок
         next if plat == 'butb.by' && c['status'] !~ /Прием заявлений/       # и здесь: «Ожидание торгов», только что завершённые
+        next if %w[expert-torgi.by realtorgi.by].include?(plat) && c['status'] !~ /Предстоящ|Прием|Приём|Идут/i   # завершённые — для архива
         next if closed[c['key']] && !db[c['key']]                           # gostorg: приём заявок уже закрыт — карточку не открываем
         # у konfiskat в карточке — дата аукциона, заявки закрываются в 12:00 накануне: закрытые не качаем
         next if c['day'] && plat == 'konfiskat.by' && c['day'] - 12 * 3600 < Time.now.to_i
@@ -352,9 +370,9 @@ end
               mx.synchronize { closed[c['key']] = rec['req_to'].to_i.positive? ? rec['req_to'] : now } if NEW_CAP[c['platform']]
               next
             end
-            if plat == 'e-auction.by' && c['eid']
+            if %w[e-auction.by etpvit.by].include?(plat) && c['eid']
               rec['eid'] = c['eid']
-              t = Res.ea_torg(Res.ea_info(c['eid']))
+              t = Res.ea_torg(Res.ea_info(c['eid'], plat == 'etpvit.by' ? Src::EV : Src::EA))
               rec['torg'] = t if t
             end
             rec['tk'] = d['tk'] if d['tk']
@@ -470,6 +488,21 @@ def fetch_result(l)
   when 'bankrot-torg.by', 'specrealization.by'
     sleep 1
     (html = Src.get(l['url'])) ? [Res.vl_result(html), {}] : [nil, {}]
+  when 'expert-torgi.by', 'realtorgi.by'
+    sleep 1
+    (html = Src.get(l['url'])) ? [Res.jm_result(html), {}] : [nil, {}]
+  when 'iintorgi.by'
+    sleep 1
+    x = (JSON.parse(Src.get("#{Src::II}/admin/api/admin/lot/#{l['key'].sub('ii-', '')}", min: 2).to_s)['data'] rescue nil)
+    x = x.first if x.is_a?(Array)
+    x ? [Res.ii_result(x), {}] : [nil, {}]
+  when 'etpvit.by'
+    sleep 1
+    l['eid'] ? [Res.ea_result(Res.ea_info(l['eid'], Src::EV)), {}] : [nil, {}]
+  when 'torgi.gov.by'
+    sleep 3
+    auc = l['url'].to_s[%r{/lot/\d+/(\d+)}, 1]
+    (a = auc && Src.tg_json("/auctions/#{auc}/lot/#{l['art']}/public")) ? [Res.tg_result(a, l['art']), {}] : [nil, {}]
   else [nil, {}]
   end
 rescue StandardError => e
