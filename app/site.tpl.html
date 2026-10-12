@@ -2452,7 +2452,7 @@ function pageHelp(params){
           <div class="fg"><label for="h-phone">Номер телефона<span class="req" aria-hidden="true">*</span></label><input id="h-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00" value="${esc(mine('phone'))}" required aria-required="true"></div>
           <div class="fg"><label for="h-mail">Email</label><input id="h-mail" type="email" autocomplete="email" value="${esc(mine('email'))}"></div>
           <div class="fg"><label for="h-lot">Номер лота</label><input id="h-lot" value="${esc(lot)}" placeholder="например, 34950"></div>
-          <div class="fg"><label for="h-svc">Что нужно</label><select id="h-svc"><option value="">Пока не знаю — нужна консультация</option>
+          <div class="fg"><label for="h-svc">Чем можем помочь</label><select id="h-svc"><option value="">Пока не знаю — нужна консультация</option>
             ${svcList().map(([,t])=>`<option${t===svc?' selected':''}>${esc(t)}</option>`).join('')}</select></div>
           <input class="hp" id="h-web" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
           <div class="ferr" id="h-err"></div>
