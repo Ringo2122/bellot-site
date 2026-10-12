@@ -213,7 +213,7 @@ begin
   select decrypted_secret into gh from vault.decrypted_secrets where name = 'github_token';
   if gh is null then return 'queued'; end if;
   perform net.http_post(
-    url := 'https://api.github.com/repos/Ringo2122/bellot-site/actions/workflows/update.yml/dispatches',
+    url := 'https://api.github.com/repos/Ringo2122/monitorg/actions/workflows/update.yml/dispatches',
     body := jsonb_build_object('ref', 'main', 'inputs', jsonb_build_object('collect', case when p_collect then 'true' else 'false' end)),
     headers := jsonb_build_object('Authorization', 'Bearer ' || gh, 'Accept', 'application/vnd.github+json',
                                   'User-Agent', 'bellot-admin', 'Content-Type', 'application/json'));

@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # encoding: utf-8
 #
-# Заливка кода в Ringo2122/bellot-site одним коммитом через GitHub API (git на машине нет).
+# Заливка кода в Ringo2122/monitorg одним коммитом через GitHub API (git на машине нет).
 #   MSG="…" ruby tools/push.rb   код: app/ (с app/noph/, app/img/), .github/workflows/, tools/, supabase/, README.md — data/ не трогает.
 #   Файл, удалённый здесь из этих папок, удаляется и в репозитории.
 # Память (data/) ведёт робот. Заливать её отсюда поверх — значит стереть то, что он собрал.
@@ -10,7 +10,7 @@ require 'base64'
 Encoding.default_external = Encoding::UTF_8
 
 GH   = File.expand_path('~/bin/gh')
-REPO = 'Ringo2122/bellot-site'
+REPO = 'Ringo2122/monitorg'
 ROOT = File.expand_path('..', __dir__)
 
 def gh(*args, input: nil)

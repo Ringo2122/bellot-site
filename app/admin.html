@@ -241,8 +241,8 @@ const SB = '__SB_URL__', KEY = '__SB_KEY__';
   }, true);
   addEventListener('unhandledrejection', e => { const r = e.reason; send('Необработанная ошибка: ' + (r && (r.message || r)), r && r.stack ? String(r.stack).split('\n')[1] : ''); });
 })();
-const RAW = 'https://raw.githubusercontent.com/Ringo2122/bellot-site/main/data/';
-const GH_RUNS = 'https://github.com/Ringo2122/bellot-site/actions';
+const RAW = 'https://raw.githubusercontent.com/Ringo2122/monitorg/main/data/';
+const GH_RUNS = 'https://github.com/Ringo2122/monitorg/actions';
 const PLATS = ['e-auction.by','ipmtorgi.by','beltorgi.by','konfiskat.by','belauction.by','minskestate.by','mgcn.by','auction24.by','butb.by','lotsale.by','gostorg.by','bankrot-torg.by','specrealization.by','torgi.gov.by','etpvit.by','expert-torgi.by','realtorgi.by','iintorgi.by'];
 const PLAT_RU = {'e-auction.by':'e-auction.by (БелЮрОбеспечение)','ipmtorgi.by':'ipmtorgi.by (ИПМ-Торги)','beltorgi.by':'beltorgi.by (Белреализация)',
   'konfiskat.by':'konfiskat.by (ТД «Восточный»)','belauction.by':'belauction.by (БелАукцион)',
@@ -1314,7 +1314,7 @@ async function pAccess(){
       <p style="margin-top:0">Сейчас робот проверяет запросы на публикацию каждые 10 минут. Чтобы он запускался сразу, сохраните здесь ключ GitHub.
       ${STATS.github?'<span class="okc">Ключ сохранён.</span>':'<span class="muted">Ключ не сохранён.</span>'}</p>
       <ol class="muted"><li>Откройте <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com → Fine-grained token</a>.</li>
-        <li>Repository access → Only select repositories → <b>bellot-site</b>.</li>
+        <li>Repository access → Only select repositories → <b>monitorg</b>.</li>
         <li>Permissions → Actions → <b>Read and write</b>. Generate token, скопируйте ключ.</li></ol>
       <div class="bar"><input type="password" id="ghk" placeholder="github_pat_…" style="flex:1"><button class="btn pri" id="ghgo">Сохранить ключ</button>${STATS.github?'<button class="btn bad" id="ghdel">Удалить ключ</button>':''}</div>
       <p class="muted">Ключ хранится в зашифрованном хранилище базы и нигде не показывается.</p></div>

@@ -62,8 +62,8 @@ jobs:
       - name: Сохранить память
         if: steps.y.outputs.work != 'false'
         run: |
-          git config user.name "bellot-bot"
-          git config user.email "bellot-bot@users.noreply.github.com"
+          git config user.name "monitorg-bot"
+          git config user.email "monitorg-bot@users.noreply.github.com"
           git add -A data
           git commit -q -m "данные: архив площадок за год, $(date '+%d.%m.%Y %H:%M')" || echo "без изменений"
           git push || (git pull --rebase -q && git push)

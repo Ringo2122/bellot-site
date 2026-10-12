@@ -1,7 +1,7 @@
 # МониТорг — агрегатор торгов
 
-Сайт: https://ringo2122.github.io/bellot-site/
-Админка: https://ringo2122.github.io/bellot-site/admin/
+Сайт: https://ringo2122.github.io/monitorg/
+Админка: https://ringo2122.github.io/monitorg/admin/
 
 Каталог торгов по имуществу должников с восемнадцати площадок: auction24.by (Госторги), e-auction.by (БелЮрОбеспечение),
 ipmtorgi.by (ИПМ-Торги), beltorgi.by (Белреализация), konfiskat.by (ТД «Восточный», торги — на torgikonfiskat.by),
