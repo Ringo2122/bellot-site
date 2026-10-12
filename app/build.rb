@@ -41,7 +41,7 @@ TMP  = File.join(Store::ROOT, 'tmp')
 PACKS = 1000
 # свежий архив — arch.js (календарь на главной, недавние лоты), старше — arch2.js
 ARCH_NEW = 45
-KEEP = %w[id art name price req_to torg url location region debtor area_num platform section off
+KEEP = %w[id art name price req_to torg url location region city debtor area_num platform section off
           photo pk market prices status closed why first_seen alt pin result phx land sub].freeze
 SECS = %w[nedvizhimost avto gruz spec oborud arenda].freeze
 
@@ -104,8 +104,9 @@ lots.each do |l|
   # konfiskat.by: город есть только в извещении, а часть извещений — сканы. Правило Артёма (24.09):
   # если площадка не указала иного — Минск
   l['location'] = 'г. Минск' if l['platform'] == 'konfiskat.by' && l['location'].to_s.strip.empty?
-  # область, а не город: «г. Речица» из старых записей → «Гомельская область» (фильтр «Регион» — только области и Минск)
-  l['region'] = region_of(l['location']) unless l['region'].to_s =~ /област|\Aг\. Минск\z/
+  # область, а не город: «г. Речица» из старых записей → «Гомельская область» (фильтр «Регион» — только области и Минск);
+  # каждый раз заново — правила regions.rb уточняются («Могилёв, Гомельское шоссе» был Гомельской)
+  l['region'] = region_of(l['location'])
   l['debtor'] = 'Физическое лицо' if ENV['MASK'] && l['debtor'].to_s =~ FIO
   l['id'] = id_of(l['key'])
   l['photo'] = File.exist?(Store.ph_path(l['key'])) ? l['id'] : nil
@@ -158,6 +159,8 @@ end
 
 # раздел и подраздел каталога («transport/legkovye») — после правок человека: раздел мог смениться (app/cats.rb)
 lots.each { |l| l['sub'] = Cats.of(l, ->(k) { Store.details(k) }) }
+# город или район внутри области — второй уровень фильтра «Регион» (regions.rb), тоже после правок адреса в админке
+lots.each { |l| l['city'] = place_of(l['location'], l['region']) }
 
 # фото, загруженные в админке
 FileUtils.mkdir_p(File.join(TMP, 'ph'))
@@ -393,6 +396,7 @@ tpl = File.read(File.join(__dir__, 'site.tpl.html'), encoding: 'UTF-8')
 html = tpl.sub('__DATA__') { JSON.generate(active.map(&slim)) }
           .sub('__SNAP__', now.to_s).sub('__ARCHN__') { JSON.generate(archn) }
           .sub('__CFG__') { JSON.generate(pub) }
+          .sub('__PLACES__') { JSON.generate(PLACES.transform_values { |v| v.map(&:first) + [OTHER_PLACE] }) }
           .sub('__THEME__') { JSON.generate((pub['home'] || {})['theme'] || {}) }   # общий стиль — до отрисовки, без мигания
 File.write(File.join(OUT, 'index.html'), html)
 File.write(File.join(OUT, 'arch.js'), "__arch(#{JSON.generate(arch1.map(&slim))});")
@@ -427,7 +431,7 @@ published = active.map { |l| [l['key'], true] }.to_h
 mirror = lots.map do |l|
   o = orig[l['key']]
   o.merge('photo' => !l['photo'].nil?, 'status' => l['status'], 'closed' => l['closed'], 'why' => l['why'],
-          'first_seen' => l['first_seen'], 'area_num' => l['area_num'], 'debtor' => l['debtor'],
+          'first_seen' => l['first_seen'], 'area_num' => l['area_num'], 'debtor' => l['debtor'], 'city' => l['city'],
           'price0' => (l['prices'] || []).size > 1 ? l['prices'].first[1] : nil,
           'result' => l['result'] && l['result'].reject { |k, _| %w[checked tries].include?(k) },
           'market' => l['market'] && l['market'].slice('median', 'n', 'source', 'low', 'high', 'manual', 'link'),

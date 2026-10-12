@@ -422,6 +422,8 @@ applyTheme(window.THEME);
     background:var(--card);color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer;
     transition:border-color .15s,box-shadow .15s}
   .filters .dd-b{padding:6px 9px 6px 10px}
+  /* в панели фильтров длинное значение («Жодино и Смолевичский район · 18») — в две строки, а не многоточием */
+  .filters .dd-b span{white-space:normal;line-height:1.3}
   .dd-b span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .dd-b svg{width:12px;height:12px;flex:none;fill:none;stroke:var(--ink-3);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
     transition:transform .2s ease,stroke .15s}
@@ -1208,6 +1210,7 @@ const DATA = __DATA__;
 const SNAP = __SNAP__;
 const ARCHN = __ARCHN__;          // размер архива по разделам (cut — граница свежего архива), сам архив — в arch.js и arch2.js
 const CFG = __CFG__;              // из админки: тексты, правила калькулятора, часы обновления, выключенные разделы
+const PLACES = __PLACES__;        // города и районы внутри областей — второй уровень фильтра «Регион» (regions.rb)
 /* ошибки у посетителей — в базу (rpc report_error), монитор пересылает новые в Telegram. Одна и та же — один раз за визит,
    не больше 5 за визит; чужие скрипты (расширения браузера, «Script error.» без подробностей), чужие картинки и роботы поисковиков — не в счёт */
 (()=>{
@@ -1588,6 +1591,7 @@ function applyFilters(list, f){
   const arch = f.st==='arch', usd = fUsd(f), pv = l => usd ? Math.round(l.price / USD) : l.price;
   let out = list.filter(l=>{
     if(f.region && l.region!==f.region) return false;
+    if(f.city && l.city!==f.city) return false;
     if(f.pmin && pv(l) < +f.pmin) return false;
     if(f.pmax && pv(l) > +f.pmax) return false;
     if(f.cat && l.section!==f.cat) return false;
@@ -1620,7 +1624,7 @@ const nFilters = f => ['q','cat','res','region','pmin','pmax','dfrom','dto','pla
 const torgAt = l => l.torg || l.req_to + 86400;
 /* фильтры, которые переносятся при смене категории на странице раздела */
 let CARRY = null;
-const CARRY_KEYS = ['st','q','region','pmin','pmax','cur','dfrom','dto','plat','photo','mkt','land','sort'];
+const CARRY_KEYS = ['st','q','region','city','pmin','pmax','cur','dfrom','dto','plat','photo','mkt','land','sort'];
 function fitFilters(){
   const fp = $('#fp'); if(!fp) return;
   if(innerWidth <= 760){ fp.style.top = ''; return; }
@@ -1728,7 +1732,11 @@ function mdd(btn, items, sel, onChange){
 
 function filterPanel(list, f, sc){
   const arch = f.st==='arch', src = arch ? (ARCH||[]) : DATA;
-  const regions=[...new Set(list.map(l=>l.region).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
+  // Минск и Минская область — первыми, остальные области по алфавиту
+  const rOrd = r => r==='г. Минск' ? 0 : r==='Минская область' ? 1 : 2;
+  const regions=[...new Set(list.map(l=>l.region).filter(Boolean))].sort((a,b)=>rOrd(a)-rOrd(b) || a.localeCompare(b,'ru'));
+  // город или район — только после выбора области, как подраздел после раздела
+  const places = f.region && PLACES[f.region], inReg = places ? list.filter(l=>l.region===f.region) : [];
   // выбранные площадки — всегда видны, даже если в этом разделе их лотов нет (выбор переносится между разделами:
   // раньше он оставался невидимым — «Найдено 0» без видимой причины)
   const plats=[...new Set(list.flatMap(l=>l.alt?l.alt.map(a=>a.platform):[l.platform]).concat(String(f.plat||'').split(',').filter(Boolean)))].sort();
@@ -1752,6 +1760,8 @@ function filterPanel(list, f, sc){
           return `<option value="${s.k}"${sc.sub===s.k?' selected':''}>${esc(s.n)} · ${nf(c)}</option>`; }).join('')}</select></div>`:''}
       <div class="fg"><label for="f-region">Регион</label><select id="f-region"><option value="">Любой</option>
         ${regions.map(r=>`<option${f.region===r?' selected':''}>${esc(r)}</option>`).join('')}</select></div>
+      ${places?`<div class="fg"><label for="f-city">Город или район</label><select id="f-city"><option value="">Вся область · ${nf(inReg.length)}</option>
+        ${places.map(p=>`<option value="${esc(p)}"${f.city===p?' selected':''}>${esc(p)} · ${nf(inReg.filter(l=>l.city===p).length)}</option>`).join('')}</select></div>`:''}
       <div class="fg"><div class="lrow"><label>Цена${USD?'':', BYN'}</label>${USD?`<span class="cursw" id="f-cur" role="group" aria-label="Валюта цены">${['BYN','USD'].map(c=>
         `<button type="button" data-c="${c}"${(fUsd(f)?'USD':'BYN')===c?' class="on" aria-pressed="true"':' aria-pressed="false"'}>${c}</button>`).join('')}</span>`:''}</div><div class="two">
         <input id="f-pmin" type="number" placeholder="от" value="${esc(f.pmin||'')}">
@@ -1777,7 +1787,7 @@ function crumbs(parts){
 
 /* Фильтры каталога живут в адресе (#/s/avto?region=…&pmin=…): «Назад» с лота возвращает тот же поиск,
    а место в списке и «Показать ещё» восстанавливаются из CAT_POS. */
-const FKEYS = ['st','sort','q','cat','res','region','pmin','pmax','cur','dfrom','dto','plat','photo','mkt','land'];
+const FKEYS = ['st','sort','q','cat','res','region','city','pmin','pmax','cur','dfrom','dto','plat','photo','mkt','land'];
 const CAT_POS = {};   // адрес каталога → { y, show, t }
 let CAT_NOW = null;   // открытый каталог: { hash, show }
 function pageCatalog(sc, params){
@@ -1818,13 +1828,13 @@ function pageCatalog(sc, params){
   const read = () => { SWAP = null;
     const v = id => (document.getElementById(id)||{}).value || '';
     const c = id => (document.getElementById(id)||{}).checked ? '1' : '';
-    FSTATE = {st:FSTATE.st, sort:FSTATE.sort, soon:FSTATE.soon, fresh:FSTATE.fresh, pin:FSTATE.pin, q:v('f-q').trim(), region:v('f-region'), pmin:v('f-pmin'), cur:FSTATE.cur,
+    FSTATE = {st:FSTATE.st, sort:FSTATE.sort, soon:FSTATE.soon, fresh:FSTATE.fresh, pin:FSTATE.pin, q:v('f-q').trim(), region:v('f-region'), city:v('f-city'), pmin:v('f-pmin'), cur:FSTATE.cur,
       pmax:v('f-pmax'), dfrom:v('f-dfrom'), dto:v('f-dto'), plat:v('f-plat'), photo:c('f-photo'), mkt:c('f-mkt'), land:c('f-land'), cat:FSTATE.cat,
       res:FSTATE.st==='arch'?v('f-res'):''};
   };
   const drawPanel = () => {
     $('#fwrap').innerHTML = filterPanel(baseOf(), FSTATE, sc);
-    ['f-q','f-top','f-sub','f-res','f-region','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt','f-land'].forEach(id=>{
+    ['f-q','f-top','f-sub','f-res','f-region','f-city','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt','f-land'].forEach(id=>{
       const el = document.getElementById(id); if(!el) return;
       el.addEventListener(el.tagName==='SELECT'||el.type==='checkbox'||el.type==='date'?'change':'input', ()=>{
         read();
@@ -1833,6 +1843,9 @@ function pageCatalog(sc, params){
           CARRY_KEYS.forEach(k=>{ if(FSTATE[k]) CARRY[k] = FSTATE[k]; });
           if(t!=='nedvizhimost') delete CARRY.land;   // «только земельные участки» — у недвижимости
           location.hash = t ? '#/c/' + t + (s ? '/' + s : '') : '#/catalog'; return; }
+        // другая область — город прежней не подходит; список городов новой области появляется под «Регионом»
+        if(id==='f-region'){ FSTATE.city = ''; const op = $('#fp').classList.contains('open'); drawPanel();
+          if(op) $('#fp').classList.add('open'); }
         render(); });
     });
     document.querySelectorAll('#fp select').forEach(dd);
@@ -3135,11 +3148,11 @@ function bindLotUser(l){
 }
 
 /* сохранённые поиски */
-const SS_KEYS = ['cat','q','region','pmin','pmax','dfrom','dto','plat','photo','mkt'];
+const SS_KEYS = ['cat','q','region','city','pmin','pmax','dfrom','dto','plat','photo','mkt'];
 const dRu = s => s.split('-').reverse().join('.');
 function searchTitle(p){
   const a = [], s = p.sec || p.cat, sc = scOf(p.sub);
-  if(sc) a.push(scName(sc)); else if(s) a.push(secName(s)); if(p.q) a.push('«' + p.q + '»'); if(p.region) a.push(p.region);
+  if(sc) a.push(scName(sc)); else if(s) a.push(secName(s)); if(p.q) a.push('«' + p.q + '»'); if(p.region) a.push(p.city ? p.region + ', ' + p.city : p.region);
   if(p.pmin || p.pmax) a.push((p.pmin ? 'от ' + nf(+p.pmin) : '') + (p.pmax ? ' до ' + nf(+p.pmax) : '') + ' BYN');
   if(p.plat) a.push(String(p.plat).split(',').join(', ')); if(p.dfrom || p.dto) a.push('торги' + (p.dfrom ? ' с ' + dRu(p.dfrom) : '') + (p.dto ? ' по ' + dRu(p.dto) : ''));
   if(p.photo) a.push('с фото'); if(p.mkt) a.push('с ориентиром');

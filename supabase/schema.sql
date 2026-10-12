@@ -30,7 +30,7 @@ create table if not exists login_attempts (at timestamptz not null default now()
 create table if not exists lots (
   key text primary key,
   id text, art text, platform text, section text, name text, price numeric,
-  req_to bigint, torg bigint, location text, region text, url text, photo boolean,
+  req_to bigint, torg bigint, location text, region text, city text, url text, photo boolean,
   status text, closed bigint, why text, first_seen bigint, market jsonb,
   reasons text[] not null default '{}',        -- почему лот спорный: no_photo, no_price, no_city, rule_deadline, dup_maybe
   dup_with text,                               -- похожий лот на другой площадке (для dup_maybe)
@@ -607,6 +607,7 @@ begin
       and (coalesce(s.params->>'sec', '') = '' or l.section = s.params->>'sec')
       and (coalesce(s.params->>'cat', '') = '' or l.section = s.params->>'cat')
       and (coalesce(s.params->>'region', '') = '' or l.region = s.params->>'region')
+      and (coalesce(s.params->>'city', '') = '' or l.city = s.params->>'city')
       and (coalesce(s.params->>'plat', '') = '' or l.platform = any(string_to_array(s.params->>'plat', ',')))   -- площадок может быть несколько: «a.by,b.by»
       and (nullif(regexp_replace(coalesce(s.params->>'pmin', ''), '[^0-9.]', '', 'g'), '') is null
            or l.price >= regexp_replace(s.params->>'pmin', '[^0-9.]', '', 'g')::numeric)
