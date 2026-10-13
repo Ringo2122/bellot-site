@@ -2092,13 +2092,21 @@ function calcBlock(l, det){
   const pay = payTerm(det.s || []);
   // НДС: что написала площадка, иначе — из описания лота. «Может быть увеличена на сумму НДС», «без НДС» — в расчёте
   // галочка «+ НДС 20%» (13.10, обход персон: у лотов torgi.gov.by про НДС было только в описании)
-  const dtx = (det.s || []).flatMap(s=>s.rows).map(r=>r[1]).join(' ');
-  const vatPlus = /увелич[а-я]*\s+на\s+(сумму\s+)?(\d+\s*%\s*)?НДС|плюс\s*\d+\s*%\s*НДС|НДС[,\s]{1,4}исчисляем[а-я]*\s+сверх|без\s+(учета\s+)?НДС/i.test((t.vat || '') + ' ' + dtx);
-  const vatTxt = t.vat || (vatPlus ? 'К цене может добавиться НДС 20% - зависит от продавца, см. описание лота'
-    : /\(с НДС\)|с\s+учетом\s+НДС/i.test(dtx) ? 'Цена указана с НДС' : '');
+  const dtx = (det.s || []).flatMap(s=>s.rows).map(r=>r.join(' ')).join(' ');   // с названиями строк: «Начальная цена (с учетом НДС)» у МГЦН
+  const vatPlus = !!t.vat_add || /увелич[а-я]*\s+на\s+(сумму\s+)?(\d+\s*%\s*)?НДС|плюс\s*\d+\s*%\s*НДС|НДС[,\s]{1,4}исчисляем[а-я]*\s+сверх|без\s+(учета\s+)?НДС/i.test((t.vat || '') + ' ' + dtx);
+  const vatTxt = (t.vat || '').replace(/ — /g, ' - ') || (vatPlus ? 'К цене может добавиться НДС 20% - зависит от продавца, см. описание лота'
+    : /\(с НДС\)|\(с учетом НДС\)|с\s+учетом\s+(\d+\s*%\s*)?НДС|указан[аы]?\s+с\s*\d*\s*%?\s*НДС/i.test(dtx) ? 'Цена указана с НДС' : '');
+  // шкала прейскуранта: плата оператору — % от цены продажи, чем дороже лот, тем меньше процент
+  const SCALE = { torgi:[[50000,5],[250000,4],[500000,3],[1e6,2],[1e7,1],[Infinity,0.2]],
+                  lotsale:[[7500,8],[50000,5],[250000,4],[500000,3],[1e6,2],[Infinity,1]] }[t.fee_scale];
+  const scalePct = p => SCALE.find(([to])=>p<=to)[1];
+  const scaleTxt = SCALE && SCALE.map(([to,pc],i)=>{ const p = String(pc).replace('.',',') + '%';
+    return to===Infinity ? 'дальше ' + p : i ? `${p} - до ${nf(to)}` : `${p} при цене до ${nf(to)} руб.`; }).join(', ');
   // Сверх цены лота: у beltorgi — аукционный сбор % и затраты на организацию торгов, у ИПМ — вознаграждение % и затраты,
   // у e-auction по арестованному имуществу сборов нет. Поля заполнены данными площадки и их можно поправить.
-  const feeName = l.platform==='beltorgi.by' ? 'Аукционный сбор' : 'Вознаграждение организатору';
+  const feeName = l.platform==='beltorgi.by' ? 'Аукционный сбор' : SCALE ? 'Услуги площадки' : l.platform==='etpvit.by' ? 'Обслуживание ЭТП'
+    : 'Вознаграждение организатору';
+  const pctTxt = v => String(v).replace('.',',') + '%';
   const feeNote = cc.note ? cc.note : !known ? 'Площадка не указала сборы по этому лоту - впишите, если знаете.'
     : l.platform==='beltorgi.by'
       ? 'Из карточки лота на площадке.' + (t.fee_later ? ' Сумму затрат площадка объявит до начала торгов - впишите её, когда узнаете.' : '')
@@ -2112,6 +2120,10 @@ function calcBlock(l, det){
       ? 'Из карточки лота на площадке: ориентировочная сумма затрат на организацию торгов и вознаграждение организатора.'
     : l.platform==='mgcn.by'
       ? 'Очный аукцион МГЦН: шаг торгов и затраты на организацию указаны в извещении - уточните у организатора и впишите.'
+    : SCALE
+      ? `Победитель оплачивает услуги площадки по прейскуранту ${l.platform}: ${scaleTxt}. Если знаете точную ставку, впишите её.`
+    : l.platform==='lotsale.by' && t.fee_abs
+      ? 'Из карточки лота: затраты оператору на проведение торгов (с НДС). Организатор может уточнить сумму за 12 часов до торгов.'
     : l.platform==='lotsale.by'
       ? 'Победитель возмещает затраты на организацию торгов - сумма в условиях лота на площадке (может уточняться до начала торгов). Впишите её.'
     : l.platform==='butb.by'
@@ -2122,13 +2134,23 @@ function calcBlock(l, det){
       ? 'Из карточки лота: вознаграждение организатору, % от цены продажи (если указано). Затраты на организацию торгов, если есть, - в условиях лота на площадке.'
     : l.platform==='e-auction.by'
       ? 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.'
+    // новые площадки (13.10) — из условий лота и прейскурантов площадок (шкала и lotsale — выше)
+    : l.platform==='torgi.gov.by'
+      ? (t.fee_abs ? 'Из описания лота: затраты на организацию торгов, которые возмещает победитель.'
+        : 'В описании лота не сказано, что победитель оплачивает затраты на торги. Если в описании они есть, впишите их.')
+    : l.platform==='etpvit.by'
+      ? `Из карточки лота: обслуживание ЭТП - ${pctTxt(t.fee_pct||10)} от цены победителя.`
+        + (t.fee_later ? ' Затраты на организацию торгов площадка объявит на следующий день после окончания приёма заявок - впишите их.' : '')
+    : l.platform==='expert-torgi.by'
+      ? `Из карточки лота: вознаграждение организатору - ${pctTxt(t.fee_pct)} от начальной цены, платится в течение 3 рабочих дней после торгов.`
+    : l.platform==='realtorgi.by'
+      ? `Из карточки лота: вознаграждение ${pctTxt(t.fee_pct||5)} от цены продажи и затраты на организацию торгов${t.fee_upto?` до ${nf(t.fee_abs)} руб. (точную сумму опубликуют до дня аукциона)`:''}.`
     : l.platform==='iintorgi.by'
-      ? 'Затраты на организацию торгов - в строке «Затраты» в условиях лота. Если там указана сумма, впишите её.'
-      // torgi.gov.by, etpvit, expert-torgi, realtorgi: сборов отдельным полем нет (13.10: был текст про регламент e-auction)
-      : 'Площадка не указала сборы отдельным полем. Если в описании лота есть затраты на организацию торгов или вознаграждение организатору, впишите их.';
+      ? `Из карточки лота: вознаграждение ${pctTxt(t.fee_pct)} от цены продажи${t.fee_min?` (не меньше ${nf(t.fee_min)} руб.)`:''} и затраты на организацию торгов.`
+      : 'Площадка не указала сборы по этому лоту. Если в описании есть затраты на организацию торгов или вознаграждение организатору, впишите их.';
   const vatHtml = vatPlus ? `<label class="cx-chk"><input type="checkbox" id="cx-vat"> Добавить НДС 20% к цене лота</label>` : '';
   const feesHtml = `<div class="cx-fees"><div class="cx-fh">Расходы сверх цены лота</div>
-      <label class="cx-f"><span>${feeName}, % от итоговой цены</span><input type="number" id="cx-fp" min="0" max="30" step="0.1" value="${t.fee_pct!=null?t.fee_pct:''}" placeholder="0"></label>
+      <label class="cx-f"><span>${feeName}, % от ${t.fee_base==='start'?'начальной':'итоговой'} цены</span><input type="number" id="cx-fp" min="0" max="30" step="0.1" value="${t.fee_pct!=null?t.fee_pct:''}" placeholder="${SCALE?'по шкале':'0'}"></label>
       <label class="cx-f"><span>Затраты на организацию торгов, BYN</span><input type="number" id="cx-fa" min="0" step="1" value="${t.fee_abs!=null?t.fee_abs:''}" placeholder="${t.fee_later?'объявят до торгов':'0'}"></label>
       <div class="cx-fnote">${esc(feeNote)}</div>${vatHtml}</div>`;
   const spOpts = m.pick ? [0.5,1,2,3,4,5].filter(x=>x>=(t.step_min_pct||0.5) && x<=(t.step_pct||5)) : [];
@@ -2163,10 +2185,13 @@ function calcBlock(l, det){
   const run = () => {
     const n = +$('#cx-n').value, sp = m.pick ? +$('#cx-sp').value : 0;
     $('#cx-nv').textContent = n;
-    const fp = parseFloat($('#cx-fp').value)||0, fa = parseFloat($('#cx-fa').value)||0, vat = vatPlus && $('#cx-vat').checked;
-    const feeOf = p => p*fp/100 + fa + (vat ? p*0.2 : 0);
+    const fpv = $('#cx-fp').value.trim(), fa = parseFloat($('#cx-fa').value)||0, vat = vatPlus && $('#cx-vat').checked;
+    // процент: вписанный, иначе по шкале прейскуранта; база — итоговая цена или начальная (expert-torgi); «не меньше» (iintorgi)
+    const pctOf = p => fpv !== '' ? (parseFloat(fpv)||0) : SCALE ? scalePct(p) : 0;
+    const prizeOf = p => { const pc = pctOf(p); return pc ? Math.max((t.fee_base==='start' ? m.P : p)*pc/100, t.fee_min||0) : 0; };
+    const feeOf = p => prizeOf(p) + fa + (vat ? p*0.2 : 0);
     const price = n===0 && m.single ? m.single : m.at(n, sp);
-    const fees = feeOf(price), total = price + fees, rest = Math.max(total - m.deposit, 0);
+    const fees = feeOf(price), total = price + fees, rest = Math.max(total - m.deposit, 0), fp = pctOf(price);
     $('#cx-hint').textContent = n===0
       ? (m.single ? 'Без борьбы: вы единственный участник.' : 'Покупка по стартовой цене.')
       : `Цена выросла на ${Math.round((price/m.P-1)*100)}% от стартовой.`;
@@ -2184,8 +2209,8 @@ function calcBlock(l, det){
     }
     $('#cx-out').innerHTML = `
       <div class="row"><span class="l">Цена лота после торгов</span><span class="r">${nf(price)} BYN</span></div>
-      <div class="row"><span class="l">${feeName}${fp?`, ${String(fp).replace('.',',')}%`:''}</span><span class="r">${fp?nf(price*fp/100)+' BYN':'нет'}</span></div>
-      <div class="row"><span class="l">Затраты на организацию торгов</span><span class="r">${fa?nf(fa)+' BYN':(t.fee_later?'объявят до торгов':'нет')}</span></div>
+      <div class="row"><span class="l">${feeName}${fp?`, ${pctTxt(fp)}`:''}</span><span class="r">${fp?nf(prizeOf(price))+' BYN':'нет'}</span></div>
+      <div class="row"><span class="l">Затраты на организацию торгов</span><span class="r">${fa?(t.fee_upto && fa===t.fee_abs?'до ':'')+nf(fa)+' BYN':(t.fee_later?'объявят до торгов':'нет')}</span></div>
       ${vat?`<div class="row"><span class="l">НДС 20%</span><span class="r">${nf(price*0.2)} BYN</span></div>`:''}
       <div class="row big"><span class="l">Итого за покупку</span><span class="r">${nf(total)} BYN</span></div>
       <div class="row"><span class="l">Задаток - внести до ${dt(t.deposit_to || l.req_to)}</span><span class="r">${nf(m.deposit)} BYN</span></div>

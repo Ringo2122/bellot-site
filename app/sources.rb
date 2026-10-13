@@ -70,6 +70,14 @@ module Src
     s.to_s.gsub(/[^\d,.]/, '').tr(',', '.').to_f
   end
 
+  # НДС из текста лота: «может быть увеличена на сумму НДС», «плюс 20% НДС», «без НДС» — к цене может добавиться НДС
+  # (в калькуляторе — галочка «+ НДС 20%»); «с учетом НДС» — только пометка. 13.10: раньше у новых площадок НДС не брали
+  VAT_ADD = /увелич[а-яё]*\s+на\s+(?:сумму\s+)?(?:\d+\s*%\s*)?НДС|плюс\s*\d+\s*%\s*НДС|НДС,?\s*исчисляем[а-яё]*\s+сверх|без\s+(?:учета\s+)?НДС/i
+  def vat_of(tx, with_vat = false)
+    return { 'vat' => 'К цене может добавиться НДС 20% - зависит от продавца', 'vat_add' => true } if tx.to_s =~ VAT_ADD
+    with_vat || tx.to_s =~ /с\s+учетом\s+(?:\d+\s*%\s*)?НДС|\(с НДС\)|BYN с НДС/i ? { 'vat' => 'Цена указана с НДС' } : {}
+  end
+
   # «22.10.2026г. 16:00», «22.10.2026 | 16:00», «22.10.2026 16:00:00»
   def ts(s)
     m = s.to_s.match(/(\d{2})\.(\d{2})\.(\d{4})\D+(\d{1,2}):(\d{2})/) or return nil
@@ -848,8 +856,16 @@ module Src
       'area_num' => (x = desc[/площадью\s+([\d\s]+[.,]?\d*)\s*кв\.?\s*м/, 1]) && num(x),
       'photo_url' => pics.first, 'photos' => pics,
       'terms' => { 'deposit' => a['deposit'].to_f, 'step_abs' => a['step'].to_f, 'min_price' => min.positive? && min < init ? min : nil,
-                   'pay_term' => terms['paymentTerm'] && "#{terms['paymentTerm']} дней", 'fee_later' => true, 'v' => 2 }
-                 .reject { |_, v| v.nil? || v == 0.0 } }
+                   'pay_term' => terms['paymentTerm'] && "#{terms['paymentTerm']} дней", 'v' => 3 }
+                 .merge(ls_fee(terms['moreDetails'].to_s)).merge(vat_of(desc)).reject { |_, v| v.nil? || v == 0.0 } }
+  end
+
+  # сборы — из «Условий» (13.10): «возмещение затрат оператору на проведение торгов 787,23 рублей c НДС» — сумма;
+  # «согласно прейскуранту» — шкала lotsale.by/docs/Price.pdf (от цены продажи: 8% до 7 500 руб., 5% до 50 000, 4% до 250 000,
+  # 3% до 500 000, 2% до 1 млн, дальше 1% — в калькуляторе сайта). Организатор может уточнить сумму за 12 часов до торгов
+  def ls_fee(tx)
+    return { 'fee_abs' => num($1) } if tx =~ /затрат оператору на проведение торгов\s*(\d[\d\s]*(?:[.,]\d+)?)\s*руб/i
+    tx =~ /прейскурант/i ? { 'fee_scale' => 'lotsale' } : { 'fee_later' => true }
   end
 
   # карточка — из строки списка; подробности (d) — если страница лота ответила (нет — лот всё равно «виден» в списке)
@@ -1216,9 +1232,19 @@ module Src
           'location' => (loc = l['location'].to_s.strip) =~ /обл|Минск/ || !TG_REG[l['region'].to_i] ? loc : [TG_REG[l['region'].to_i], loc].reject(&:empty?).join(', '),
           'area_num' => (a = desc[/площадью\s*([\d\s]+[.,]?\d*)\s*(?:кв\.?\s*м|м²|м2)/i, 1]) && num(a),
           'photo_url' => tg_ph_ok? ? img.first : nil, 'photos' => [],   # галерею не храним: :8081 у посетителей часто не открывается (12.10)
-          'terms' => { 'deposit' => dep.positive? ? (price * dep / 100).round(2) : nil, 'v' => 2 }.reject { |_, v| v.nil? } }
+          'terms' => { 'deposit' => dep.positive? ? (price * dep / 100).round(2) : nil, 'v' => 3 }.merge(tg_fee(desc))
+                       .merge(vat_of(desc, l['nds'].to_i == 1)).reject { |_, v| v.nil? } }
     { 'key' => "tg-#{l['id']}", 'platform' => 'torgi.gov.by', 'art' => l['id'].to_s, 'auc' => l['numAuction'].to_s,
       'name' => d['name'], 'url' => tg_url(l), 'sec' => sec, 'price' => price, 'req_to' => start, 'd' => d }
+  end
+
+  # сборы — из описания лота: «возмещает стоимость затрат … согласно прейскуранту» — плата оператору по шкале
+  # прейскуранта torgi.gov.by (от цены продажи: 5% до 50 000 руб., 4% до 250 000, 3% до 500 000, 2% до 1 млн, 1% до 10 млн,
+  # дальше 0,2% — шкала в калькуляторе сайта); «возмещает затраты … в сумме 370 рублей» — сумма. Не сказано — победитель не платит
+  def tg_fee(desc)
+    return { 'fee_scale' => 'torgi' } if desc =~ /(?:возмещ|возмест|оплат|вознагражд)[^.]{0,140}прейскурант/i
+    s = desc[/(?:возмещ|возмест)[а-яё]*[^.]{0,100}?затрат[^.]{0,100}?(?:в сумме|в размере|торгов|аукциона)\s*(\d[\d\s]*(?:[.,]\d+)?)\s*(?:руб|бел)/i, 1]
+    s ? { 'fee_abs' => num(s) } : {}
   end
 
   # фото на :8081 открываются не всегда (12.10 — не открывались): проверяем раз за обход, иначе каждое фото ждало бы 40 с
@@ -1337,8 +1363,18 @@ module Src
     place = rows_find(d['details'], /Местоположение|Местонахождение|Адрес (объекта|имущества)/)
     place ||= (rows.find { |k, _| k == 'Адрес' } || [])[1].to_s.sub(/\A\d{6},\s*/, '')   # нет адреса объекта — адрес продавца
     min = num(rows_find(d['details'], /Минимальная цена/).to_s[/[\d\s.]+/])
+    # условия — со страницы: «Шаг торгов фиксирован: 2 247.97 BYN … или 5% от начальной цены», «Сумма затрат на обслуживание
+    # ЭТП: … или 10% от ставки победителя», затраты на организацию — «Не указано» (объявят после приёма заявок) или сумма
+    tx = txt(html)
+    t = { 'min_price' => min.positive? ? min : nil, 'v' => 3 }
+    if (m = tx.match(/Шаг торгов фиксирован:\s*([\d\s.]+?)\s*BYN.{0,60}?или\s*([\d.,]+)\s*%\s*от начальной/))
+      t['step_abs'] = num(m[1]); t['step_pct'] = num(m[2])
+    end
+    t['fee_pct'] = num($1) if tx =~ /затрат на обслуживание ЭТП:.{0,80}?или\s*([\d.,]+)\s*%\s*от ставки победителя/
+    org = tx[/Сумма затрат на организацию и проведение торгов:?\s*(.{0,40})/, 1].to_s
+    org =~ /\A[\d\s.,]+BYN/ ? t['fee_abs'] = num(org[/[\d\s.,]+/]) : t['fee_later'] = true
     d.merge('location' => place.to_s.empty? ? nil : place, 'debtor' => seller,
-            'terms' => (d['terms'] || {}).merge('min_price' => min.positive? ? min : nil).reject { |_, v| v.nil? })
+            'terms' => (d['terms'] || {}).merge(t).merge(vat_of(tx)).reject { |_, v| v.nil? || v == 0.0 })
   end
 
   # ---------------- expert-torgi.by и realtorgi.by (один шаблон JoomShopping, как у minskestate.by) ----------------
@@ -1402,8 +1438,23 @@ module Src
             'debtor' => pr['Продавец'] || d['debtor'], 'req_to' => ts(pr['Окончание приема заявок']) || torg, 'torg' => torg,
             'price_byn' => price.positive? ? price : d['price_byn'], 'photo_url' => pics.first, 'photos' => pics,
             'status' => txt(html[/Статус:\s*(.*?)<\/div>/m, 1]),
-            'terms' => { 'deposit' => dep.positive? ? dep : nil, 'step_abs' => num(txt(html[/Шаг торгов:\s*(.*?)<\/div>/m, 1]).to_s[/[\d\s.,]+/]), 'v' => 2 }
-                       .reject { |_, v| v.nil? || v == 0.0 })
+            'terms' => { 'deposit' => dep.positive? ? dep : nil, 'step_abs' => num(txt(html[/Шаг торгов:\s*(.*?)<\/div>/m, 1]).to_s[/[\d\s.,]+/]), 'v' => 3 }
+                       .merge(jm_fee(txt(html))).merge(vat_of(pr['Начальная цена'].to_s)).reject { |_, v| v.nil? || v == 0.0 })
+  end
+
+  # сборы — из «Обязанностей победителя» на странице лота (13.10):
+  # expert-torgi — «вознаграждение … в размере 7% от начальной цены лота»; realtorgi — «вознаграждение в размере 5% от цены
+  # продажи лота», «Сумма затрат: до 300 рублей (точная сумма будет опубликована до дня аукциона)», единственный участник +5%
+  def jm_fee(tx)
+    t = {}
+    if (m = tx.match(/вознагражд[а-яё]*\)?[^.;]{0,90}?в размере\s*([\d.,]+)\s*%\s*от\s*(начальной цены|цены продажи)/i))
+      t['fee_pct'] = num(m[1]); t['fee_base'] = 'start' if m[2] =~ /начальной/i
+    end
+    if (m = tx.match(/Сумма затрат:\s*(до\s*)?([\d\s.,]+?)\s*руб/i))
+      t['fee_abs'] = num(m[2]); t['fee_upto'] = true if m[1]
+    end
+    t['single_pct'] = num($1) if tx =~ /по начальной цене,? увеличенной на (\d+) процент/i
+    t
   end
 
   # ---------------- iintorgi.by («ИИН Торги», ООО «Индустрия Инноваций-Торги») ----------------
@@ -1446,7 +1497,8 @@ module Src
           'name' => name, 'location' => x['address'].to_s.strip, 'debtor' => debtor, 'req_to' => req, 'torg' => torg, 'price_byn' => price,
           'area_num' => (m = name[/([\d\s]+[.,]?\d*)\s*кв\.?\s*м/, 1]) && num(m), 'photo_url' => pics.first, 'photos' => pics,
           'terms' => { 'deposit' => x['deposit'].to_f, 'step_pct' => x['price_step'].to_f, 'min_price' => min.positive? && min < price ? min : nil,
-                       'vat' => x['nds'].to_i == 1 ? 'Цена указана с НДС' : nil, 'v' => 2 }.reject { |_, v| v.nil? || v == 0.0 } }
+                       'vat' => x['nds'].to_i == 1 ? 'Цена указана с НДС' : nil, 'v' => 3 }.merge(ii_fee(h.(x['additional_info'])))
+                     .reject { |_, v| v.nil? || v == 0.0 } }
     { 'key' => "ii-#{x['id']}", 'platform' => 'iintorgi.by', 'art' => x['lot_number'].to_s, 'name' => name, 'url' => "#{II}/auctions/#{x['id']}",
       'sec' => sec, 'price' => price, 'req_to' => req, 'status' => x['status'], 'd' => d }
   end
@@ -1454,6 +1506,17 @@ module Src
   # nil — список не прочитан
   # завершённые торги (backfill.rb): [карточка, лот из API — по нему итог]
   II_DONE = ['Торги состоялись', 'Покупка состоялась', 'Торги не состоялись', 'Отмененные торги'].freeze
+  # сборы — из «Обязанностей победителя» (additional_info, 13.10): «возместить затраты на организацию электронного аукциона
+  # в размере 22,00 бел. руб.», «вознаграждение … в размере 1,5 % от конечной цены продажи лота, но не менее 200,00 бел. руб.»
+  def ii_fee(tx)
+    t = {}
+    t['fee_abs'] = num($1) if tx =~ /возместить затраты на организацию[^;]{0,80}?в размере\s*(\d[\d\s]*(?:[.,]\d+)?)\s*бел/i
+    if (m = tx.match(/вознагражд[а-яё]*[^;]{0,80}?в размере\s*([\d.,]+)\s*%\s*от[^;]{0,40}?цены(?:[^;]{0,40}?не менее\s*(\d[\d\s]*(?:[.,]\d+)?)\s*бел)?/i))
+      t['fee_pct'] = num(m[1]); t['fee_min'] = num(m[2]) if m[2]
+    end
+    t
+  end
+
   def ii_done(since)
     Enumerator.new do |y|
       II_DONE.each do |st|

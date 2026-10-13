@@ -53,6 +53,9 @@ MINP = MIN_PRICE.merge((CFG['min_price'] || {}).map { |k, v| [k, v.to_f] }.to_h)
 # Условия покупки (задаток, шаг, сборы) появились позже самих лотов. У известных лотов без них
 # робот дозаполняет их постепенно — не больше TERMS_CAP страниц за прогон, чтобы не нагружать площадки.
 TERMS_CAP = (ENV['TERMS_CAP'] || 800).to_i
+# версия условий по площадкам: у лота ниже — робот перечитает условия (13.10: сборы и НДС у новых площадок)
+TERMS_V = { 'beltorgi.by' => 2, 'torgi.gov.by' => 3, 'etpvit.by' => 3, 'expert-torgi.by' => 3, 'realtorgi.by' => 3,
+            'iintorgi.by' => 3, 'lotsale.by' => 3 }.freeze
 # e-auction: дата онлайн-торгов есть только в служебном запросе площадки — у известных лотов добираем постепенно
 EA_TORG_CAP = (ENV['EA_TORG_CAP'] || 700).to_i
 # Итоги торгов: после даты торгов заглядываем на площадку, пока итоги не опубликуют (расписание — у прохода «итоги торгов»)
@@ -274,13 +277,17 @@ end
           old = mx.synchronize { db[c['key']] }
           if old
             upd = {}
-            # beltorgi: с версии 2 в условиях есть аукционный сбор и затраты — пересобираем из подробностей
-            if !old.key?('terms') || (c['platform'] == 'beltorgi.by' && old['terms']['v'].to_i < 2)
+            # условия устарели (версия ниже TERMS_V) — пересобираем: beltorgi с версии 2 — аукционный сбор и затраты,
+            # новые площадки с версии 3 — сборы и НДС из лота (13.10)
+            if !old.key?('terms') || old['terms']['v'].to_i < TERMS_V.fetch(c['platform'], 0)
               go = mx.synchronize { (terms_left -= 1) >= 0 }
               if go
                 # у beltorgi условия уже лежат в подробностях — площадку не дёргаем
                 if c['platform'] == 'beltorgi.by'
                   upd['terms'] = Src.bt_terms(Store.details(c['key']))
+                # torgi.gov.by: сборы и НДС — из строки списка (c['d']), шаг и срок оплаты — прежние (страницу аукциона не читаем)
+                elsif c['platform'] == 'torgi.gov.by'
+                  upd['terms'] = (old['terms'] || {}).merge(c['d']['terms'])
                 elsif (d2 = fetch_detail(c))   # площадка не ответила — попробуем в следующий прогон
                   upd['terms'] = d2['terms'] || {}
                 end
