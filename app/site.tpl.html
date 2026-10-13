@@ -515,6 +515,11 @@ applyTheme(window.THEME);
   .adv .it .ic{width:34px;height:34px;border-radius:8px;background:var(--brand-l);color:var(--brand);
     display:grid;place-items:center;font-size:17px;font-weight:700}
   .adv .it .ic3{width:64px;height:64px;display:block;margin:-6px 0 0 -6px}
+  /* плитка с переходом оранжевый → тёмно-синий логотипа (13.10, выбран вариант 10 из 10) */
+  .adv .it .icg{width:54px;height:54px;border-radius:14px;display:grid;place-items:center;
+    background:linear-gradient(135deg,#f4511e 0%,#8a2f2a 45%,#041c33 100%)}
+  .adv .it .icg svg{width:34px;height:34px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .adv .it .icg .af{fill:rgba(255,255,255,.3)}.adv .it .icg .dot{fill:#fff;stroke:none}
   .adv .it .ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .adv .it h3{margin:11px 0 5px;font-size:15.5px}
   .adv .it p{margin:0;font-size:13.5px;color:var(--ink-2)}
@@ -2682,6 +2687,15 @@ const ADV_IC = {
   funnel:'<path d="M3 6h7l2 2h9v11H3z"/>'
 };
 const advIc = k => ADV_IC[k] ? `<svg viewBox="0 0 24 24">${ADV_IC[k]}</svg>` : esc(k);
+// «Почему МониТорг»: значки для плитки с переходом цвета (сетка 32), .af — полупрозрачная заливка, .dot — точка
+const WHY_IC = {
+  mkt:'<path d="M16 5v21M10 27h12M6 9h20M6 9l-3.5 8M6 9l3.5 8M26 9l-3.5 8M26 9l3.5 8M2.5 17a3.5 3.5 0 0 0 7 0z"/><circle class="dot" cx="16" cy="5" r="1.6"/><path class="af" d="M22.5 17a3.5 3.5 0 0 0 7 0z"/>',
+  plat:'<path class="af" d="M16 4l12 6-12 6-12-6z"/><path d="M4 16l12 6 12-6M4 22l12 6 12-6"/>',
+  fresh:'<path d="M26 16a10 10 0 0 1-17.6 6.5M6 16A10 10 0 0 1 23.6 9.5M24 4v6h-6M8 28v-6h6"/><circle class="dot" cx="16" cy="16" r="2.6"/>',
+  one:'<path d="M5 21V8a3 3 0 0 1 3-3h13"/><path d="M9 25V12a3 3 0 0 1 3-3h13" opacity=".55"/><rect class="af" x="13" y="13" width="15" height="15" rx="3"/><path d="M17 20.5l2.5 2.5 4.5-5"/>',
+  drop:'<path d="M4 4v24h24M8 9l6 6 4-4 8 8M26 13v6h-6"/>',
+  clock:'<circle cx="16" cy="17" r="10"/><path d="M16 11v6l4 3M9.5 25l-2 3M22.5 25l2 3"/><path class="af" d="M3.5 9.5a4.5 4.5 0 0 1 6-6zM28.5 9.5a4.5 4.5 0 0 0-6-6z"/>'
+};
 /* «Как это работает» на главной — тексты можно поменять в админке (texts.how) */
 const HOW = [['Находите лот','Все площадки в одном каталоге: фильтры по региону, цене и сроку заявок. Не нужно обходить сайты по одному.'],
   ['Сравниваете с рынком','Рядом с ценой лота - медиана похожих объявлений. Сразу видно, есть ли выгода.'],
@@ -2876,6 +2890,7 @@ const HB = {
   fresh: b => lotsHtml(b, DATA.filter(isNew).sort((a,c)=>c.first_seen-a.first_seen), 'Новые лоты', 'Появились на площадках за последние сутки', '#/catalog?view=new'),
   why: b => head2(b, 'Почему МониТорг') + `<div class="adv">${advList().map(([ic,t,d],i)=>{ const own = (b.imgs||[])[i];   // свой значок пункта из конструктора
       return `<div class="it">${b.icons === 'line' && !own ? `<div class="ic">${advIc(ic)}</div>`
+        : b.icons !== '3d' && !own && WHY_IC[ic] ? `<div class="icg"><svg viewBox="0 0 32 32">${WHY_IC[ic]}</svg></div>`
         : `<img class="ic3" src="${esc(own || `img/why${i+1}.png`)}" width="64" height="64" alt="" loading="lazy" data-ic="${esc(ic)}" onerror="advFail(this)">`}<h3>${esc(t)}</h3><p>${esc(d)}</p></div>`; }).join('')}</div>
       <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p>`,
   cal: b => `<div class="sec-h"><h2>${esc(b.title || 'Календарь торгов')}</h2></div>

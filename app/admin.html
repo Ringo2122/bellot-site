@@ -1232,7 +1232,7 @@ function drawHomeEd(){
   if(ty==='how') x = hs('cols', 'Шагов в ряд (на компьютере)', b.cols, [['','4'],['2','2'],['3','3']]) + htl('how', 4, 'Шаг');
   if(ty==='band') x = ht('band_title', 'Заголовок') + ht('band_text', 'Текст', 2) + hs('style', 'Цвет плашки', b.style, [['','Тёмная (сейчас)'],['brand','Фирменного цвета'],['soft','Светлая']]);
   if(['pins','soon','fresh'].includes(ty)) x = hs('view', 'Вид', b.view, [['','Лента со стрелками'],['grid','Сетка']]) + hf('count', 'Сколько лотов показывать', b.count, 'type="number" min="1" max="20" placeholder="20"');
-  if(ty==='why') x = hs('cols', 'Пунктов в ряд (на компьютере)', b.cols, [['','3'],['2','2'],['4','4']]) + hs('icons', 'Значки', b.icons, [['','Объёмные 3D'],['line','Контурные']])
+  if(ty==='why') x = hs('cols', 'Пунктов в ряд (на компьютере)', b.cols, [['','3'],['2','2'],['4','4']]) + hs('icons', 'Значки', b.icons, [['','Плитка оранжевый → синий'],['3d','Объёмные 3D'],['line','Контурные']])
     + `<div class="fld"><span>Пункты: значок (квадратный, лучше PNG с прозрачным фоном; пусто — стандартный), заголовок и текст</span></div>`
     + txl('adv').slice(0, 6).concat(Array(Math.max(0, 6 - txl('adv').length)).fill({})).map((a,i)=>`<div class="panel hitem">
         <div class="fld hico"><span>Значок пункта ${i+1}</span>${hImg('imgs.' + i, (b.imgs||[])[i], true)}</div>
