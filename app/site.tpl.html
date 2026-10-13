@@ -4,9 +4,11 @@
 <meta name="robots" content="noindex, nofollow">
 <!-- Политика безопасности: скрипты — свои и карта Leaflet с cdnjs, запросы — только в базу Supabase; фото площадок — с их сайтов -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'">
-<title>МониТорг — торги Беларуси</title>
+<title>__TITLE__</title>
+<meta name="description" content="__DESC__">
+<meta property="og:type" content="website"><meta property="og:site_name" content="__BRAND__"><meta property="og:title" content="__TITLE__"><meta property="og:description" content="__SHORT__">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Onest:wght@600;700;800&family=PT+Mono&display=swap">
-<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="icon" href="favicon.ico" sizes="32x32"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="favicon.ico" sizes="32x32"><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>
 /* Общий стиль из админки («Главная страница» → «Общий стиль»): фирменный цвет, скругление углов, шрифт заголовков.
    Стоит до основных стилей, поэтому селекторы сильнее (html:root) — иначе основные перекрыли бы. Тот же код — в предпросмотре админки */
@@ -317,6 +319,10 @@ applyTheme(window.THEME);
   .land .hero-img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:20px;box-shadow:var(--sh-2)}
   @media (max-width:900px){ .land-in.has-img{grid-template-columns:1fr;gap:22px} }
   .logo img.mark{object-fit:contain;background:none;padding:0}
+  /* знак логотипа: в тёмной теме — с белыми линиями (решение Артёма 13.10) */
+  .logo .md{display:none}
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .logo .ml{display:none} :root:not([data-theme="light"]) .logo .md{display:block} }
+  :root[data-theme="dark"] .logo .ml{display:none} :root[data-theme="dark"] .logo .md{display:block}
   .stile .ti img{width:100%;height:100%;object-fit:contain;padding:5px}
   .stile .bg img{width:120px;height:120px;object-fit:contain}
   /* текст с картинкой */
@@ -1138,7 +1144,7 @@ applyTheme(window.THEME);
 
 <header class="main"><div class="wrap hrow">
   <a class="logo" href="#/">
-    <span class="mark">МТ</span>
+    <img class="mark ml" src="logo-mark.png" alt=""><img class="mark md" src="logo-mark-dark.png" alt="">
     <span class="lt"><span class="nm">МониТорг</span><span class="sub">Первый агрегатор<br>торгов Беларуси</span></span>
   </a>
 <nav class="hnav" aria-label="Разделы сайта"><ul id="nav"></ul></nav>
@@ -1186,7 +1192,7 @@ applyTheme(window.THEME);
       <li><a href="https://konfiskat.by" target="_blank" rel="noopener">Торговый дом «Восточный»</a></li>
       <li><a href="https://belauction.by" target="_blank" rel="noopener">БелАукцион</a></li>
       <li><a href="https://minskestate.by" target="_blank" rel="noopener">Минск-Недвижимость (МГЦН)</a></li>
-      <li><a href="https://mgcn.by/auctions/" target="_blank" rel="noopener">МГЦН — очные аукционы</a></li>
+      <li><a href="https://mgcn.by/auctions/" target="_blank" rel="noopener">МГЦН - очные аукционы</a></li>
       <li><a href="https://auction24.by" target="_blank" rel="noopener">Госторги (auction24.by)</a></li>
       <li><a href="https://et.butb.by/et/index.xhtml" target="_blank" rel="noopener">БУТБ-Имущество (товарная биржа)</a></li>
       <li><a href="https://lotsale.by" target="_blank" rel="noopener">LotSale</a></li>
@@ -1243,6 +1249,8 @@ const SECTIONS = [
 ].filter(([s])=>!(CFG.sec_off||[]).includes(s));
 /* текст из админки, если там заполнен; иначе — текст по умолчанию */
 const TX = (k, d) => { const v = (CFG.texts||{})[k]; return v && String(v).trim() ? String(v) : d; };
+// название сайта во вкладке и окончание заголовков страниц («Все лоты - МониТорг») — из админки (тексты seo_*)
+const SEO_TITLE = TX('seo_title', 'МониТорг - торги по имуществу должников Беларуси'), TSUF = ' - ' + TX('seo_brand', 'МониТорг');
 const numv = v => v===''||v==null||isNaN(+v) ? null : +v;
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1542,7 +1550,7 @@ function lotCard(l, inArch){
       <div class="pr">${nf(l.price)} <span>BYN</span>${pc!==null&&pc<0?`<em class="down">↓ ${-pc}%</em>`:''}</div>
       ${usdTxt(l.price)?`<div class="pr2">${usdTxt(l.price)}</div>`:''}
       ${disc?`<div class="dsc">${DOWN}На ${disc}% дешевле рынка</div>`:''}
-      <div class="loc">${esc(l.location||'—')}</div>
+      <div class="loc">${esc(l.location||'-')}</div>
       <div class="ft">${arch
         ? (resShort(l) ? `<span class="rs ${RES[l.result.st][1]}">${resShort(l)}</span>` : `<span>${l.why==='removed'?'Снят':'Завершён'} <b>${dt(l.closed)}</b></span>`)
         : `<span>Заявки до <b>${dt(l.req_to)}</b></span>`}<span class="pl"><i class="pdot"></i>${esc(l.alt?l.alt.map(a=>a.platform).join(' + '):l.platform)}</span></div>
@@ -1564,13 +1572,13 @@ function resultBlock(l){
   const r = resOf(l), at = (r && r.at) || l.torg || l.req_to + 86400;
   // очные торги gostorg: итогов онлайн тоже нет — узнать у организатора
   if(l.off) return `<aside class="panel rres"><div class="lbl">Итоги торгов</div><div class="rst">Очный аукцион</div>
-    <p class="note">Аукцион ${at*1000 > Date.now() ? 'пройдёт ' + dtm(at) : 'прошёл ' + dtm(at)} очно у организатора. Итоги очных торгов онлайн не публикуются — узнать их можно у организатора (контакты — на площадке).
+    <p class="note">Аукцион ${at*1000 > Date.now() ? 'пройдёт ' + dtm(at) : 'прошёл ' + dtm(at)} очно у организатора. Итоги очных торгов онлайн не публикуются - узнать их можно у организатора (контакты - на площадке).
       <a href="${esc(l.url)}" target="_blank" rel="noopener">Лот на площадке ↗</a></p></aside>`;
   if(l.platform==='mgcn.by') return `<aside class="panel rres"><div class="lbl">Итоги торгов</div><div class="rst">Очный аукцион</div>
-    <p class="note">Аукцион ${at*1000 > Date.now() ? 'пройдёт ' + dtm(at) : 'прошёл ' + dtm(at)} в зале МГЦН (г. Минск, ул. К. Маркса, 39). Итоги очных аукционов организатор онлайн не публикует — узнать их можно у МГЦН: +375 (17) 360-42-22.
+    <p class="note">Аукцион ${at*1000 > Date.now() ? 'пройдёт ' + dtm(at) : 'прошёл ' + dtm(at)} в зале МГЦН (г. Минск, ул. К. Маркса, 39). Итоги очных аукционов организатор онлайн не публикует - узнать их можно у МГЦН: +375 (17) 360-42-22.
       <a href="${esc(l.url)}" target="_blank" rel="noopener">Извещение ↗</a></p></aside>`;
   if(!r) return `<aside class="panel rres"><div class="lbl">Итоги торгов</div><div class="rst">Итоги ещё не опубликованы</div>
-    <p class="note">Торги ${at*1000 > Date.now() ? 'пройдут ' + dtm(at) : 'прошли ' + dt(at)}. Площадку проверяем каждый час${l.result && l.result.checked ? `, последняя проверка — ${dtm(l.result.checked)}` : ''}: итог появится здесь${UB ? ' и придёт уведомлением тем, кто следит за лотом' : ''}.
+    <p class="note">Торги ${at*1000 > Date.now() ? 'пройдут ' + dtm(at) : 'прошли ' + dt(at)}. Площадку проверяем каждый час${l.result && l.result.checked ? `, последняя проверка - ${dtm(l.result.checked)}` : ''}: итог появится здесь${UB ? ' и придёт уведомлением тем, кто следит за лотом' : ''}.
       <a href="${esc(l.url)}" target="_blank" rel="noopener">Посмотреть на площадке ↗</a></p></aside>`;
   const [t, c] = RES[r.st], p = prem(r);
   return `<aside class="panel rres ${c}"><div class="lbl">Итоги торгов</div><div class="rst">${t}</div>
@@ -1581,7 +1589,7 @@ function resultBlock(l){
       ${r.bids ? `<dt>Ставок</dt><dd>${r.bids}${r.users ? ` · ${r.users} ${plural(r.users,'участник','участника','участников')}` : ''}</dd>` : r.users ? `<dt>Участников</dt><dd>${r.users}</dd>` : ''}
     </dl>
     ${r.note ? `<p class="note">${esc(r.note[0].toUpperCase() + r.note.slice(1))}.</p>` : ''}
-    ${r.st === 'failed' ? '<p class="note">Несостоявшиеся торги часто повторяют со снижением цены — если лот выставят снова, он вернётся в каталог.</p>' : ''}
+    ${r.st === 'failed' ? '<p class="note">Несостоявшиеся торги часто повторяют со снижением цены - если лот выставят снова, он вернётся в каталог.</p>' : ''}
     <p class="note">По данным площадки: <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.platform)} ↗</a></p></aside>`;
 }
 
@@ -1640,8 +1648,8 @@ const SORTS_ARCH = [['closed','Недавно завершённые'],['sale-de
   ['price-asc','Начальная цена по возрастанию'],['price-desc','Начальная цена по убыванию'],['name','По названию']];
 /* итог торгов лота в архиве — для фильтра «Итог торгов» */
 const resKey = l => l.why==='removed' ? 'removed' : l.platform==='mgcn.by' || l.off ? 'offline' : l.result && RES[l.result.st] ? l.result.st : 'pending';
-const RES_F = [['sold_any','Продан — любой'],['sold','Торги состоялись'],['single','Продан единственному участнику'],['failed','Торги не состоялись'],
-  ['cancelled','Торги отменены'],['removed','Снят с площадки до торгов'],['pending','Итоги ещё не опубликованы'],['offline','Очный аукцион — итоги не публикуются']];
+const RES_F = [['sold_any','Продан - любой'],['sold','Торги состоялись'],['single','Продан единственному участнику'],['failed','Торги не состоялись'],
+  ['cancelled','Торги отменены'],['removed','Снят с площадки до торгов'],['pending','Итоги ещё не опубликованы'],['offline','Очный аукцион - итоги не публикуются']];
 const resMatch = (l, f) => f==='sold_any' ? ['sold','single'].includes(resKey(l)) : resKey(l)===f;
 
 /* Свой выпадающий список поверх обычного select: значение и события change остаются у select,
@@ -1767,7 +1775,7 @@ function filterPanel(list, f, sc){
         `<button type="button" data-c="${c}"${(fUsd(f)?'USD':'BYN')===c?' class="on" aria-pressed="true"':' aria-pressed="false"'}>${c}</button>`).join('')}</span>`:''}</div><div class="two">
         <input id="f-pmin" type="number" placeholder="от" value="${esc(f.pmin||'')}">
         <input id="f-pmax" type="number" placeholder="до" value="${esc(f.pmax||'')}"></div></div>
-      <div class="fg"><label for="f-dfrom">Дата торгов: от — до</label><div class="two">
+      <div class="fg"><label for="f-dfrom">Дата торгов: от - до</label><div class="two">
         <input id="f-dfrom" type="date" value="${esc(f.dfrom||'')}" aria-label="Дата торгов от">
         <input id="f-dto" type="date" value="${esc(f.dto||'')}" aria-label="Дата торгов до"></div></div>
       <div class="fg"><label for="f-pdd">Площадка</label><input type="hidden" id="f-plat" value="${esc(f.plat||'')}">
@@ -1822,7 +1830,7 @@ function pageCatalog(sc, params){
     ${crumbs(sc && sc.sub ? [[ct.n, '#/c/'+ct.k], [title]] : [[title]])}
     <div class="cat-head"><h1>${ct?`<span class="hico s-${ct.ic}">${ICON[ct.ic]}</span>`:''}${esc(title)}</h1><p class="lede" id="c-lede"></p></div>
     <div class="layout"><div id="fwrap"></div><div><div class="toolbar" id="tb"></div><div id="res"></div></div></div></div>`;
-  document.title = title + ' — МониТорг';
+  document.title = title + TSUF;
 
   const closeDrawer = () => { $('#fp')?.classList.remove('open'); $('#ov').classList.remove('open'); };
   let SWAP = null;   // последнее переключение валюты: прежние «от/до» — чтобы вернуть их при обратном переключении
@@ -1881,10 +1889,10 @@ function pageCatalog(sc, params){
     if(more!==true) show = STEP;
     const arch = FSTATE.st==='arch';
     // «Активные / Архив» и поиск меняют заголовок: «Все лоты», «Архив торгов», «Поиск по каталогу»
-    if(!sc && document.title !== titleOf() + ' — МониТорг'){ const t = titleOf(); document.title = t + ' — МониТорг';
+    if(!sc && document.title !== titleOf() + TSUF){ const t = titleOf(); document.title = t + TSUF;
       $('.cat-head h1').textContent = t; $('#app .crumbs').outerHTML = crumbs([[t]]); }
     $('#c-lede').textContent = arch
-      ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним год — для истории цен, похожих торгов и аналитики.'
+      ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним год - для истории цен, похожих торгов и аналитики.'
       : 'Лоты с открытым приёмом заявок. Каталог обновляется автоматически.';
     if(arch && !ARCH){ $('#tb').innerHTML=''; $('#res').innerHTML = '<div class="skel"></div><div class="skel" style="margin-top:10px"></div>';
       loadArch().then(()=>{ if($('#fwrap') && FSTATE.st==='arch'){ drawPanel(); render(true); } }); return; }
@@ -1907,13 +1915,13 @@ function pageCatalog(sc, params){
       // по свежему архиву, если весь ещё не загружен: ради подсказки 2 МБ не грузим
       const ar = ARCH || ARCH1;
       if(ar){ const n = applyFilters(sc?ar.filter(l=>inScope(l, sc)):ar, {...FSTATE, st:'arch'}).length;
-        if(n) hint = `<div class="hint">В архиве ещё <b>${n}</b> ${plural(n,'совпадение','совпадения','совпадений')} — <a href="#" id="to-arch">показать архив</a></div>`; }
+        if(n) hint = `<div class="hint">В архиве ещё <b>${n}</b> ${plural(n,'совпадение','совпадения','совпадений')} - <a href="#" id="to-arch">показать архив</a></div>`; }
       else loadArch1().then(()=>{ if($('#res')) render(); });
     }
     $('#res').innerHTML = hint + (list.length
       ? `<div class="grid">${list.slice(0,show).map(l=>lotCard(l, arch)).join('')}</div>`
         + (list.length>show ? `<button class="btn more" id="more" type="button">Показать ещё ${Math.min(STEP,list.length-show)} · осталось ${list.length-show}</button>` : '')
-      : `<div class="panel empty">${arch&&!base.length?'Архив раздела пока пуст — лоты попадают сюда после окончания приёма заявок.':'По этим условиям ничего не нашлось. Попробуйте смягчить фильтры.'}</div>`);
+      : `<div class="panel empty">${arch&&!base.length?'Архив раздела пока пуст - лоты попадают сюда после окончания приёма заявок.':'По этим условиям ничего не нашлось. Попробуйте смягчить фильтры.'}</div>`);
     const mb = $('#more'); if(mb) mb.onclick = () => { show += STEP; render(true); };
     syncUrl();
     const ta = $('#to-arch'); if(ta) ta.onclick = e => { e.preventDefault(); FSTATE = {st:'arch', q:FSTATE.q}; drawPanel(); render(); window.scrollTo({top:0,behavior:'smooth'}); };
@@ -1929,16 +1937,16 @@ function marketBlock(l){
   const dc = discount(l);
   if(m.manual) return `<div class="mkt"><div class="hd">Оценка МониТорга</div>
     <div class="mval">${nf(m.median)} BYN</div>
-    <div class="sub">Стартовая цена лота <b>${nf(l.price)} BYN</b> — ${dc>=0?`на <b>${dc}%</b> ниже`:`на <b>${-dc}%</b> выше`} рыночной оценки.</div>
+    <div class="sub">Стартовая цена лота <b>${nf(l.price)} BYN</b> - ${dc>=0?`на <b>${dc}%</b> ниже`:`на <b>${-dc}%</b> выше`} рыночной оценки.</div>
     ${m.note?`<div class="sub" style="margin-top:7px">${esc(m.note)}</div>`:''}
-    <div class="warn">Оценка специалиста МониТорга по рынку — ориентир, а не гарантия выгоды.</div></div>`;
+    <div class="warn">Оценка специалиста МониТорга по рынку - ориентир, а не гарантия выгоды.</div></div>`;
   const pos = Math.max(0, Math.min(100, Math.round(l.price / m.median * 100)));
   return `<div class="mkt">
     <div class="hd">Рыночный ориентир</div>
     <div class="mval">${nf(m.median)} BYN</div>
     <div class="sub">медиана ${m.n} похожих предложений на ${esc(m.source)}${m.year?`, ${m.year} год`:''}</div>
     <div class="bar"><span>${nf(m.low)}</span><span class="track"><span class="fill" style="width:${pos}%"></span></span><span>${nf(m.high)}</span></div>
-    <div class="sub" style="margin-top:9px">Стартовая цена лота <b>${nf(l.price)} BYN</b> —
+    <div class="sub" style="margin-top:9px">Стартовая цена лота <b>${nf(l.price)} BYN</b> -
       ${dc>=0?`это на <b>${dc}%</b> ниже медианы рынка`:`это на <b>${-dc}%</b> выше медианы рынка`}.</div>
     ${m.sqm?`<div class="sub" style="margin-top:7px">За квадратный метр: у лота <b>${nf(m.lot_sqm)} BYN/м²</b>,
       на рынке <b>${nf(m.sqm)} BYN/м²</b> по ${m.sqm_n} объявлениям с указанной площадью.</div>`:''}
@@ -1960,10 +1968,10 @@ function calcModel(l, t, cc){
   m.deposit = t.deposit || P*m.depPct/100; if(!t.deposit) m.est.deposit = true;
   m.single = t.single_pct ? P*(1+pct(t.single_pct)) : null;
   if(t.step_abs){
-    m.stepTxt = `${nf(t.step_abs)} BYN — фиксированный`;
+    m.stepTxt = `${nf(t.step_abs)} BYN - фиксированный`;
     m.at = n => P + n*t.step_abs;
   } else if(t.step_pct && t.step_base==='current'){
-    m.stepTxt = `${t.step_pct}% от текущей цены — каждый шаг чуть больше предыдущего`;
+    m.stepTxt = `${t.step_pct}% от текущей цены - каждый шаг чуть больше предыдущего`;
     m.at = n => P*Math.pow(1+pct(t.step_pct), n);
   } else if(t.first_pct){
     m.pick = true;   // шаг выбирает участник: от step_min_pct до step_pct от начальной
@@ -1975,7 +1983,7 @@ function calcModel(l, t, cc){
   } else {
     m.est.step = true;
     const sp = numv(cc.step) ?? 5;
-    m.stepTxt = `${String(sp).replace('.',',')}% от начальной — площадка шаг не указала, это оценка`;
+    m.stepTxt = `${String(sp).replace('.',',')}% от начальной - площадка шаг не указала, это оценка`;
     m.at = n => P*(1+n*sp/100);
   }
   m.fees = f => (t.fee_pct ? f*pct(t.fee_pct) : 0) + (t.fee_abs || 0);
@@ -1993,7 +2001,7 @@ function payTerm(secs){
   // «не позднее 10 (десяти) рабочих дней после подписания договора» — нужен срок с числом дней
   const m = pick && String(pick[1]).match(/(?:не позднее|в течени[еи])\s+\d+\s*(?:\([^)]*\))?\s*(?:рабочих|календарных|банковских)?\s*дн[а-яё]*(?:\s+(?:после|со дня|с даты|с момента)\s+[^.;,]{0,40})?/i);
   // оплата частями («50% от цены … оставшуюся сумму …») — одной строкой не передать
-  if(m && /\d+\s*%\s*от цены|оставш\S* сумм/i.test(pick[1])) return 'частями — см. «Оплата и договор» ниже';
+  if(m && /\d+\s*%\s*от цены|оставш\S* сумм/i.test(pick[1])) return 'частями - см. «Оплата и договор» ниже';
   return m ? m[0].replace(/\s+\S*$/, s => /дог|аукц|торг/.test(s) ? s : '').trim() : null;
 }
 
@@ -2008,27 +2016,27 @@ function calcBlock(l, det){
   // Сверх цены лота: у beltorgi — аукционный сбор % и затраты на организацию торгов, у ИПМ — вознаграждение % и затраты,
   // у e-auction по арестованному имуществу сборов нет. Поля заполнены данными площадки и их можно поправить.
   const feeName = l.platform==='beltorgi.by' ? 'Аукционный сбор' : 'Вознаграждение организатору';
-  const feeNote = cc.note ? cc.note : !known ? 'Площадка не указала сборы по этому лоту — впишите, если знаете.'
+  const feeNote = cc.note ? cc.note : !known ? 'Площадка не указала сборы по этому лоту - впишите, если знаете.'
     : l.platform==='beltorgi.by'
-      ? 'Из карточки лота на площадке.' + (t.fee_later ? ' Сумму затрат площадка объявит до начала торгов — впишите её, когда узнаете.' : '')
+      ? 'Из карточки лота на площадке.' + (t.fee_later ? ' Сумму затрат площадка объявит до начала торгов - впишите её, когда узнаете.' : '')
     : l.platform==='konfiskat.by'
-      ? 'Затраты на организацию и проведение торгов оплачиваются отдельно — сумму сообщает организатор (РУП «Торговый дом «Восточный»). Задаток — 10% по извещению.'
+      ? 'Затраты на организацию и проведение торгов оплачиваются отдельно - сумму сообщает организатор (РУП «Торговый дом «Восточный»). Задаток - 10% по извещению.'
     : l.platform==='belauction.by'
-      ? 'Сверх ставки победитель платит сбор аукциона — размер в правилах площадки (belauction.by/sbor-auktsiona). Для юрлиц ставка указана с НДС 20%.'
+      ? 'Сверх ставки победитель платит сбор аукциона - размер в правилах площадки (belauction.by/sbor-auktsiona). Для юрлиц ставка указана с НДС 20%.'
     : l.platform==='ipmtorgi.by'
       ? 'Из карточки лота на площадке. Точную сумму затрат площадка сообщает до начала торгов.'
     : l.platform==='minskestate.by'
       ? 'Из карточки лота на площадке: ориентировочная сумма затрат на организацию торгов и вознаграждение организатора.'
     : l.platform==='mgcn.by'
-      ? 'Очный аукцион МГЦН: шаг торгов и затраты на организацию указаны в извещении — уточните у организатора и впишите.'
+      ? 'Очный аукцион МГЦН: шаг торгов и затраты на организацию указаны в извещении - уточните у организатора и впишите.'
     : l.platform==='lotsale.by'
-      ? 'Победитель возмещает затраты на организацию торгов — сумма в условиях лота на площадке (может уточняться до начала торгов). Впишите её.'
+      ? 'Победитель возмещает затраты на организацию торгов - сумма в условиях лота на площадке (может уточняться до начала торгов). Впишите её.'
     : l.platform==='butb.by'
       ? 'Из карточки лота на бирже: затраты на организацию и проведение торгов (организатор может уточнить сумму до начала торгов).'
     : ['bankrot-torg.by','specrealization.by'].includes(l.platform)
-      ? 'Из карточки лота: аукционный сбор и затраты на организацию торгов (публикация, оценка) — если площадка их указала.'
+      ? 'Из карточки лота: аукционный сбор и затраты на организацию торгов (публикация, оценка) - если площадка их указала.'
     : l.platform==='gostorg.by'
-      ? 'Из карточки лота: вознаграждение организатору, % от цены продажи (если указано). Затраты на организацию торгов, если есть, — в условиях лота на площадке.'
+      ? 'Из карточки лота: вознаграждение организатору, % от цены продажи (если указано). Затраты на организацию торгов, если есть, - в условиях лота на площадке.'
       : 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.';
   const feesHtml = `<div class="cx-fees"><div class="cx-fh">Расходы сверх цены лота</div>
       <label class="cx-f"><span>${feeName}, % от итоговой цены</span><input type="number" id="cx-fp" min="0" max="30" step="0.1" value="${t.fee_pct!=null?t.fee_pct:''}" placeholder="0"></label>
@@ -2037,7 +2045,7 @@ function calcBlock(l, det){
   const spOpts = m.pick ? [0.5,1,2,3,4,5].filter(x=>x>=(t.step_min_pct||0.5) && x<=(t.step_pct||5)) : [];
   $('#calcx').innerHTML = `
     <div class="cx-head"><h2>Калькулятор покупки</h2>
-      <span class="c">${known?'условия площадки по этому лоту подставлены автоматически':'площадка не указала условия — считаем по типовым'}</span></div>
+      <span class="c">${known?'условия площадки по этому лоту подставлены автоматически':'площадка не указала условия - считаем по типовым'}</span></div>
     <div class="cx-grid">
       <div class="cx-in">
         <label for="cx-n">Сколько раз поднимут цену на торгах</label>
@@ -2048,7 +2056,7 @@ function calcBlock(l, det){
         <div class="cx-scale" id="cx-scale"></div>
         <ul class="cx-rules">
           <li><span>Шаг торгов</span><b>${esc(m.stepTxt)}</b></li>
-          <li><span>Задаток</span><b>${nf(m.deposit)} BYN${m.est.deposit?` — оценка ${String(m.depPct).replace('.',',')}%`:''}</b></li>
+          <li><span>Задаток</span><b>${nf(m.deposit)} BYN${m.est.deposit?` - оценка ${String(m.depPct).replace('.',',')}%`:''}</b></li>
           ${m.single?`<li><span>Единственный участник</span><b>покупает за ${nf(m.single)} BYN (+${t.single_pct}%)</b></li>`:''}
           ${t.min_price?`<li><span>Минимальная стоимость</span><b>${nf(t.min_price)} BYN</b></li>`:''}
           ${t.vat?`<li><span>НДС</span><b>${esc(t.vat)}</b></li>`:''}
@@ -2078,7 +2086,7 @@ function calcBlock(l, det){
       let k = 0; while(k<200 && (m.at(k+1,sp) + feeOf(m.at(k+1,sp))) < med) k++;
       mk = `<div class="cx-mk ${d>=0?'ok':'bad'}">${d>=0
         ? `Итог на <b>${d}%</b> ниже рыночной медианы (${nf(med)} BYN).`
-        : `Итог на <b>${-d}%</b> выше рыночной медианы — дальше торговаться невыгодно.`}
+        : `Итог на <b>${-d}%</b> выше рыночной медианы - дальше торговаться невыгодно.`}
         ${d>=0?`<br>Выгода сохраняется примерно до <b>${k}</b> ${plural(k,'шага','шагов','шагов')}.`:''}</div>`;
       const max = Math.max(med, total)*1.08, x = v => Math.min(100, v/max*100);
       $('#cx-scale').innerHTML = `<div class="sc-track"><span class="sc-fill" style="width:${x(total)}%"></span>
@@ -2089,7 +2097,7 @@ function calcBlock(l, det){
       <div class="row"><span class="l">${feeName}${fp?`, ${String(fp).replace('.',',')}%`:''}</span><span class="r">${fp?nf(price*fp/100)+' BYN':'нет'}</span></div>
       <div class="row"><span class="l">Затраты на организацию торгов</span><span class="r">${fa?nf(fa)+' BYN':(t.fee_later?'объявят до торгов':'нет')}</span></div>
       <div class="row big"><span class="l">Итого за покупку</span><span class="r">${nf(total)} BYN</span></div>
-      <div class="row"><span class="l">Задаток — внести до ${dt(t.deposit_to || l.req_to)}</span><span class="r">${nf(m.deposit)} BYN</span></div>
+      <div class="row"><span class="l">Задаток - внести до ${dt(t.deposit_to || l.req_to)}</span><span class="r">${nf(m.deposit)} BYN</span></div>
       <div class="row"><span class="l">Доплатить после победы</span><span class="r">${nf(rest)} BYN</span></div>
       ${mk}
       <div class="note">Задаток засчитывается в цену. Проигравшим его возвращают. Если победитель отказывается от покупки, задаток не возвращают. Госпошлина и регистрация здесь не учтены.</div>`;
@@ -2119,24 +2127,24 @@ function rentBlock(l, r){
     const amt = (ks, S) => kz ? `${r2(sum(ks, S, kz))} BYN` : `${r2(sum(ks, S, rng[0]))} – ${r2(sum(ks, S, rng[1]))} BYN`;
     if(r.parts.length){
       const cap = s => esc(s[0].toUpperCase() + s.slice(1));
-      r.parts.forEach(p => rows.push(p.S ? line(`${cap(p.what)}, ${k(p.S)} м² — коэффициент спроса ${k(p.ks)}`, amt(p.ks, p.S) + ' в месяц')
-        : line(`${cap(p.what)} — коэффициент спроса ${k(p.ks)}`, amt(p.ks, 1) + ' за 1 м² в месяц')));
+      r.parts.forEach(p => rows.push(p.S ? line(`${cap(p.what)}, ${k(p.S)} м² - коэффициент спроса ${k(p.ks)}`, amt(p.ks, p.S) + ' в месяц')
+        : line(`${cap(p.what)} - коэффициент спроса ${k(p.ks)}`, amt(p.ks, 1) + ' за 1 м² в месяц')));
       if(r.parts.every(p=>p.S)){ const tot = kk => r.parts.reduce((s,p)=>s + sum(p.ks, p.S, kk), 0);
         rows.push(line('Аренда в месяц, всего', kz ? `${r2(tot(kz))} BYN` : `${r2(tot(rng[0]))} – ${r2(tot(rng[1]))} BYN`, true)); }
-      else notes.push('Площади частей в извещении не указаны — показана ставка за 1 м²; площади уточните у арендодателя.');
+      else notes.push('Площади частей в извещении не указаны - показана ставка за 1 м²; площади уточните у арендодателя.');
     } else {
       r.steps.forEach((s, i) => rows.push(line(r.steps.length === 1 ? `Коэффициент спроса ${k(s.ks)}`
-          : s.m ? `Первые ${s.m} ${plural(s.m,'месяц','месяца','месяцев')} — коэффициент спроса ${k(s.ks)}` : `Дальше — коэффициент спроса ${k(s.ks)}`,
+          : s.m ? `Первые ${s.m} ${plural(s.m,'месяц','месяца','месяцев')} - коэффициент спроса ${k(s.ks)}` : `Дальше - коэффициент спроса ${k(s.ks)}`,
         amt(s.ks, r.S) + ' в месяц', i === r.steps.length - 1)));
     }
     const one = !r.parts.length && r.steps.length === 1, perM2 = r.parts.length && !r.parts.every(p=>p.S);
     formula = `0,5 БАВ (базовая ставка Минска) × ${r2(bav)} руб. × ${kz ? k(kz) : 'коэффициент'} (зона) × ${one ? k(r.steps[0].ks) : 'коэффициент'} (спрос) ${perM2 ? 'за 1 м²' : `× ${k(r.S)} м²`}`
       + (one && kz ? ` = ${r2(sum(r.steps[0].ks, r.S, kz))} BYN в месяц` : '');
-    notes.unshift(kz ? `Зона: ${z.z}-я экономико-планировочная зона Минска, коэффициент ${k(kz)} — по карте зон МГЦН.`
-      : `Зону по адресу точно определить не удалось (${esc(z.why || 'нет точки на карте')}) — коэффициент зоны от ${k(rng[0])} до ${k(rng[1])}.`);
-    if(r.alt) notes.push(`Для арендаторов с правом на понижающие коэффициенты (Указ № 138, приложение 2) коэффициент спроса — ${k(r.alt)}; итог зависит от льготы.`);
+    notes.unshift(kz ? `Зона: ${z.z}-я экономико-планировочная зона Минска, коэффициент ${k(kz)} - по карте зон МГЦН.`
+      : `Зону по адресу точно определить не удалось (${esc(z.why || 'нет точки на карте')}) - коэффициент зоны от ${k(rng[0])} до ${k(rng[1])}.`);
+    if(r.alt) notes.push(`Для арендаторов с правом на понижающие коэффициенты (Указ № 138, приложение 2) коэффициент спроса - ${k(r.alt)}; итог зависит от льготы.`);
   } else if(r.k === 'bav_m2'){
-    r.parts.forEach(p => rows.push(line(`${p.what ? esc(p.what[0].toUpperCase() + p.what.slice(1)) + ' — ' : ''}${k(p.v)} БАВ за 1 м²`,
+    r.parts.forEach(p => rows.push(line(`${p.what ? esc(p.what[0].toUpperCase() + p.what.slice(1)) + ' - ' : ''}${k(p.v)} БАВ за 1 м²`,
       `${r2(p.v * bav * r.S)} BYN в месяц`, r.parts.length === 1)));
     formula = `${r.parts.map(p=>k(p.v)).join(' или ')} БАВ × ${r2(bav)} руб. × ${k(r.S)} м²`;
   } else if(r.k === 'bav_total'){
@@ -2150,16 +2158,16 @@ function rentBlock(l, r){
     rows.push(line('Начальная арендная плата на торгах', `${r2(r.v)} BYN в месяц`, true));
     notes.push('Торги идут на повышение арендной платы: победитель платит в месяц ту сумму, которую предложил на торгах.');
   } else {
-    notes.push('Запись ставки нестандартная — сумму автоматически не считаем, уточните у арендодателя.');
+    notes.push('Запись ставки нестандартная - сумму автоматически не считаем, уточните у арендодателя.');
   }
   const from = String(B.from || '').split('-').reverse().join('.');
-  box.innerHTML = `<div class="cx-head"><h2>Сколько стоит аренда</h2><span class="c">ставка из извещения, БАВ — действующая</span></div>
+  box.innerHTML = `<div class="cx-head"><h2>Сколько стоит аренда</h2><span class="c">ставка из извещения, БАВ - действующая</span></div>
     <div class="cx-out">${rows.join('')}
       <div class="note">Ставка по извещению: «${esc(r.raw)}».${formula ? ` Расчёт: ${formula.replace(/\.$/, '')}.` : ''}</div>
       ${notes.map(n=>`<div class="note">${n}</div>`).join('')}
       ${r.k === 'month' ? '<div class="note">Коммунальные и эксплуатационные расходы оплачиваются сверх аренды.</div>'
         : `<div class="note">${r.k === 'byn' ? '' : `БАВ ${r2(bav)} руб. действует с ${from}${B.src ? `: ${B.url ? `<a href="${esc(B.url)}" target="_blank" rel="noopener">${esc(B.src)}</a>` : esc(B.src)}` : ''}. При её изменении сумма пересчитается.`}
-        Коммунальные и эксплуатационные расходы оплачиваются сверх аренды. Начальная цена права заключения договора (${nf(l.price)} BYN) — разовый платёж победителя аукциона, в аренду не входит.</div>`}</div>`;
+        Коммунальные и эксплуатационные расходы оплачиваются сверх аренды. Начальная цена права заключения договора (${nf(l.price)} BYN) - разовый платёж победителя аукциона, в аренду не входит.</div>`}</div>`;
 }
 
 /* заголовки секций у площадок разные и бывают обрезаны — приводим к одному виду */
@@ -2190,10 +2198,10 @@ const rowsHtml = rows => `<div class="rows">${rows.map(([k,v])=> (!k || String(v
 function multiBlock(l){
   const n = l.alt.length;
   return `<div class="panel multi"><div class="hd">Торги на ${n===2?'двух':n} ${plural(n,'источнике','источниках','источниках')}</div>
-    <p class="sub">Один и тот же лот выставлен на ${n} ${plural(n,'площадке','площадках','площадках')}. Сведения на странице — с площадки, где торги раньше.</p>
+    <p class="sub">Один и тот же лот выставлен на ${n} ${plural(n,'площадке','площадках','площадках')}. Сведения на странице - с площадки, где торги раньше.</p>
     ${l.alt.map((a,i)=>`<a class="mrow" href="${esc(a.url)}" target="_blank" rel="noopener">
       <span class="mp">${esc(a.platform)}${i===0?' <em>основная</em>':''}</span>
-      <span class="md">заявки до <b>${a.req_to?dtm(a.req_to):'—'}</b>${a.torg?` · торги ${dtm(a.torg)}`:''}</span>
+      <span class="md">заявки до <b>${a.req_to?dtm(a.req_to):'-'}</b>${a.torg?` · торги ${dtm(a.torg)}`:''}</span>
       <span class="mg">↗</span></a>`).join('')}
   </div>`;
 }
@@ -2205,7 +2213,7 @@ const sgn = p => (p >= 0 ? '+' : '−') + Math.abs(p) + '%';
 function aucRes(a){
   if(a.pr){ const p = a.s > 0 ? Math.round((a.pr / a.s - 1) * 100) : null;
     return `<b>${nf(a.pr)} BYN</b>${p !== null ? `<span class="pm ${p >= 0 ? 'up' : 'dn'}">${sgn(p)}</span>` : ''}`; }
-  return `<span>${AST[a.st] || '—'}</span>`;
+  return `<span>${AST[a.st] || '-'}</span>`;
 }
 const aucLink = a => a.id ? `<a href="#/lot/${encodeURIComponent(a.id)}">${esc(a.n)}</a>` : `<a href="${esc(a.u)}" target="_blank" rel="noopener">${esc(a.n)} ↗</a>`;
 const usTxt = n => n ? ` · ${n} ${plural(n,'участник','участника','участников')}` : '';
@@ -2216,7 +2224,7 @@ function simBlock(l, c){
     <p class="xsub">Завершённые торги похожих объектов: <b>${esc(c.by)}</b>${veh ? ' · любой регион' : ''}</p>
     <div class="xk">
       <div><b>${c.n}</b><span>завершилось торгов</span></div>
-      <div><b>${c.sold}</b><span>продано — ${Math.round(c.sold / c.n * 100)}%</span></div>
+      <div><b>${c.sold}</b><span>продано - ${Math.round(c.sold / c.n * 100)}%</span></div>
       ${c.pm != null ? `<div><b>${sgn(c.pm)}</b><span>цена продажи к начальной, медиана</span></div>` : ''}
       ${c.pr ? `<div><b>${nf(c.pr)} BYN</b><span>цена продажи, медиана</span></div>` : ''}
       ${c.sqm ? `<div><b>${nf(c.sqm)} BYN</b><span>за м² при продаже, медиана</span></div>` : ''}
@@ -2226,7 +2234,7 @@ function simBlock(l, c){
     <h3>Похожие завершённые торги</h3>
     <div class="xl">${c.items.map(a=>`<div class="xr"><div class="xn">${aucLink(a)}<span>${dt(a.d)} · ${esc(a.p)}${a.y ? ` · ${a.y} г. в.` : ''}${a.a ? ` · ${nf(a.a)} м²` : ''}${usTxt(a.us)}</span></div>
       <div class="xv">${a.s > 0 ? `<span class="mut">начальная ${nf(a.s)} BYN</span>` : ''}${aucRes(a)}</div></div>`).join('')}</div>
-    <p class="note">${c.sold < 3 ? 'Продаж пока мало — ориентир грубый. ' : ''}Сравниваем ${veh ? 'ту же марку и модель, год выпуска ±2, в любом регионе' : 'объекты той же категории в том же населённом пункте'}. Медиана — середина ряда: половина продаж дешевле, половина дороже.</p>
+    <p class="note">${c.sold < 3 ? 'Продаж пока мало - ориентир грубый. ' : ''}Сравниваем ${veh ? 'ту же марку и модель, год выпуска ±2, в любом регионе' : 'объекты той же категории в том же населённом пункте'}. Медиана - середина ряда: половина продаж дешевле, половина дороже.</p>
   </section>`;
 }
 function histBlock(l, h){
@@ -2234,12 +2242,12 @@ function histBlock(l, h){
   const now = h.find(a=>a.st==='active');
   let lead = 'Этот же объект уже выставлялся на торги.';
   if(!arch && last && last.s > 0 && l.price > 0){ const p = Math.round((l.price / last.s - 1) * 100);
-    lead = `Прошлые торги — ${dt(last.d)}, ${(AST[last.st] || 'итог неизвестен').toLowerCase()}${last.pr ? ` за ${nf(last.pr)} BYN` : ''}. Стартовая цена с тех пор ${p ? (p < 0 ? 'снижена на ' : 'выросла на ') + Math.abs(p) + '%' : 'не изменилась'}.`; }
-  else if(arch && now) lead = `Объект снова на торгах — приём заявок до ${dt(now.d)}.`;
+    lead = `Прошлые торги - ${dt(last.d)}, ${(AST[last.st] || 'итог неизвестен').toLowerCase()}${last.pr ? ` за ${nf(last.pr)} BYN` : ''}. Стартовая цена с тех пор ${p ? (p < 0 ? 'снижена на ' : 'выросла на ') + Math.abs(p) + '%' : 'не изменилась'}.`; }
+  else if(arch && now) lead = `Объект снова на торгах - приём заявок до ${dt(now.d)}.`;
   return `<section class="panel xs" id="x-hist"><h2>История объекта</h2><p class="xsub">${lead}</p>
     <div class="xl">${h.map(a=>`<div class="xr"><div class="xn"><b>${dt(a.d)}</b> · ${esc(a.p)}<span>${aucLink(a)}</span></div>
       <div class="xv">${a.s > 0 ? `<span class="mut">${a.st==='active' ? 'стартовая' : 'начальная'} ${nf(a.s)} BYN</span>` : ''}${a.st==='active' ? `<b class="ok">Сейчас на торгах</b>` : aucRes(a)}${a.us ? `<span class="mut">${a.us} ${plural(a.us,'участник','участника','участников')}</span>` : ''}</div></div>`).join('')}</div>
-    <p class="note">Тот же объект узнаём по VIN, инвентарному или кадастровому номеру, у недвижимости — ещё по названию и адресу.</p></section>`;
+    <p class="note">Тот же объект узнаём по VIN, инвентарному или кадастровому номеру, у недвижимости - ещё по названию и адресу.</p></section>`;
 }
 let LEAF = null;
 function loadLeaflet(){
@@ -2255,11 +2263,11 @@ function loadLeaflet(){
   return LEAF;
 }
 function mapBlock(l, g){
-  const prec = { s:'Точка — на улице: дом на карте не нашёлся. ', p:'Точка — по населённому пункту: точного адреса на карте нет. ' }[g[2]] || '';
+  const prec = { s:'Точка - на улице: дом на карте не нашёлся. ', p:'Точка - по населённому пункту: точного адреса на карте нет. ' }[g[2]] || '';
   return `<section class="panel xs" id="x-map"><h2>Где находится</h2><div id="lmap" class="lmap"></div>
     <div class="mapbtns"><a class="btn" href="https://yandex.by/maps/?pt=${g[1]},${g[0]}&z=${g[2]==='p'?12:16}&l=map" target="_blank" rel="noopener">Открыть в Яндекс Картах ↗</a>
       <a class="btn" href="https://www.google.com/maps/search/?api=1&query=${g[0]},${g[1]}" target="_blank" rel="noopener">Открыть в Google Картах ↗</a></div>
-    <p class="note">${prec}Адрес по данным площадки: ${esc(g[3] || l.location || '—')}.</p></section>`;
+    <p class="note">${prec}Адрес по данным площадки: ${esc(g[3] || l.location || '-')}.</p></section>`;
 }
 function drawMap(g){
   loadLeaflet().then(L=>{
@@ -2267,7 +2275,7 @@ function drawMap(g){
     const m = L.map(el, { scrollWheelZoom:false }).setView([g[0], g[1]], g[2]==='a' ? 16 : g[2]==='s' ? 15 : 12);
     // схема — OpenStreetMap в стиле «Humanitarian» (спокойнее стандартного), спутник — снимки Esri; переключатель в углу
     const scheme = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxZoom:19, subdomains:'abc',
-      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, стиль — OSM France' }).addTo(m);
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, стиль - OSM France' }).addTo(m);
     const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom:19,
       attribution:'Снимки &copy; Esri, Maxar, Earthstar Geographics' });
     const sw = L.control({ position:'topright' });
@@ -2278,7 +2286,7 @@ function drawMap(g){
       return d; };
     sw.addTo(m);
     (g[2]==='p' ? L.circle([g[0], g[1]], { radius:900, color:'#f4511e', weight:2, fillOpacity:.12 }) : L.marker([g[0], g[1]])).addTo(m);
-  }).catch(()=>{ const el = document.getElementById('lmap'); if(el) el.outerHTML = '<p class="note">Карта не загрузилась — откройте адрес в Яндекс Картах или Google Maps по ссылкам ниже.</p>'; });
+  }).catch(()=>{ const el = document.getElementById('lmap'); if(el) el.outerHTML = '<p class="note">Карта не загрузилась - откройте адрес в Яндекс Картах или Google Maps по ссылкам ниже.</p>'; });
 }
 
 /* ───────── галерея: все фото карточки площадки (ссылками с площадки) ─────────
@@ -2379,7 +2387,7 @@ function bindLotReport(l){
     try{
       await urpc('report_lot', { p_lot:l.id, p_msg:msg, p_contact:$('#rep-contact').value.trim() || null,
         p_name:l.name, p_platform:l.platform, p_url:l.url });
-      f.outerHTML = '<p class="note rep-ok">Спасибо! Сообщение отправлено — проверим и исправим.</p>';
+      f.outerHTML = '<p class="note rep-ok">Спасибо! Сообщение отправлено - проверим и исправим.</p>';
     }catch(err){ b.disabled = false; b.textContent = 'Отправить'; $('#rep-err').textContent = err.message; }
   });
 }
@@ -2390,9 +2398,9 @@ function pageLot(id){
     (ARCH1 ? loadArch() : loadArch1()).then(()=>{ if(CUR==='/lot/'+encodeURIComponent(id)){ pageLot(id); paint(); } });
     return;
   }
-  if(!l){ document.title = 'Лот не найден — МониТорг'; $('#app').innerHTML = `<div class="wrap">${crumbs([['Лот не найден']])}<div class="panel empty">Лот не найден — возможно, он уже удалён из архива.</div></div>`; return; }
+  if(!l){ document.title = 'Лот не найден' + TSUF; $('#app').innerHTML = `<div class="wrap">${crumbs([['Лот не найден']])}<div class="panel empty">Лот не найден - возможно, он уже удалён из архива.</div></div>`; return; }
   const arch = l.status==='archive', d = left(l), pc = pchg(l);
-  document.title = l.name.slice(0,60) + ' — МониТорг';
+  document.title = l.name.slice(0,60) + TSUF;
   $('#app').innerHTML = `<div class="wrap">
     ${(() => { const sc = scOf(l.sub), t = sc && catTop(sc.top);
       const tr = t ? [[t.n, '#/c/'+t.k], ...(sc.sub ? [[scName(sc), '#/c/'+scPath(sc)]] : [])] : [[secName(l.section), '#/s/'+l.section]];
@@ -2404,7 +2412,7 @@ function pageLot(id){
       <div class="where">${esc(l.location||'')}</div>
     </div>
     ${arch?`<div class="banner">${l.why==='removed'
-      ? `<b>Лот снят с площадки ${dt(l.closed)}</b> — раньше окончания приёма заявок.`
+      ? `<b>Лот снят с площадки ${dt(l.closed)}</b> - раньше окончания приёма заявок.`
       : `<b>Приём заявок завершён ${dt(l.closed)}.</b>`} Лот в архиве МониТорга: сведения и итоги торгов сохранены.</div>`:''}
     <div class="lotpage">
       <div class="gal">${pic(l,'big')}</div>
@@ -2414,15 +2422,15 @@ function pageLot(id){
           <div class="bigprice">${nf(l.price)} BYN</div>
           ${usdTxt(l.price)?`<div class="bigalt">${usdTxt(l.price)}</div>`:''}
           ${pc?`<div class="pchg">${l.platform==='belauction.by'&&pc>0   /* у belauction цена — текущая ставка: растёт по ходу торгов */
-            ? `↑ Ставки выросли на ${pc}% — стартовая ${nf(l.prices[0][1])} BYN`
-            : `${pc<0?'↓ снижена на '+(-pc)+'%':'↑ выросла на '+pc+'%'} — было ${nf(l.prices[0][1])} BYN`}</div>`:''}
+            ? `↑ Ставки выросли на ${pc}% - стартовая ${nf(l.prices[0][1])} BYN`
+            : `${pc<0?'↓ снижена на '+(-pc)+'%':'↑ выросла на '+pc+'%'} - было ${nf(l.prices[0][1])} BYN`}</div>`:''}
           <dl class="facts">
             <dt>Приём заявок</dt><dd>${arch?'завершён '+dt(l.closed)
               :`до <b>${dtm(l.req_to)}</b>${d>=0?`<span class="dl">${leftTxt(d)}</span>`:''}`}</dd>
             <dt>Торги</dt><dd>${l.torg?dtm(l.torg)+(l.off?' · очно':['e-auction.by','minskestate.by','lotsale.by','butb.by','gostorg.by','bankrot-torg.by','specrealization.by','torgi.gov.by','etpvit.by','expert-torgi.by','realtorgi.by','iintorgi.by'].includes(l.platform)?' · онлайн':l.platform==='mgcn.by'?' · очно, г. Минск, ул. К. Маркса, 39':''):dt(l.req_to+86400)+' · ориентировочно'}</dd>
-            <dt>Регион</dt><dd>${esc(l.region||'—')}</dd>
+            <dt>Регион</dt><dd>${esc(l.region||'-')}</dd>
             ${l.area_num?`<dt>Площадь</dt><dd>${nf(l.area_num)} м²</dd>`:''}
-            <dt>${l.section==='arenda' ? 'Арендодатель' : ['minskestate.by','mgcn.by','lotsale.by','butb.by','gostorg.by'].includes(l.platform) ? 'Продавец' : 'Должник'}</dt><dd>${esc(l.debtor||'—')}</dd>
+            <dt>${l.section==='arenda' ? 'Арендодатель' : ['minskestate.by','mgcn.by','lotsale.by','butb.by','gostorg.by'].includes(l.platform) ? 'Продавец' : 'Должник'}</dt><dd>${esc(l.debtor||'-')}</dd>
           </dl>
           <div class="cta">
             <a class="btn" href="${esc(l.url)}" target="_blank" rel="noopener">На площадке ↗</a>
@@ -2432,7 +2440,7 @@ function pageLot(id){
           ${arch ? '' : `<div class="rep"><button class="lnk" type="button" id="rep-open">Сообщить об ошибке в лоте</button>
             <form id="rep-form" hidden novalidate><label for="rep-msg">Что не так с лотом?</label>
               <textarea id="rep-msg" rows="3" maxlength="2000" placeholder="Например: неверная цена, другой адрес, лот уже снят с торгов"></textarea>
-              <input id="rep-contact" maxlength="200" placeholder="Как с вами связаться — необязательно">
+              <input id="rep-contact" maxlength="200" placeholder="Как с вами связаться - необязательно">
               <div class="ferr" id="rep-err"></div>
               <div class="rep-b"><button class="btn pri" type="submit">Отправить</button><button class="btn" type="button" id="rep-cancel">Отмена</button></div></form></div>`}
         </aside>
@@ -2479,7 +2487,7 @@ const SERVICES = [
   ['check','Проверка объекта до задатка','Обременения, аресты, долги, история собственников и прошлых торгов. Чтобы не купить проблему вместе с объектом.'],
   ['eye','Выезд на осмотр','Фото и видео, реальное состояние, сверка с описанием на площадке. Особенно выручает для объектов в районах.'],
   ['chart','Оценка и стратегия ставок','Рыночная стоимость, предел разумной цены, сколько шагов имеет смысл делать и когда остановиться.'],
-  ['hammer','Участие в торгах под ключ','Регистрация на площадке, ЭЦП, задаток, заявка и сами торги — по доверенности, без вашего участия.'],
+  ['hammer','Участие в торгах под ключ','Регистрация на площадке, ЭЦП, задаток, заявка и сами торги - по доверенности, без вашего участия.'],
   ['doc','Сопровождение после победы','Договор, оплата, регистрация права, перерегистрация транспорта, приёмка объекта.'],
   ['search','Подбор лотов под задачу','Следим за всеми площадками и присылаем варианты под ваш бюджет, регион и цель.']
 ];
@@ -2493,7 +2501,7 @@ const SICON = {
 };
 
 function pageHelp(params){
-  document.title = 'Помощь в аукционе — МониТорг';
+  document.title = 'Помощь в аукционе' + TSUF;
   const lot = params.get('lot') || '', lotId = params.get('id') || '', lotRec = lotId ? byId(lotId) : null;
   const svc = params.get('svc') || '', mine = k => ME && ME[k] && !(k==='name' && ME.login==='guest' && ME[k]==='Гость') ? ME[k] : '';
   $('#app').innerHTML = `<div class="wrap">
@@ -2501,7 +2509,7 @@ function pageHelp(params){
     <div class="help">
       <div>
         <h1>${esc(TX('help_title','Помощь в покупке на торгах'))}</h1>
-        <p class="lede">${esc(TX('help_lede','На торгах можно купить заметно дешевле рынка, но цена ошибки — задаток и испорченная покупка. Берём на себя то, на чём покупатели ошибаются чаще всего.'))}</p>
+        <p class="lede">${esc(TX('help_lede','На торгах можно купить заметно дешевле рынка, но цена ошибки - задаток и испорченная покупка. Берём на себя то, на чём покупатели ошибаются чаще всего.'))}</p>
         <div class="svc">${svcList().map(([ic,t,d,p])=>`<div class="it"><span class="sico2">${SICON[ic]||SICON.check}</span>
           <div><h3>${esc(t)}</h3><p>${esc(d)}</p>${p?`<p class="svc-p">${esc(p)}</p>`:''}</div></div>`).join('')}</div>
         <div class="steps4">
@@ -2520,7 +2528,7 @@ function pageHelp(params){
           <div class="fg"><label for="h-phone">Номер телефона<span class="req" aria-hidden="true">*</span></label><input id="h-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00" value="${esc(mine('phone'))}" required aria-required="true"></div>
           <div class="fg"><label for="h-mail">Email</label><input id="h-mail" type="email" autocomplete="email" value="${esc(mine('email'))}"></div>
           <div class="fg"><label for="h-lot">Номер лота</label><input id="h-lot" value="${esc(lot)}" placeholder="например, 34950"></div>
-          <div class="fg"><label for="h-svc">Чем можем помочь</label><select id="h-svc"><option value="">Пока не знаю — нужна консультация</option>
+          <div class="fg"><label for="h-svc">Чем можем помочь</label><select id="h-svc"><option value="">Пока не знаю - нужна консультация</option>
             ${svcList().map(([,t])=>`<option${t===svc?' selected':''}>${esc(t)}</option>`).join('')}</select></div>
           <input class="hp" id="h-web" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
           <div class="ferr" id="h-err"></div>
@@ -2553,7 +2561,7 @@ function pageHelp(params){
 }
 
 function pageCalc(price){
-  document.title = 'Калькулятор торгов — МониТорг';
+  document.title = 'Калькулятор торгов' + TSUF;
   $('#app').innerHTML = `<div class="wrap">
     ${crumbs([['Калькулятор']])}
     <h1>Калькулятор торгов</h1>
@@ -2574,7 +2582,7 @@ function pageCalc(price){
         <tr><td>1. Задаток</td><td>Вносится до подачи заявки. Проигравшим возвращается, победителю засчитывается в счёт цены.</td></tr>
         <tr><td>2. Торги</td><td>Цена растёт шагами от стартовой. Побеждает последняя предложенная цена.</td></tr>
         <tr><td>3. Договор</td><td>Подписывается в срок, указанный в извещении, обычно в течение нескольких рабочих дней.</td></tr>
-        <tr><td>4. Оплата</td><td>Остаток вносится в установленный срок. Просрочка — потеря задатка.</td></tr>
+        <tr><td>4. Оплата</td><td>Остаток вносится в установленный срок. Просрочка - потеря задатка.</td></tr>
       </table></div>
   </div>`;
   const calc=()=>{
@@ -2601,13 +2609,13 @@ const ADV = [
   ['fresh','Всегда актуальная информация','Робот сам следит за площадками: новые лоты появляются в каталоге, а завершённые торги уходят в архив.'],
   ['one','Один объект, а не пять карточек','Один и тот же объект часто выставлен сразу на нескольких площадках с разными датами. Мы их склеиваем.'],
   ['drop','Алерт о снижении цены','На повторных торгах цена падает. Сообщаем, когда объект из вашего списка подешевел.'],
-  ['clock','Напоминания о дедлайнах','За три дня и за сутки до конца приёма заявок. Пропущенный срок — самая обидная потеря на торгах.'],
+  ['clock','Напоминания о дедлайнах','За три дня и за сутки до конца приёма заявок. Пропущенный срок - самая обидная потеря на торгах.'],
   ['hist','История цен по объекту','Сколько раз выставлялся, по какой цене, чем закончилось. Видно, готов ли продавец уступать.'],
   ['check','Проверка объекта','Обременения, аресты, долги, реальное состояние. До того, как вы внесли задаток.'],
   ['cam','Выезд на осмотр','Наш человек приезжает, снимает фото и видео, отвечает на вопросы. Особенно для объектов в районах.'],
-  ['deal','Сопровождение сделки','От подачи заявки до регистрации права. Сроки, документы, оплата — под контролем.'],
+  ['deal','Сопровождение сделки','От подачи заявки до регистрации права. Сроки, документы, оплата - под контролем.'],
   ['stats','Аналитика рынка','Средний дисконт, доля несостоявшихся торгов, динамика по регионам и категориям.'],
-  ['bell','Уведомления в Telegram','Настраиваете фильтр один раз — новые подходящие лоты приходят сами.'],
+  ['bell','Уведомления в Telegram','Настраиваете фильтр один раз - новые подходящие лоты приходят сами.'],
   ['funnel','Личная воронка','Заметки и статусы по объектам: смотрю, еду, подал заявку. Своя работа в одном месте.']
 ];
 
@@ -2631,9 +2639,9 @@ const ADV_IC = {
 const advIc = k => ADV_IC[k] ? `<svg viewBox="0 0 24 24">${ADV_IC[k]}</svg>` : esc(k);
 /* «Как это работает» на главной — тексты можно поменять в админке (texts.how) */
 const HOW = [['Находите лот','Все площадки в одном каталоге: фильтры по региону, цене и сроку заявок. Не нужно обходить сайты по одному.'],
-  ['Сравниваете с рынком','Рядом с ценой лота — медиана похожих объявлений. Сразу видно, есть ли выгода.'],
+  ['Сравниваете с рынком','Рядом с ценой лота - медиана похожих объявлений. Сразу видно, есть ли выгода.'],
   ['Считаете покупку','Калькулятор в карточке знает правила площадки: задаток, шаг, сборы организатора, сроки оплаты.'],
-  ['Покупаете с нами','Проверим объект, съездим на осмотр, проведём через торги и сделку — если нужна помощь.']];
+  ['Покупаете с нами','Проверим объект, съездим на осмотр, проведём через торги и сделку - если нужна помощь.']];
 function howList(){
   const a = ((CFG.texts||{}).how||[]).filter(x=>x && x.t);
   return a.length ? a.map(x=>[x.t, x.d||'']) : HOW;
@@ -2658,21 +2666,21 @@ const PRIVACY_DEF = 'Здесь будет политика обработки �
    те же три первые статьи — пересказ своими словами реальных новостей 2026 года со ссылкой на источник; фото — Pexels (бесплатная лицензия). */
 const NEWS = [
   { slug:'zemlya-minskij-rajon-16-oktyabrya', date:'2026-09-19', img:'img/news/zemlya-minskij-rajon-16-oktyabrya.jpg',
-    title:'16 октября — аукцион земли под Минском: участки от 11 до 225 тысяч рублей',
-    lead:'Минский район выставляет восемь участков под жилой дом — от Ратомки и Колодищ до деревни Селище.',
-    body:'На 16 октября 2026 года назначен аукцион по продаже земельных участков в Минском районе. На торги выходят восемь участков — в агрогородках Ратомка и Колодищи, а также в деревнях Подгорье, Птичь, Селище и Василевщина.\n\nРазброс стартовых цен большой. Самый дорогой лот — в Ратомке, его начальная цена 225 тысяч рублей. Самый доступный — в деревне Селище, за 11 тысяч рублей.\n\nСтартовая цена на земельных аукционах под Минском — только начало: на востребованных участках ставки часто поднимаются в разы. Перед подачей заявки стоит сравнить лот с ценами на похожие участки и заранее определить для себя предел.',
+    title:'16 октября - аукцион земли под Минском: участки от 11 до 225 тысяч рублей',
+    lead:'Минский район выставляет восемь участков под жилой дом - от Ратомки и Колодищ до деревни Селище.',
+    body:'На 16 октября 2026 года назначен аукцион по продаже земельных участков в Минском районе. На торги выходят восемь участков - в агрогородках Ратомка и Колодищи, а также в деревнях Подгорье, Птичь, Селище и Василевщина.\n\nРазброс стартовых цен большой. Самый дорогой лот - в Ратомке, его начальная цена 225 тысяч рублей. Самый доступный - в деревне Селище, за 11 тысяч рублей.\n\nСтартовая цена на земельных аукционах под Минском - только начало: на востребованных участках ставки часто поднимаются в разы. Перед подачей заявки стоит сравнить лот с ценами на похожие участки и заранее определить для себя предел.',
     src:'https://myfin.by/article/rynki/zemla-pod-minskom-ot-11-tysac-rublej-kakie-ucastki-vystavili-na-aukcion-48559', srcName:'Myfin.by',
     cta:['Земельные участки на МониТорг', '#/s/nedvizhimost?land=1'] },
   { slug:'pustuyushchie-doma-2-kvartal-2026', date:'2026-07-08', img:'img/news/pustuyushchie-doma-2-kvartal-2026.jpg',
     title:'Каждый второй пустующий дом в Беларуси продают за одну базовую',
     lead:'Итоги второго квартала: 357 сделок, 193 дома ушли по символической цене.',
-    body:'Национальное кадастровое агентство подвело итоги продажи пустующих домов за апрель–июнь 2026 года. Всего заключено 357 сделок: 140 домов продано через аукцион, 217 — без торгов.\n\nПримерно каждый второй дом — 193 объекта — купили за одну базовую величину. Это возможно, когда на дом нет других желающих или аукцион не состоялся.\n\nБольше всего сделок в Гродненской области — 96. Дальше Минская (64), Брестская (63), Витебская (57) и Могилёвская (56) области; в Гомельской — 21.\n\nТакие дома часто требуют серьёзного ремонта, а покупатель обязан привести их в порядок в установленный срок. Перед покупкой стоит съездить на осмотр и оценить состояние дома и участка.',
+    body:'Национальное кадастровое агентство подвело итоги продажи пустующих домов за апрель–июнь 2026 года. Всего заключено 357 сделок: 140 домов продано через аукцион, 217 - без торгов.\n\nПримерно каждый второй дом - 193 объекта - купили за одну базовую величину. Это возможно, когда на дом нет других желающих или аукцион не состоялся.\n\nБольше всего сделок в Гродненской области - 96. Дальше Минская (64), Брестская (63), Витебская (57) и Могилёвская (56) области; в Гомельской - 21.\n\nТакие дома часто требуют серьёзного ремонта, а покупатель обязан привести их в порядок в установленный срок. Перед покупкой стоит съездить на осмотр и оценить состояние дома и участка.',
     src:'https://myfin.by/article/rynki/kazdyj-vtoroj-pustuusij-dom-v-belarusi-prodaut-za-1-bazovuu-itogi-vtorogo-kvartala-2026-46811', srcName:'Myfin.by',
     cta:['Недвижимость на торгах', '#/s/nedvizhimost'] },
   { slug:'uchastok-leskovka-192-tysyachi', date:'2026-06-19', img:'img/news/uchastok-leskovka-192-tysyachi.jpg',
-    title:'Участок под Минском продали за 192 тысячи долларов — вдвое дороже стартовой цены',
+    title:'Участок под Минском продали за 192 тысячи долларов - вдвое дороже стартовой цены',
     lead:'На аукционе в Минском районе цены на землю выросли в 2–3 раза от начальных.',
-    body:'В июне прошёл аукцион по продаже земельных участков под жилые дома в Минском и Березинском районах. Самыми дорогими стали два участка по 22 сотки в Лесковке: оба стартовали с 250 тысяч рублей и ушли примерно за 536 тысяч рублей — около 192 тысяч долларов. За них боролись пять и семь участников.\n\nЕщё сильнее подорожал участок в Колодищах на 16 соток: при стартовой цене 150 тысяч рублей его продали за 475 тысяч, заявок было десять. Участок в Малиновке ушёл за 215 тысяч рублей при старте 150 тысяч.\n\nЕсли у лота много желающих, итоговая цена может в разы превысить начальную. Поэтому стоит смотреть не только на стартовую цену, но и на итоги похожих торгов — они есть в архиве МониТорга.',
+    body:'В июне прошёл аукцион по продаже земельных участков под жилые дома в Минском и Березинском районах. Самыми дорогими стали два участка по 22 сотки в Лесковке: оба стартовали с 250 тысяч рублей и ушли примерно за 536 тысяч рублей - около 192 тысяч долларов. За них боролись пять и семь участников.\n\nЕщё сильнее подорожал участок в Колодищах на 16 соток: при стартовой цене 150 тысяч рублей его продали за 475 тысяч, заявок было десять. Участок в Малиновке ушёл за 215 тысяч рублей при старте 150 тысяч.\n\nЕсли у лота много желающих, итоговая цена может в разы превысить начальную. Поэтому стоит смотреть не только на стартовую цену, но и на итоги похожих торгов - они есть в архиве МониТорга.',
     src:'https://nashaniva.com/ru/398035', srcName:'Наша Ніва (по данным Realt)',
     cta:['Архив торгов с итогами', '#/catalog?st=arch'] }
 ];
@@ -2682,15 +2690,15 @@ const ndate = d => { const [y,m,dd] = String(d).split('-').map(Number);
 const newsCard = n => `<a class="ncard" href="#/news/${encodeURIComponent(n.slug)}">${n.img ? `<img class="nimg" src="${esc(n.img)}" alt="" loading="lazy">` : ''}
   <span class="nbody"><span class="nmeta">${ndate(n.date)}</span><h3>${esc(n.title)}</h3><p>${esc(n.lead||'')}</p><span class="nmore">Читать →</span></span></a>`;
 function pageNews(){
-  document.title = 'Новости — МониТорг';
+  document.title = 'Новости' + TSUF;
   $('#app').innerHTML = `<div class="wrap">${crumbs([['Новости']])}<h1>Новости</h1>
     <p class="lede">Торги, аукционы и рынок имущества в Беларуси: события, итоги и что они значат для покупателя.</p>
     <div class="news">${newsList().map(newsCard).join('')}</div></div>`;
 }
 function pageNewsItem(slug){
   const n = newsList().find(x=>x.slug===slug);
-  if(!n){ document.title = 'Новость не найдена — МониТорг'; $('#app').innerHTML = `<div class="wrap">${crumbs([['Новости','#/news'],['Не найдено']])}<div class="panel empty">Такой новости нет. <a href="#/news">Все новости →</a></div></div>`; return; }
-  document.title = n.title + ' — МониТорг';
+  if(!n){ document.title = 'Новость не найдена' + TSUF; $('#app').innerHTML = `<div class="wrap">${crumbs([['Новости','#/news'],['Не найдено']])}<div class="panel empty">Такой новости нет. <a href="#/news">Все новости →</a></div></div>`; return; }
+  document.title = n.title + TSUF;
   const more = newsList().filter(x=>x.slug!==slug).slice(0,3);
   $('#app').innerHTML = `<div class="wrap">${crumbs([['Новости','#/news'],[n.title.length > 60 ? n.title.slice(0,57) + '…' : n.title]])}
     <article class="nart"><div class="nmeta">${ndate(n.date)}</div><h1>${esc(n.title)}</h1>
@@ -2703,7 +2711,7 @@ function pageNewsItem(slug){
 }
 
 function pagePrivacy(){
-  document.title = 'Политика конфиденциальности — МониТорг';
+  document.title = 'Политика конфиденциальности' + TSUF;
   const t = TX('privacy_text', PRIVACY_DEF).split(/\n\s*\n/).map(p=>`<p>${esc(p.trim()).replace(/\n/g,'<br>')}</p>`).join('');
   $('#app').innerHTML = `<div class="wrap">${crumbs([['Политика конфиденциальности']])}<h1>Политика конфиденциальности</h1><div class="privacy">${t}</div></div>`;
 }
@@ -2717,7 +2725,7 @@ function pagePrivacy(){
 })();
 
 function pageAbout(){
-  document.title = 'О платформе — МониТорг';
+  document.title = 'О платформе' + TSUF;
   $('#app').innerHTML = `<div class="wrap">
     ${crumbs([['О платформе']])}
     <h1>Возможности платформы</h1>
@@ -2826,7 +2834,7 @@ const HB = {
         : `<img class="ic3" src="${esc(own || `img/why${i+1}.png`)}" width="64" height="64" alt="" loading="lazy" data-ic="${esc(ic)}" onerror="advFail(this)">`}<h3>${esc(t)}</h3><p>${esc(d)}</p></div>`; }).join('')}</div>
       <p style="margin-top:14px"><a href="#/about">Все возможности платформы →</a></p>`,
   cal: b => `<div class="sec-h"><h2>${esc(b.title || 'Календарь торгов')}</h2></div>
-      <p class="lede" style="margin:-4px 0 12px">${esc(b.sub || 'Торги всех площадок по датам. Нажмите на день — откроется список лотов.')}</p><div class="cal" id="cal"></div>`,
+      <p class="lede" style="margin:-4px 0 12px">${esc(b.sub || 'Торги всех площадок по датам. Нажмите на день - откроется список лотов.')}</p><div class="cal" id="cal"></div>`,
   news: b => { const n = newsList().slice(0, +b.count || 3); return n.length ? head2(b, 'Новости', '<a href="#/news">Все новости →</a>') + `<div class="news">${n.map(newsCard).join('')}</div>` : ''; },
   text: b => { const img = b.img ? `<img src="${esc(b.img)}" alt="" loading="lazy">` : '', u = safeUrl(b.btn_url);
     if(!b.title && !b.text && !img) return '';
@@ -2876,12 +2884,13 @@ function heroHtml(b){
     ${b.img ? `</div><img class="hero-img" src="${esc(b.img)}" alt="">` : ''}</div>
   </section>`;
 }
-// логотип в шапке: своя картинка из конструктора («Общий стиль») вместо букв «МТ»
+// логотип в шапке: своя картинка из конструктора («Общий стиль») вместо знака MoniTorg (светлый и тёмный — по теме)
+const LOGO_DEF = '<img class="mark ml" src="logo-mark.png" alt=""><img class="mark md" src="logo-mark-dark.png" alt="">';
 function applyLogo(t){
-  const m = $('.logo .mark'), src = t && t.logo;
-  if(!m) return;
-  if(src){ const i = document.createElement('img'); i.className = 'mark mimg'; i.src = src; i.alt = ''; m.replaceWith(i); }
-  else if(m.tagName === 'IMG'){ const s = document.createElement('span'); s.className = 'mark'; s.textContent = 'МТ'; m.replaceWith(s); }
+  const box = $('.logo'), src = t && t.logo;
+  if(!box) return;
+  box.querySelectorAll('.mark').forEach(m=>m.remove());
+  box.insertAdjacentHTML('afterbegin', src ? `<img class="mark mimg" src="${esc(src)}" alt="">` : LOGO_DEF);
 }
 applyLogo(CFG.home && CFG.home.theme);
 // показы и клики рекламных баннеров: показ — когда баннер хотя бы наполовину на экране (раз за открытие страницы), клик — по нажатию.
@@ -2910,7 +2919,7 @@ function homeHtml(b){
   return `<section class="${esc(cls)}"${b.type === 'cal' ? ' id="cal-sec"' : ''}><div class="wrap">${inner}</div></section>`;
 }
 function pageHome(){
-  document.title = 'МониТорг — торги по имуществу должников Беларуси';
+  document.title = SEO_TITLE;
   $('#app').innerHTML = homeBlocks().map(homeHtml).join('');
   if($('#ls-q')) attachSuggest($('#ls-q'), $('#ls-sugg'));
   bindCarousels();
@@ -3031,11 +3040,11 @@ const AUTH_ERR = [
   [/after (\d+) second/i, raw => 'Повторно отправить код можно через ' + raw.match(/after (\d+) second/i)[1] + ' с'],
   [/over_email_send_rate_limit|email rate limit/i, 'Слишком много писем за час. Попробуйте позже'],
   [/rate_limit|rate limit|too many/i, 'Слишком много попыток. Подождите немного'],
-  [/email_address_not_authorized|not authorized/i, 'Отправка писем ещё настраивается — попробуйте позже'],
+  [/email_address_not_authorized|not authorized/i, 'Отправка писем ещё настраивается - попробуйте позже'],
   [/email_address_invalid|unable to validate email|invalid format/i, 'Проверьте адрес почты'],
   [/same_password|should be different/i, 'Новый пароль совпадает со старым'],
   [/signup_disabled|signups not allowed/i, 'Регистрация временно закрыта'],
-  [/refresh_token|session_not_found|bad_jwt/i, 'Вход устарел — войдите снова']
+  [/refresh_token|session_not_found|bad_jwt/i, 'Вход устарел - войдите снова']
 ];
 async function uauth(path, body, o={}){
   const h = { apikey: UB.key, 'Content-Type':'application/json' };
@@ -3097,7 +3106,7 @@ function uload(){
 function drawUser(){
   const b = $('#ubtn'); if(!b) return;
   b.classList.toggle('in', !!ME);
-  b.title = ME ? 'Личный кабинет — ' + (ME.name || ME.login) : 'Войти в личный кабинет';
+  b.title = ME ? 'Личный кабинет - ' + (ME.name || ME.login) : 'Войти в личный кабинет';
   const n = ME ? (ME.unread || 0) : 0, d = $('#udot');
   d.hidden = !n; d.textContent = n > 99 ? '99+' : n;
   document.querySelectorAll('[data-fav]').forEach(x=>x.classList.toggle('on', !!(ULOTS[x.dataset.fav]||{}).fav));
@@ -3132,9 +3141,9 @@ function bindLotUser(l){
         <button class="btn${u.fav?' on':''}" type="button" id="u-fav">${IC.star}<span>${u.fav?'В избранном':'В избранное'}</span></button>
         <button class="btn${u.watch?' on':''}" type="button" id="u-watch">${IC.bell}<span>${arch ? (u.watch?'Сообщу, если выставят снова':'Сообщить, если выставят снова') : (u.watch?'Слежу за изменениями':'Следить за изменениями')}</span></button></div>
       ${ME && (u.fav || u.watch) ? `<div class="unote">
-        <label>Мой этап<select id="u-stage"><option value="">—</option>${STAGES.map(([k,t])=>`<option value="${k}"${u.stage===k?' selected':''}>${t}</option>`).join('')}</select></label>
-        <label>Заметка — видна только вам<textarea id="u-note" rows="2" placeholder="Например: съездить на осмотр в субботу">${esc(u.note||'')}</textarea></label></div>` : ''}
-      <p class="uhint">${arch ? (u.watch ? 'Сообщим в личный кабинет, если этот объект снова выставят на торги — на этой или другой площадке.' : ME ? 'Объект снова выставят на торги — сообщим в личный кабинет.' : '<a href="#/login">Войдите</a>, чтобы узнать, если объект выставят снова.')
+        <label>Мой этап<select id="u-stage"><option value="">-</option>${STAGES.map(([k,t])=>`<option value="${k}"${u.stage===k?' selected':''}>${t}</option>`).join('')}</select></label>
+        <label>Заметка - видна только вам<textarea id="u-note" rows="2" placeholder="Например: съездить на осмотр в субботу">${esc(u.note||'')}</textarea></label></div>` : ''}
+      <p class="uhint">${arch ? (u.watch ? 'Сообщим в личный кабинет, если этот объект снова выставят на торги - на этой или другой площадке.' : ME ? 'Объект снова выставят на торги - сообщим в личный кабинет.' : '<a href="#/login">Войдите</a>, чтобы узнать, если объект выставят снова.')
         : u.watch ? 'Сообщим в личный кабинет, если изменится цена, сроки или лот снимут с торгов.' : ME ? 'Уведомления об изменениях приходят в личный кабинет.' : '<a href="#/login">Войдите</a>, чтобы сохранять лоты и получать уведомления об изменениях.'}</p>`;
     const act = (id, fn) => { const x = document.getElementById(id); if(x) x.onclick = fn; };
     act('u-fav', async () => { if(!ME) return needLogin(); try{ await ulot(l.id, { fav:!u.fav }); utoast(!u.fav ? 'Добавлено в избранное' : 'Убрано из избранного'); draw(); }catch(e){ utoast(e.message, true); } });
@@ -3171,7 +3180,7 @@ async function saveSearch(sc){
   const name = prompt('Как назвать поиск? Новые лоты по нему будут приходить в личный кабинет.', searchTitle(p));
   if(name === null) return;
   try{ await uapi('saved_searches', { method:'POST', body:[{ name:name.trim() || searchTitle(p), params:p, notify:true }], prefer:'return=minimal' });
-    utoast('Поиск сохранён — он в личном кабинете'); }catch(e){ utoast(e.message, true); }
+    utoast('Поиск сохранён - он в личном кабинете'); }catch(e){ utoast(e.message, true); }
 }
 function openSearch(p){ CARRY = {}; SS_KEYS.forEach(k=>{ if(p[k]) CARRY[k] = p[k]; });
   location.hash = scOf(p.sub) ? '#/c/' + p.sub : p.sec ? '#/s/' + p.sec : '#/catalog'; }
@@ -3184,7 +3193,7 @@ const regPurposes = () => { const p = (CFG.texts||{}).reg_purposes; return (Arra
 const OTHER = 'Другое';
 const MAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function pageLogin(params){
-  document.title = 'Вход в личный кабинет — МониТорг';
+  document.title = 'Вход в личный кабинет' + TSUF;
   const next = params.get('next') || '/me', mode = params.get('mode') || 'in';
   const href = m => '#/login?' + new URLSearchParams(Object.assign({ mode:m }, params.get('next') ? { next } : {}));
   const go = async () => { await uload(); location.hash = '#' + (next.startsWith('/') ? next : '/me'); };
@@ -3192,12 +3201,12 @@ function pageLogin(params){
     <div class="login">
       <div class="panel login-card" id="lc"></div>
       <div class="login-why"><h2>Что даёт кабинет</h2><ul>
-        <li><b>Избранное</b> — лоты под рукой, со своим этапом и заметками</li>
-        <li><b>Уведомления</b> — если у лота изменится цена или сроки, его снимут с торгов, или скоро закончится приём заявок</li>
-        <li><b>Сохранённые поиски</b> — новые лоты под ваши условия приходят сами</li>
-        <li><b>Календарь торгов</b> — все сроки по избранному, с выгрузкой в календарь телефона</li>
-        <li><b>Заявки и отчёты</b> — помощь по лоту и отчёты наших специалистов по объектам</li>
-        <li><b>Аналитика рынка</b> — цены, скидки к рынку, регионы и площадки</li></ul></div>
+        <li><b>Избранное</b> - лоты под рукой, со своим этапом и заметками</li>
+        <li><b>Уведомления</b> - если у лота изменится цена или сроки, его снимут с торгов, или скоро закончится приём заявок</li>
+        <li><b>Сохранённые поиски</b> - новые лоты под ваши условия приходят сами</li>
+        <li><b>Календарь торгов</b> - все сроки по избранному, с выгрузкой в календарь телефона</li>
+        <li><b>Заявки и отчёты</b> - помощь по лоту и отчёты наших специалистов по объектам</li>
+        <li><b>Аналитика рынка</b> - цены, скидки к рынку, регионы и площадки</li></ul></div>
     </div></div>`;
   const C = $('#lc');
   if(!UB){ C.innerHTML = '<h1>Вход в личный кабинет</h1><p>Личный кабинет недоступен в этой версии сайта.</p>'; return; }
@@ -3213,7 +3222,7 @@ function pageLogin(params){
       <div class="ferr" id="u-err"></div>
       <button class="btn pri" type="submit" style="width:100%">Войти</button></form>
       <div class="lrow"><a href="${href('reset')}">Забыли пароль?</a><a href="${href('up')}">Зарегистрироваться</a></div>
-      <p class="note">Посмотреть кабинет без регистрации: гостевой вход — логин <b>guest</b>, пароль <b>guest</b>.</p>`;
+      <p class="note">Посмотреть кабинет без регистрации: гостевой вход - логин <b>guest</b>, пароль <b>guest</b>.</p>`;
     $('#u-login').focus();
     $('#uf').addEventListener('submit', async e=>{
       e.preventDefault(); $('#u-err').textContent = '';
@@ -3247,7 +3256,7 @@ function pageLogin(params){
         <div class="fhint">Не короче 8 символов</div></div>
       <div class="fg"><label for="r-pass2">Пароль ещё раз</label><input id="r-pass2" type="password" autocomplete="new-password" required>
         <div class="fhint" id="r-match"></div></div>
-      <div class="fg"><label for="r-phone">Телефон <span class="opt">— необязательно</span></label><input id="r-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00"></div>
+      <div class="fg"><label for="r-phone">Телефон <span class="opt">- необязательно</span></label><input id="r-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00"></div>
       <div class="fg"><label for="r-purp">Для чего вам МониТорг</label><select id="r-purp" required>
         <option value="">Выберите…</option>${regPurposes().map(p=>`<option>${esc(p)}</option>`).join('')}<option>${OTHER}</option></select></div>
       <div class="fg" id="r-note-w" hidden><label for="r-note">Уточните</label><input id="r-note" maxlength="300" placeholder="Коротко, для чего вам сервис"></div>
@@ -3265,7 +3274,7 @@ function pageLogin(params){
       e.preventDefault();
       const v = id => $('#' + id).value.trim(), name = v('r-name'), email = v('r-mail').toLowerCase(), pass = $('#r-pass').value,
         phone = v('r-phone'), purpose = $('#r-purp').value, note = purpose === OTHER ? v('r-note') : '';
-      const err = !name ? 'Укажите имя' : !MAIL_RE.test(email) ? 'Проверьте адрес почты' : pass.length < 8 ? 'Пароль — не короче 8 символов'
+      const err = !name ? 'Укажите имя' : !MAIL_RE.test(email) ? 'Проверьте адрес почты' : pass.length < 8 ? 'Пароль - не короче 8 символов'
         : pass !== $('#r-pass2').value ? 'Пароли не совпадают' : (phone && phone.replace(/\D/g,'').length < 9) ? 'Проверьте номер телефона'
         : !purpose ? 'Выберите, для чего вам МониТорг' : (purpose === OTHER && !note) ? 'Уточните, для чего вам МониТорг'
         : !$('#r-ok').checked ? 'Нужно согласие на обработку персональных данных' : '';
@@ -3284,7 +3293,7 @@ function pageLogin(params){
 
   // забыли пароль: код на почту → новый пароль
   const viewReset = () => {
-    C.innerHTML = `<h1>Восстановление пароля</h1><p class="muted" style="margin-top:0">Пришлём на почту код — по нему зададите новый пароль.</p>
+    C.innerHTML = `<h1>Восстановление пароля</h1><p class="muted" style="margin-top:0">Пришлём на почту код - по нему зададите новый пароль.</p>
       <form id="uf" novalidate><div class="fg"><label for="f-mail">Почта</label><input id="f-mail" type="email" autocomplete="email" required></div>
       <div class="ferr" id="u-err"></div><button class="btn pri" type="submit" style="width:100%">Получить код</button></form>
       <div class="lrow"><a href="${href('in')}">← Ко входу</a></div>`;
@@ -3302,7 +3311,7 @@ function pageLogin(params){
   const viewCode = (type, email, lead) => {
     const rec = type === 'recovery';
     C.innerHTML = `<h1>${rec ? 'Новый пароль' : 'Подтвердите почту'}</h1>
-      <p style="margin-top:0">${esc(lead)} на <b>${esc(email)}</b>. Письмо может идти пару минут — загляните и в «Спам».</p>
+      <p style="margin-top:0">${esc(lead)} на <b>${esc(email)}</b>. Письмо может идти пару минут - загляните и в «Спам».</p>
       <form id="uf" novalidate><div class="fg"><label for="c-code">Код из письма</label>
         <input id="c-code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required></div>
       ${rec ? `<div class="fg"><label for="c-pass">Новый пароль</label><input id="c-pass" type="password" autocomplete="new-password" required><div class="fhint">Не короче 8 символов</div></div>
@@ -3320,7 +3329,7 @@ function pageLogin(params){
       e.preventDefault(); const code = $('#c-code').value.replace(/\s/g,''), b = $('#uf button');
       if(!/^\d{6,10}$/.test(code)){ $('#u-err').textContent = 'Введите код из письма'; return; }
       if(rec){ const p = $('#c-pass').value;
-        const er = p.length < 8 ? 'Пароль — не короче 8 символов' : p !== $('#c-pass2').value ? 'Пароли не совпадают' : '';
+        const er = p.length < 8 ? 'Пароль - не короче 8 символов' : p !== $('#c-pass2').value ? 'Пароли не совпадают' : '';
         if(er){ $('#u-err').textContent = er; return; } }
       busy(b, true);
       try{
@@ -3341,7 +3350,7 @@ const ME_TABS = [['','Обзор'],['fav','Избранное'],['notify','Ув�
   ['orders','Заявки на помощь'],['reports','Отчёты'],['stats','Аналитика рынка'],['profile','Профиль']];
 const withArch = () => ARCH ? Promise.resolve() : loadArch();
 async function pageMe(sub, params){
-  document.title = 'Личный кабинет — МониТорг';
+  document.title = 'Личный кабинет' + TSUF;
   if(!UB){ pageLogin(params); return; }
   $('#app').innerHTML = '<div class="wrap"><div class="skel" style="height:300px;margin-top:24px"></div></div>';
   await uload();
@@ -3379,7 +3388,7 @@ const leftD = l => Math.ceil((l.req_to - Date.now()/1000) / 86400);
 /* избранное: торги закончились — начальная цена, за сколько ушёл и когда */
 function favResult(l){
   const r = resOf(l), at = (r && r.at) || l.torg || l.req_to + 86400;
-  if(!r) return `<div class="fres"><span class="ntag">Итоги</span> Торги ${at*1000 > Date.now() ? 'пройдут ' + dtm(at) : 'прошли ' + dt(at) + ' — итоги ещё не опубликованы, проверяем площадку'}</div>`;
+  if(!r) return `<div class="fres"><span class="ntag">Итоги</span> Торги ${at*1000 > Date.now() ? 'пройдут ' + dtm(at) : 'прошли ' + dt(at) + ' - итоги ещё не опубликованы, проверяем площадку'}</div>`;
   const p = prem(r);
   return `<div class="fres ${RES[r.st][1]}"><span class="ntag ${r.st==='failed'||r.st==='cancelled'?'a':'g'}">${RES[r.st][0]}</span>
     Начальная цена <b>${nf(r.start || l.price)} BYN</b>${r.price > 0 ? ` → продан за <b>${nf(r.price)} BYN</b>${p !== null ? ` <span class="pm ${p >= 0 ? 'up' : 'dn'}">${premTxt(p)}</span>` : ''}` : ''}
@@ -3425,7 +3434,7 @@ async function meHome(M){
       <a href="#/me/reports"><b>${ME.reports_new||0}</b><span>новых отчётов</span></a>
       <a href="#/me/orders"><b>${orders.filter(o=>o.status==='new'||o.status==='work').length}</b><span>заявок в работе</span></a>
     </div>
-    ${!ids.length ? `<div class="panel me-empty"><h2>Начните с избранного</h2><p>Нажмите звёздочку на карточке лота или «В избранное» на его странице — лот появится здесь. Кнопка «Следить за изменениями» включит уведомления о цене и сроках.</p><a class="btn pri" href="#/catalog">Перейти в каталог</a></div>` : ''}
+    ${!ids.length ? `<div class="panel me-empty"><h2>Начните с избранного</h2><p>Нажмите звёздочку на карточке лота или «В избранное» на его странице - лот появится здесь. Кнопка «Следить за изменениями» включит уведомления о цене и сроках.</p><a class="btn pri" href="#/catalog">Перейти в каталог</a></div>` : ''}
     <div class="me-2">
       <div class="panel me-p"><div class="me-h"><h2>Ближайшие сроки</h2><a href="#/me/calendar">Календарь →</a></div>
         ${ev.length ? ev.map(e=>`<div class="evr"><span class="evd">${dtm(e.t)}</span><span><span class="muted">${e.kind}</span><br><a href="#/lot/${encodeURIComponent(e.l.id)}">${esc(e.l.name.slice(0,80))}</a></span></div>`).join('') : '<p class="muted">По избранным лотам сроков впереди нет.</p>'}</div>
@@ -3451,10 +3460,10 @@ async function meFav(M, arg, params){
         <div class="fbd"><a class="fnm" href="#/lot/${encodeURIComponent(k)}">${esc(l ? l.name : 'Лот ' + k)}</a>
           <div class="fmeta">${lotLine(l)}</div>
           ${l && l.status==='archive' && l.why!=='removed' ? favResult(l) : ''}
-          <div class="fctl"><select data-stage aria-label="Мой этап"><option value="">Этап: —</option>${STAGES.map(([s,t])=>`<option value="${s}"${u.stage===s?' selected':''}>${t}</option>`).join('')}</select>
+          <div class="fctl"><select data-stage aria-label="Мой этап"><option value="">Этап: -</option>${STAGES.map(([s,t])=>`<option value="${s}"${u.stage===s?' selected':''}>${t}</option>`).join('')}</select>
             <label class="chk"><input type="checkbox" data-watch${u.watch?' checked':''}> уведомлять об изменениях</label>
             <label class="chk"><input type="checkbox" data-favc${u.fav?' checked':''}> в избранном</label></div>
-          <textarea data-note rows="1" placeholder="Заметка — видна только вам">${esc(u.note||'')}</textarea></div>
+          <textarea data-note rows="1" placeholder="Заметка - видна только вам">${esc(u.note||'')}</textarea></div>
         <div class="fact">${l && l.status==='active' ? `<a class="btn sm pri" href="#/me/orders/new?id=${encodeURIComponent(k)}">Заказать помощь</a>` : ''}
           <a class="btn sm" href="${esc(l ? l.url : '#')}" target="_blank" rel="noopener">На площадке ↗</a></div></div>`; }).join('')
       + `<p><button class="btn" type="button" id="fav-csv">Выгрузить в Excel (CSV)</button></p>`
@@ -3482,7 +3491,7 @@ async function meNotify(M, arg, params){
     <div class="me-tabs"><a href="#/me/notify" class="${only?'':'on'}">Все</a><a href="#/me/notify?f=unread" class="${only?'on':''}">Непрочитанные · ${ME.unread||0}</a>
       <span class="sp"></span><button class="lnk" type="button" id="n-all">Прочитать все</button><button class="lnk" type="button" id="n-clr">Удалить прочитанные</button></div>
     <div class="panel me-p">${rows.length ? rows.map(notifRow).join('') : '<p class="muted">Уведомлений нет.</p>'}</div>
-    <p class="muted">Что присылать — в разделе <a href="#/me/profile">Профиль</a>. Уведомления приходят по лотам, за которыми вы следите, по сохранённым поискам, заявкам и отчётам.</p>`;
+    <p class="muted">Что присылать - в разделе <a href="#/me/profile">Профиль</a>. Уведомления приходят по лотам, за которыми вы следите, по сохранённым поискам, заявкам и отчётам.</p>`;
   bindNotif(M);
   $('#n-all').onclick = async () => { try{ await uapi('notifications?read_at=is.null', { method:'PATCH', body:{ read_at:new Date().toISOString() }, prefer:'return=minimal' }); await uload(); pageMe('notify', params); }catch(e){ utoast(e.message, true); } };
   $('#n-clr').onclick = async () => { try{ await uapi('notifications?read_at=not.is.null', { method:'DELETE' }); pageMe('notify', params); }catch(e){ utoast(e.message, true); } };
@@ -3514,7 +3523,7 @@ async function meCal(M){
     ${ev.length ? `<p><button class="btn" type="button" id="ics">Добавить в календарь телефона (.ics)</button></p>` + Object.entries(days).map(([d, es])=>{ const t = new Date(es[0].t*1000);
       return `<div class="calday"><div class="cd"><b>${d.slice(0,5)}</b><span>${wd[t.getDay()]}</span></div><div class="ce">${es.map(e=>`<div class="evr"><span class="evd">${p2(new Date(e.t*1000).getHours())}:${p2(new Date(e.t*1000).getMinutes())}</span>
         <span><span class="muted">${e.kind}</span><br><a href="#/lot/${encodeURIComponent(e.l.id)}">${esc(e.l.name.slice(0,100))}</a> <span class="muted">· ${nf(e.l.price)} BYN · ${esc(e.l.platform)}</span></span></div>`).join('')}</div></div>`; }).join('')
-    : '<div class="panel empty">Впереди нет сроков по вашим лотам. Добавьте лоты в избранное — их даты появятся здесь.</div>'}`;
+    : '<div class="panel empty">Впереди нет сроков по вашим лотам. Добавьте лоты в избранное - их даты появятся здесь.</div>'}`;
   const b = $('#ics');
   if(b) b.onclick = () => {
     const z = t => { const d = new Date(t*1000); return d.getUTCFullYear() + p2(d.getUTCMonth()+1) + p2(d.getUTCDate()) + 'T' + p2(d.getUTCHours()) + p2(d.getUTCMinutes()) + '00Z'; };
@@ -3550,14 +3559,14 @@ async function meOrderForm(M, params){
   const opts = Object.keys(lots).filter(k=>lots[k] && lots[k].name).sort((a,b)=>(lots[a].status==='active'?0:1) - (lots[b].status==='active'?0:1));
   const mine = k => ME[k] && !(k==='name' && ME.login==='guest' && ME[k]==='Гость') ? ME[k] : '';
   M.innerHTML = `<p><a href="#/me/orders">← Заявки на помощь</a></p><h1>Новая заявка</h1>
-    <p class="lede">Опишите задачу — специалист свяжется с вами, уточнит детали и согласует объём и стоимость. Заявка и её статус — в разделе «Заявки на помощь».</p>
+    <p class="lede">Опишите задачу - специалист свяжется с вами, уточнит детали и согласует объём и стоимость. Заявка и её статус - в разделе «Заявки на помощь».</p>
     <form class="panel me-p oform" id="of" novalidate>
-      <div class="fg"><label for="o-svc">Услуга</label><select id="o-svc"><option value="">Консультация — пока не знаю, что нужно</option>
+      <div class="fg"><label for="o-svc">Услуга</label><select id="o-svc"><option value="">Консультация - пока не знаю, что нужно</option>
         ${svcList().map(([,t])=>`<option${t===svc?' selected':''}>${esc(t)}</option>`).join('')}</select></div>
       <div class="fg"><label for="o-lot">Лот</label><select id="o-lot"><option value="">Без привязки к лоту</option>
-        ${opts.map(k=>`<option value="${esc(k)}"${k===pre?' selected':''}>${esc(lots[k].name.slice(0,90))}${lots[k].status==='archive'?' — архив':''}</option>`).join('')}
-        <option value="_other">Другой лот — укажу номер или ссылку</option></select>
-        ${opts.length ? '' : '<small class="muted">В списке — лоты из вашего избранного.</small>'}</div>
+        ${opts.map(k=>`<option value="${esc(k)}"${k===pre?' selected':''}>${esc(lots[k].name.slice(0,90))}${lots[k].status==='archive'?' - архив':''}</option>`).join('')}
+        <option value="_other">Другой лот - укажу номер или ссылку</option></select>
+        ${opts.length ? '' : '<small class="muted">В списке - лоты из вашего избранного.</small>'}</div>
       <div class="fg" id="o-oth" hidden><label for="o-num">Номер или ссылка на лот</label><input id="o-num" placeholder="например, 34950 или ссылка на площадку"></div>
       <div class="fg"><label for="o-msg">Что нужно сделать</label>
         <textarea id="o-msg" rows="4" placeholder="Например: проверить обременения и съездить на осмотр до пятницы. Удобно созвониться после 18:00."></textarea></div>
@@ -3566,7 +3575,7 @@ async function meOrderForm(M, params){
         <div class="fg"><label for="o-name">Имя<span class="req" aria-hidden="true">*</span></label><input id="o-name" autocomplete="name" value="${esc(mine('name'))}" required aria-required="true"></div>
         <div class="fg"><label for="o-phone">Телефон<span class="req" aria-hidden="true">*</span></label><input id="o-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00" value="${esc(mine('phone'))}" required aria-required="true"></div>
         <div class="fg"><label for="o-mail">Email</label><input id="o-mail" type="email" autocomplete="email" value="${esc(mine('email'))}"></div></div>
-      <label class="chk"><input type="checkbox" id="o-keep"${mine('name') && mine('phone') ? '' : ' checked'}> Сохранить контакты в профиле — чтобы не вводить снова</label>
+      <label class="chk"><input type="checkbox" id="o-keep"${mine('name') && mine('phone') ? '' : ' checked'}> Сохранить контакты в профиле - чтобы не вводить снова</label>
       <div class="ferr" id="o-err"></div>
       <button class="btn pri" type="submit">Отправить заявку</button>
     </form>`;
@@ -3599,7 +3608,7 @@ async function meReports(M, arg){
     <p class="lede">Сюда специалисты МониТорга присылают отчёты: проверка объекта, осмотр, оценка и стратегия ставок. О новом отчёте придёт уведомление.</p>
     ${rows.length ? `<div class="panel me-p">${rows.map(r=>`<a class="nrow${r.read_at?'':' un'}" href="#/me/reports/${r.id}"><span class="ntag b">Отчёт</span>
       <span class="nbd"><b>${esc(r.title)}</b><span>${r.lot_name ? esc(r.lot_name.slice(0,90)) : 'без привязки к лоту'}${r.file_name ? ' · файл' : ''}</span></span><span class="nt">${dt(new Date(r.created_at)/1000)}</span></a>`).join('')}</div>`
-    : '<div class="panel empty">Отчётов пока нет. Закажите проверку или осмотр объекта — отчёт появится здесь. <a href="#/help">Заказать</a></div>'}`;
+    : '<div class="panel empty">Отчётов пока нет. Закажите проверку или осмотр объекта - отчёт появится здесь. <a href="#/help">Заказать</a></div>'}`;
 }
 async function meReport(M, id){
   const [r] = await uapi(`reports?id=eq.${encodeURIComponent(id)}&select=*`);
@@ -3645,15 +3654,15 @@ async function meProfile(M){
   const NT = [['price','Цена лота изменилась'],['dates','Изменились сроки приёма заявок или дата торгов'],['status','Лот снят с торгов, завершён или снова выставлен'],
     ['remind','Напоминания: за 3 дня и за сутки до окончания приёма заявок'],['search','Новые лоты по сохранённым поискам']];
   M.innerHTML = `<h1>Профиль</h1>
-    ${guest ? '<div class="banner" style="margin:0 0 16px">Вы вошли гостем: избранное этого входа видят все, кто входит как guest. Заявки к гостевому входу не привязываются, контакты и настройки не сохраняются. Свой кабинет — <a href="#" id="p-reg">зарегистрируйтесь по почте</a>.</div>' : ''}
+    ${guest ? '<div class="banner" style="margin:0 0 16px">Вы вошли гостем: избранное этого входа видят все, кто входит как guest. Заявки к гостевому входу не привязываются, контакты и настройки не сохраняются. Свой кабинет - <a href="#" id="p-reg">зарегистрируйтесь по почте</a>.</div>' : ''}
     <div class="panel me-p"><h2>Контакты</h2><p class="muted" style="margin-top:0">Подставляются в заявку на помощь, чтобы не вводить заново.</p>
       ${guest ? '<p class="muted" style="margin:0">У гостевого входа контакты не сохраняются: их видели бы все, кто входит как guest.</p>' : `<div class="me-form"><div class="fg"><label for="p-name">Имя</label><input id="p-name" value="${esc(ME.name && !(guest && ME.name==='Гость') ? ME.name : '')}"></div>
         <div class="fg"><label for="p-phone">Телефон</label><input id="p-phone" type="tel" value="${esc(ME.phone||'')}" placeholder="+375 (29) 000-00-00"></div>
-        <div class="fg"><label for="p-mail">Email</label><input id="p-mail" type="email" value="${esc(ME.email||'')}"${ME.auth?' disabled':''}>${ME.auth?'<div class="fhint">Почта — логин кабинета, здесь не меняется</div>':''}</div>
+        <div class="fg"><label for="p-mail">Email</label><input id="p-mail" type="email" value="${esc(ME.email||'')}"${ME.auth?' disabled':''}>${ME.auth?'<div class="fhint">Почта - логин кабинета, здесь не меняется</div>':''}</div>
         <div class="fg"><label for="p-tg">Telegram</label><input id="p-tg" value="${esc(ME.telegram||'')}" placeholder="@username"></div></div>
-      ${ME.purpose ? `<p class="muted">Для чего вам МониТорг: ${esc(ME.purpose)}${ME.purpose_note ? ' — ' + esc(ME.purpose_note) : ''}</p>` : ''}
+      ${ME.purpose ? `<p class="muted">Для чего вам МониТорг: ${esc(ME.purpose)}${ME.purpose_note ? ' - ' + esc(ME.purpose_note) : ''}</p>` : ''}
       <button class="btn pri" type="button" id="p-save">Сохранить</button>`}</div>
-    <div class="panel me-p"><h2>Уведомления</h2><p class="muted" style="margin-top:0">Приходят в личный кабинет. Доставка на почту и в Telegram — позже.</p>
+    <div class="panel me-p"><h2>Уведомления</h2><p class="muted" style="margin-top:0">Приходят в личный кабинет. Доставка на почту и в Telegram - позже.</p>
       ${NT.map(([k,t])=>`<label class="chk"><input type="checkbox" data-nt="${k}"${on(k)?' checked':''}${guest?' disabled':''}> ${t}</label>`).join('')}
       <p class="muted">Заявки и отчёты приходят всегда.</p></div>
     <div class="panel me-p"><h2>Пароль</h2>${guest ? '<p class="muted" style="margin:0">У гостевого входа пароль не меняется.</p>' : `<div class="me-form">
@@ -3671,7 +3680,7 @@ async function meProfile(M){
   // кабинет по почте: старый пароль проверяем входом, новый задаём в Supabase; гостевой и старые входы — как было
   if(pw) pw.onclick = async () => { try{
     if(ME.auth){ const n = $('#p-new').value;
-      if(n.length < 8) throw new Error('Новый пароль — не короче 8 символов');
+      if(n.length < 8) throw new Error('Новый пароль - не короче 8 символов');
       if(n !== $('#p-new2').value) throw new Error('Новые пароли не совпадают');
       let j; try{ j = await uauth('token?grant_type=password', { email:ME.email, password:$('#p-old').value }); }
       catch(e){ throw new Error(e.code === 'invalid_credentials' || e.code === 'invalid_grant' ? 'Текущий пароль указан неверно' : e.message); }

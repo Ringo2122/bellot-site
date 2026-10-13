@@ -393,6 +393,13 @@ archn = arch.group_by { |l| l['section'] }.map { |k, v| [k, v.size] }.to_h.merge
 archn['tree'] = arch.each_with_object(Hash.new(0)) { |l, h| next unless l['sub']; h[l['sub']] += 1; h[l['sub'].split('/').first] += 1 }
 slim = ->(l) { KEEP.each_with_object({}) { |k, h| h[k] = l[k] unless l[k].nil? }.tap { |h| h['np'] = l['pics'].size if (l['pics'] || []).size > 1 } }
 tpl = File.read(File.join(__dir__, 'site.tpl.html'), encoding: 'UTF-8')
+# название во вкладке и в Google, описания для поиска и для превью ссылок — из админки (тексты seo_*), иначе по умолчанию
+SEO_DEF = { 'seo_title' => 'МониТорг - торги по имуществу должников Беларуси', 'seo_brand' => 'МониТорг',
+            'seo_desc' => 'Все торги по имуществу Беларуси в одном каталоге: недвижимость, авто, спецтехника, оборудование и аренда ' \
+                          'с 18 площадок. Фильтры, история цен, итоги торгов.',
+            'seo_short' => 'Агрегатор торгов по имуществу со всех площадок Беларуси' }.freeze
+seo = SEO_DEF.map { |k, v| t = ((CFG['texts'] || {})[k]).to_s.strip; [k, (t.empty? ? v : t).gsub('&', '&amp;').gsub('"', '&quot;').gsub('<', '&lt;')] }.to_h
+tpl = tpl.gsub('__TITLE__', seo['seo_title']).gsub('__DESC__', seo['seo_desc']).gsub('__SHORT__', seo['seo_short']).gsub('__BRAND__', seo['seo_brand'])
 html = tpl.sub('__DATA__') { JSON.generate(active.map(&slim)) }
           .sub('__SNAP__', now.to_s).sub('__ARCHN__') { JSON.generate(archn) }
           .sub('__CFG__') { JSON.generate(pub) }
@@ -424,7 +431,7 @@ FileUtils.cp(File.join(__dir__, 'stats.js'), File.join(OUT, 'stats.js'))   # а�
 FileUtils.cp_r(File.join(__dir__, 'noph'), File.join(OUT, 'noph'))   # заглушки «нет фото» по разделам (tools/noph.rb)
 FileUtils.cp_r(File.join(__dir__, 'img'), File.join(OUT, 'img'))     # картинки сайта: 3D-значки «Почему МониТорг» (Fluent Emoji, MIT)
 # значок вкладки: без него браузер просит /favicon.ico и получает 404 (13.10 — сигнал мониторинга после переезда на monitorg.by)
-%w[favicon.svg favicon.ico apple-touch-icon.png].each { |f| FileUtils.cp(File.join(__dir__, f), File.join(OUT, f)) }
+%w[favicon.svg favicon.ico apple-touch-icon.png logo-mark.png logo-mark-dark.png].each { |f| FileUtils.cp(File.join(__dir__, f), File.join(OUT, f)) }
 File.write(File.join(OUT, 'admin', 'index.html'),
            adm.sub('__SB_URL__') { ENV['SB_URL'].to_s }.sub('__SB_KEY__') { ENV['SB_KEY'].to_s }.sub('__BUILD__', now.to_s))
 
