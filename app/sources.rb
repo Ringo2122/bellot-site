@@ -906,7 +906,7 @@ module Src
              ['transport/avtomobili-s-probegom', 'avto'], ['transport/avtobusy', 'gruz'], ['transport/gruzovoy-transport', 'gruz'],
              ['transport/pritsepy-polupritsepy', 'gruz'], ['transport/mototekhnika', 'gruz'], ['transport/vozdushnyy-vodnyy-transport', 'gruz'],
              ['spets-selkhoz-tekhnika', 'spec', %r{/spets-selkhoz-tekhnika/zapchasti}], ['oborudovanie', 'oborud']].freeze
-  GS_FROM = { 'oborudovanie' => 3000 }.freeze   # дешёвое оборудование робот всё равно отсеет порогом раздела
+  GS_FROM = { 'oborudovanie' => 500 }.freeze   # дешёвое оборудование робот всё равно отсеет порогом раздела
 
   # одна страница фильтра: карточки или nil (не прочитана); [] — пусто или фильтр не применился
   def gs_page(path, sale, lo = nil, hi = nil)
