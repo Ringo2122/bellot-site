@@ -206,6 +206,8 @@ end
 now = Time.now.to_i
 t0 = Time.now
 db = Store.load.each_with_object({}) { |l, h| h[l['key']] = l }
+# заглушки площадки, сохранённые как фото до 13.10 (Store::NOPHOTO), — удаляем; сборка увидит, что фото нет
+Dir[File.join(Store::PH, 'bu-*.jpg')].each { |f| File.delete(f) if Store.nophoto?(f) }
 dropped = 0
 db.delete_if do |k, l|
   next false unless DROPPED.include?(l['platform'])

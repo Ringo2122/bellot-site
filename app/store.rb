@@ -17,8 +17,15 @@ module Store
   PH   = File.join(DATA, 'ph')
   W    = 400
   Q    = 48
+  # заглушки «нет фото», которые площадка отдаёт как обычное фото (et.butb.by — серый фотоаппарат, 13.10: 158 лотов):
+  # хеши файла площадки и нашей сжатой копии. Такое фото не сохраняем — на сайте будет наша заглушка раздела
+  NOPHOTO = %w[686379d8aa82afee2005f80e1e4102e0 5c625537dab8d1883b8975ea110f8323 e5832167f583dce4ac156d50bdf19078].freeze
 
   module_function
+
+  def nophoto?(f)
+    File.exist?(f) && NOPHOTO.include?(Digest::MD5.file(f).hexdigest)
+  end
 
   def load
     FileUtils.mkdir_p([DET, PH])
@@ -85,10 +92,11 @@ module Store
       next unless u.to_s =~ %r{\Ahttps?://}i   # только http(s): адрес фото берётся со страницы площадки
       system('curl', '-sS', '-L', '--proto', '=http,https', '--proto-redir', '=http,https', '--max-filesize', '15000000',
              '-m', '40', '-A', ua, '-o', raw, u, out: File::NULL, err: File::NULL)
-      next unless File.exist?(raw) && File.size(raw) > 1000
+      next unless File.exist?(raw) && File.size(raw) > 1000 && !nophoto?(raw)
       ok = shrink(raw, dst, w, q)
       File.delete(raw) if File.exist?(raw)
-      return true if ok
+      File.delete(dst) if ok && nophoto?(dst)
+      return true if ok && File.exist?(dst)
     end
     File.delete(raw) if File.exist?(raw)
     false
