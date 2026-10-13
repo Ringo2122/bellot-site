@@ -837,6 +837,7 @@ applyTheme(window.THEME);
   .cx-f input{flex:none;width:112px;padding:6px 8px;border:1px solid var(--hair-2);border-radius:8px;background:var(--card);
     color:var(--ink);text-align:right}
   .cx-fnote{font-size:12px;color:var(--ink-3);margin-top:6px;line-height:1.45}
+  .cx-in .cx-chk{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13.5px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);cursor:pointer}.cx-chk input{width:16px;height:16px;margin:0;accent-color:var(--brand)}
   .cx-out{background:var(--brand-l);border:1px solid var(--hair);border-radius:12px;padding:6px 16px 14px}
   .cx-mk{margin-top:12px;padding:10px 12px;border-radius:8px;font-size:13.5px}
   .cx-mk.ok{background:var(--ok-l);border:1px solid var(--ok)}
@@ -1400,12 +1401,24 @@ const BRAND = { мерседес:'mercedes', фольксваген:'volkswagen'
   тойота:'toyota', опель:'opel', форд:'ford', пежо:'peugeot', ситроен:'citroen', шкода:'skoda', киа:'kia', хендай:'hyundai',
   хундай:'hyundai', хендэ:'hyundai', ниссан:'nissan', мазда:'mazda', вольво:'volvo', мицубиси:'mitsubishi', митсубиси:'mitsubishi',
   хонда:'honda', субару:'subaru', лексус:'lexus', шевроле:'chevrolet', фиат:'fiat', ивеко:'iveco', скания:'scania', даф:'daf',
-  джили:'geely', чери:'chery', хавал:'haval', порше:'porsche', инфинити:'infiniti', сузуки:'suzuki' };
+  джили:'geely', чери:'chery', хавал:'haval', порше:'porsche', инфинити:'infiniti', сузуки:'suzuki',
+  // модели русскими буквами: «пассат» находит «Volkswagen Passat» (13.10, обход персон: «пассат» давал ноль)
+  пассат:'passat', гольф:'golf', тигуан:'tiguan', туарег:'touareg', транспортер:'transporter', крафтер:'crafter', кадди:'caddy',
+  джетта:'jetta', шаран:'sharan', октавия:'octavia', фабия:'fabia', суперб:'superb', рапид:'rapid', логан:'logan', дастер:'duster',
+  сандеро:'sandero', меган:'megane', кангу:'kangoo', сценик:'scenic', фокус:'focus', мондео:'mondeo', транзит:'transit',
+  королла:'corolla', камри:'camry', авенсис:'avensis', астра:'astra', вектра:'vectra', зафира:'zafira', корса:'corsa',
+  инсигния:'insignia', спринтер:'sprinter', вито:'vito', солярис:'solaris', туссан:'tucson', спортейдж:'sportage', церато:'cerato',
+  кашкай:'qashqai', альмера:'almera', примера:'primera', лансер:'lancer', аутлендер:'outlander', паджеро:'pajero', эмгранд:'emgrand' };
+// города латиницей: «Minsk» находит «г. Минск»
+const CITY_LAT = { minsk:'минск', brest:'брест', grodno:'гродн', hrodna:'гродн', gomel:'гомел', homel:'гомел', vitebsk:'витебск',
+  viciebsk:'витебск', mogilev:'могилев', mahilyow:'могилев', bobruisk:'бобруйск', babruysk:'бобруйск', baranovichi:'барановичи',
+  borisov:'борисов', barysaw:'борисов', pinsk:'пинск', orsha:'орша', mozyr:'мозыр', soligorsk:'солигорск', molodechno:'молодечно',
+  lida:'лид', polotsk:'полоцк', novopolotsk:'новополоцк', zhodino:'жодино', slutsk:'слуцк', zhlobin:'жлобин', svetlogorsk:'светлогорск', rechitsa:'речиц' };
 const qword = w => {
   if(/\d/.test(w)) return { s:w, num:true };
   const b = Object.keys(BRAND).find(k => w.startsWith(k) && w.length - k.length <= 2);
   if(b) return { s:b, adj:true, alt:{ s:BRAND[b], adj:true } };
-  if(/[a-z]/.test(w)) return { s:w, adj:true };
+  if(/[a-z]/.test(w)) return CITY_LAT[w] ? { s:w, adj:true, alt:{ s:CITY_LAT[w] } } : { s:w, adj:true };
   const m = w.match(WEND), st = m && w.length - m[0].length >= 3 ? w.slice(0, -m[0].length) : w;
   // «в Минске» — существительное: прилагательные «Минская обл.», «Минский р-н» не подходят; «минская» в запросе — подходят
   return { s:st, adj:ADJ_END.test(w) };
@@ -1421,7 +1434,12 @@ function loadSrch(){ return new Promise(res=>{ if(SRCH) return res(SRCH); SRCHW.
 const LATW = {а:'a',в:'b',е:'e',к:'k',м:'m',н:'h',о:'o',р:'p',с:'c',т:'t',у:'y',х:'x'};
 // название и «название + адрес + номер + должник» в нижнем регистре — один раз на лот (в архиве их 15 тысяч)
 const PRIM = new WeakMap();
-const primOf = l => { let p = PRIM.get(l); if(!p){ const nm = norm(l.name); p = [nm, nm+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor)]; PRIM.set(l, p); } return p; };
+// + город или район из фильтра («Слуцк и район» — деревня в Слуцком р-не находится по «Слуцк»)
+// + то же без дефисов между буквами: «машиноместо» находит «машино-место»
+const primOf = l => { let p = PRIM.get(l); if(!p){ const nm = norm(l.name);
+  let h = nm+' '+norm(l.location)+' '+norm(l.art)+' '+norm(l.debtor)+(l.city && l.city !== 'Остальная область' ? ' '+norm(l.city) : '');
+  if(/[а-я]-[а-я]/.test(h)) h += ' ' + h.replace(/([а-я])-(?=[а-я])/g, '$1');
+  p = [nm, h]; PRIM.set(l, p); } return p; };
 const descOf = l => (SRCH && SRCH[l.id]) || SRCH2[l.id] || '';
 const isL = c => !!c && /[a-zа-я0-9]/.test(c);
 function hasW(hay, w){
@@ -1441,11 +1459,20 @@ function hasW(hay, w){
 function searchLots(list, q){
   const words = qwords(q);
   if(!words.length) return list;
-  let res = [];
-  for(const l of list){
-    const [nm, prim] = primOf(l);
-    if(words.every(w=>hasW(prim, w)))
-      res.push([(nm.startsWith(words[0].s) ? 3 : 0) + words.filter(w=>hasW(nm, w)).length*2 - nm.length/400, l]);
+  const pass = ws => { const r = [];
+    for(const l of list){
+      const [nm, prim] = primOf(l);
+      if(ws.every(w=>hasW(prim, w)))
+        r.push([(nm.startsWith(ws[0].s) ? 3 : 0) + ws.filter(w=>hasW(nm, w)).length*2 - nm.length/400, l]);
+    }
+    return r; };
+  let res = pass(words);
+  // «дом Брест»: «Брест» не находит «Брестская обл.» (чтобы «квартира в Минске» не тянула всю область). Нашлось мало —
+  // добавляем и такие совпадения, ниже найденных (13.10: «дом Брест» давал 0, «склад Минск» — 1)
+  const loose = w => w.num ? w : Object.assign({}, w, { adj:true, alt: w.alt && loose(w.alt) });
+  if(res.length < 10 && words.some(w=>!w.adj && !w.num)){
+    const seen = new Set(res.map(x=>x[1]));
+    for(const [s, l] of pass(words.map(loose))) if(!seen.has(l)) res.push([s - 100, l]);
   }
   if(!res.length) for(const l of list){ const d = descOf(l); if(d && words.every(w=>hasW(primOf(l)[1], w) || hasW(d, w))) res.push([-1, l]); }
   return res.sort((a,b)=>b[0]-a[0]).map(x=>x[1]);
@@ -2063,6 +2090,12 @@ function calcBlock(l, det){
   if(t.fee_abs==null && !t.fee_later && numv(cc.fee_abs)!=null) t.fee_abs = numv(cc.fee_abs);
   const m = calcModel(l, t, cc);
   const pay = payTerm(det.s || []);
+  // НДС: что написала площадка, иначе — из описания лота. «Может быть увеличена на сумму НДС», «без НДС» — в расчёте
+  // галочка «+ НДС 20%» (13.10, обход персон: у лотов torgi.gov.by про НДС было только в описании)
+  const dtx = (det.s || []).flatMap(s=>s.rows).map(r=>r[1]).join(' ');
+  const vatPlus = /увелич[а-я]*\s+на\s+(сумму\s+)?(\d+\s*%\s*)?НДС|плюс\s*\d+\s*%\s*НДС|НДС[,\s]{1,4}исчисляем[а-я]*\s+сверх|без\s+(учета\s+)?НДС/i.test((t.vat || '') + ' ' + dtx);
+  const vatTxt = t.vat || (vatPlus ? 'К цене может добавиться НДС 20% - зависит от продавца, см. описание лота'
+    : /\(с НДС\)|с\s+учетом\s+НДС/i.test(dtx) ? 'Цена указана с НДС' : '');
   // Сверх цены лота: у beltorgi — аукционный сбор % и затраты на организацию торгов, у ИПМ — вознаграждение % и затраты,
   // у e-auction по арестованному имуществу сборов нет. Поля заполнены данными площадки и их можно поправить.
   const feeName = l.platform==='beltorgi.by' ? 'Аукционный сбор' : 'Вознаграждение организатору';
@@ -2087,11 +2120,17 @@ function calcBlock(l, det){
       ? 'Из карточки лота: аукционный сбор и затраты на организацию торгов (публикация, оценка) - если площадка их указала.'
     : l.platform==='gostorg.by'
       ? 'Из карточки лота: вознаграждение организатору, % от цены продажи (если указано). Затраты на организацию торгов, если есть, - в условиях лота на площадке.'
-      : 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.';
+    : l.platform==='e-auction.by'
+      ? 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.'
+    : l.platform==='iintorgi.by'
+      ? 'Затраты на организацию торгов - в строке «Затраты» в условиях лота. Если там указана сумма, впишите её.'
+      // torgi.gov.by, etpvit, expert-torgi, realtorgi: сборов отдельным полем нет (13.10: был текст про регламент e-auction)
+      : 'Площадка не указала сборы отдельным полем. Если в описании лота есть затраты на организацию торгов или вознаграждение организатору, впишите их.';
+  const vatHtml = vatPlus ? `<label class="cx-chk"><input type="checkbox" id="cx-vat"> Добавить НДС 20% к цене лота</label>` : '';
   const feesHtml = `<div class="cx-fees"><div class="cx-fh">Расходы сверх цены лота</div>
       <label class="cx-f"><span>${feeName}, % от итоговой цены</span><input type="number" id="cx-fp" min="0" max="30" step="0.1" value="${t.fee_pct!=null?t.fee_pct:''}" placeholder="0"></label>
       <label class="cx-f"><span>Затраты на организацию торгов, BYN</span><input type="number" id="cx-fa" min="0" step="1" value="${t.fee_abs!=null?t.fee_abs:''}" placeholder="${t.fee_later?'объявят до торгов':'0'}"></label>
-      <div class="cx-fnote">${esc(feeNote)}</div></div>`;
+      <div class="cx-fnote">${esc(feeNote)}</div>${vatHtml}</div>`;
   const spOpts = m.pick ? [0.5,1,2,3,4,5].filter(x=>x>=(t.step_min_pct||0.5) && x<=(t.step_pct||5)) : [];
   $('#calcx').innerHTML = `
     <div class="cx-head"><h2>Калькулятор покупки</h2>
@@ -2109,7 +2148,7 @@ function calcBlock(l, det){
           <li><span>Задаток</span><b>${nf(m.deposit)} BYN${m.est.deposit?` - оценка ${String(m.depPct).replace('.',',')}%`:''}</b></li>
           ${m.single?`<li><span>Единственный участник</span><b>покупает за ${nf(m.single)} BYN (+${t.single_pct}%)</b></li>`:''}
           ${t.min_price?`<li><span>Минимальная стоимость</span><b>${nf(t.min_price)} BYN</b></li>`:''}
-          ${t.vat?`<li><span>НДС</span><b>${esc(t.vat)}</b></li>`:''}
+          ${vatTxt?`<li><span>НДС</span><b>${esc(vatTxt)}</b></li>`:''}
         </ul>
         ${feesHtml}
       </div>
@@ -2124,7 +2163,8 @@ function calcBlock(l, det){
   const run = () => {
     const n = +$('#cx-n').value, sp = m.pick ? +$('#cx-sp').value : 0;
     $('#cx-nv').textContent = n;
-    const fp = parseFloat($('#cx-fp').value)||0, fa = parseFloat($('#cx-fa').value)||0, feeOf = p => p*fp/100 + fa;
+    const fp = parseFloat($('#cx-fp').value)||0, fa = parseFloat($('#cx-fa').value)||0, vat = vatPlus && $('#cx-vat').checked;
+    const feeOf = p => p*fp/100 + fa + (vat ? p*0.2 : 0);
     const price = n===0 && m.single ? m.single : m.at(n, sp);
     const fees = feeOf(price), total = price + fees, rest = Math.max(total - m.deposit, 0);
     $('#cx-hint').textContent = n===0
@@ -2146,6 +2186,7 @@ function calcBlock(l, det){
       <div class="row"><span class="l">Цена лота после торгов</span><span class="r">${nf(price)} BYN</span></div>
       <div class="row"><span class="l">${feeName}${fp?`, ${String(fp).replace('.',',')}%`:''}</span><span class="r">${fp?nf(price*fp/100)+' BYN':'нет'}</span></div>
       <div class="row"><span class="l">Затраты на организацию торгов</span><span class="r">${fa?nf(fa)+' BYN':(t.fee_later?'объявят до торгов':'нет')}</span></div>
+      ${vat?`<div class="row"><span class="l">НДС 20%</span><span class="r">${nf(price*0.2)} BYN</span></div>`:''}
       <div class="row big"><span class="l">Итого за покупку</span><span class="r">${nf(total)} BYN</span></div>
       <div class="row"><span class="l">Задаток - внести до ${dt(t.deposit_to || l.req_to)}</span><span class="r">${nf(m.deposit)} BYN</span></div>
       <div class="row"><span class="l">Доплатить после победы</span><span class="r">${nf(rest)} BYN</span></div>
@@ -2155,6 +2196,7 @@ function calcBlock(l, det){
   $('#cx-n').addEventListener('input', run);
   if(m.pick) $('#cx-sp').addEventListener('change', run);
   ['cx-fp','cx-fa'].forEach(id=>$('#'+id).addEventListener('input', run));
+  if(vatPlus) $('#cx-vat').addEventListener('change', run);
   run();
 }
 
