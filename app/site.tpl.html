@@ -128,6 +128,36 @@ applyTheme(window.THEME);
   .hs-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--hair-2);background:var(--card);color:var(--ink);
     display:grid;place-items:center;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
   .hs-btn:hover{border-color:var(--brand);color:var(--brand)}
+  /* компьютер: при прокрутке шапка плавно сжимается 72 → 46 px, подпись под названием прячется (решение Артёма 13.10);
+     на телефоне шапка и так компактная — без анимации */
+  @media (min-width:761px){
+    .hrow{transition:padding .2s}
+    .logo .mark{transition:width .2s,height .2s,box-shadow .2s}
+    .logo .nm{transition:font-size .2s,text-shadow .2s}
+    .cbtn{transition:height .2s,background .2s,box-shadow .25s,transform .25s cubic-bezier(.2,.8,.2,1)}
+    .cbtn .cg{transition:width .2s,height .2s}
+    .hs-btn{transition:width .2s,height .2s,border-color .15s,color .15s,background .15s}
+    header.main.sc .hrow{padding-block:5px}
+    header.main.sc .logo .mark{width:30px;height:30px}
+    header.main.sc .logo .nm{font-size:17px}
+    header.main.sc .logo .sub{display:none}
+    header.main.sc .cbtn{height:34px}
+    header.main.sc .cbtn .cg{width:24px;height:24px}
+    header.main.sc .hs-btn{width:34px;height:34px}
+    header.main.sc .hacts .btn{padding-block:6px}
+    header.main.sc .hnav a{padding-block:5px}
+  }
+  /* «Наверх»: круглая полупрозрачная с размытием, появляется после экрана прокрутки (решение Артёма 13.10) */
+  .totop{position:fixed;right:22px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:55;width:46px;height:46px;border-radius:50%;
+    display:grid;place-items:center;cursor:pointer;border:1px solid var(--hair-2);color:var(--ink);
+    background:color-mix(in srgb,var(--card) 70%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    box-shadow:0 4px 16px rgba(0,0,0,.12);opacity:0;transform:translateY(10px);pointer-events:none;
+    transition:opacity .25s,transform .25s,border-color .15s,color .15s}
+  .totop.on{opacity:1;transform:none;pointer-events:auto}
+  .totop:hover{border-color:var(--brand);color:var(--brand)}
+  .totop svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  body:has(#ck:not([hidden])) .totop{display:none}   /* пока висит плашка cookie — внизу и так тесно */
+  @media (max-width:760px){ .totop{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:42px;height:42px} }
   .hsearch.open #hs-open{border-color:var(--brand);color:var(--brand);background:var(--brand-l)}
   .hs-btn svg,.hs-ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
   .hs-form{position:absolute;left:0;right:0;top:100%;z-index:2;display:flex;align-items:center;gap:6px;background:var(--card);border-top:1px solid var(--hair);
@@ -1210,6 +1240,7 @@ applyTheme(window.THEME);
   <div class="fbot">Данные собираются с открытых площадок автоматически, последнее обновление <span id="f-upd"></span>. Перед участием в торгах сверяйтесь с карточкой лота на площадке-первоисточнике.
     · <a href="#/privacy">Политика конфиденциальности</a></div>
 </div></footer>
+<button class="totop" id="totop" type="button" aria-label="Наверх"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
 <div class="ck" id="ck" role="region" aria-label="Файлы cookie" hidden><span id="ck-t"></span> <a href="#/privacy">Подробнее</a><button class="btn pri" id="ck-ok" type="button">Понятно</button></div>
 
 <script>
@@ -1642,6 +1673,20 @@ function fitFilters(){
   fp.style.top = Math.min(top, innerHeight - fp.offsetHeight - 12) + 'px';
 }
 addEventListener('resize', fitFilters);
+// прокрутка: шапка сжимается (стили — header.main.sc), кнопка «Наверх» — после экрана; панель фильтров — за шапкой
+{
+  const hd = document.querySelector('header.main'), up = document.getElementById('totop');
+  let sc = false;
+  const onScroll = () => {
+    const s = scrollY > 40;
+    if(s !== sc){ sc = s; hd.classList.toggle('sc', s); setTimeout(fitFilters, 230); }
+    up.classList.toggle('on', scrollY > innerHeight);
+  };
+  addEventListener('scroll', onScroll, { passive:true });
+  hd.addEventListener('transitionend', e => { if(e.target.classList.contains('hrow')) fitFilters(); });
+  up.onclick = () => window.scrollTo({ top:0, behavior: reduced ? 'auto' : 'smooth' });
+  onScroll();
+}
 const SORTS_ACTIVE = [['deadline','Заявки закрываются раньше'],['new','Сначала новые'],['disc','Дисконт к рынку'],
   ['price-asc','Цена по возрастанию'],['price-desc','Цена по убыванию'],['name','По названию']];
 const SORTS_ARCH = [['closed','Недавно завершённые'],['sale-desc','Цена продажи: дороже'],['prem-desc','Рост цены на торгах'],
