@@ -62,7 +62,7 @@ end
 
 # Адрес страницы лота. У ИПМ ключ — длинный слаг, укорачиваем стабильным хешем.
 def id_of(key)
-  key.start_with?('ipm-') ? "ipm-#{Digest::MD5.hexdigest(key)[0, 8]}" : key
+  key.start_with?('ipm-') ? "ipm-#{Digest::MD5.hexdigest(key)[0, 8]}" : Store.fname(key)   # ph/<id>.jpg — тоже имя файла
 end
 
 def words(s)
@@ -423,6 +423,8 @@ adm = File.read(File.join(__dir__, 'admin.html'), encoding: 'UTF-8')
 FileUtils.cp(File.join(__dir__, 'stats.js'), File.join(OUT, 'stats.js'))   # аналитика: общая для админки и кабинета
 FileUtils.cp_r(File.join(__dir__, 'noph'), File.join(OUT, 'noph'))   # заглушки «нет фото» по разделам (tools/noph.rb)
 FileUtils.cp_r(File.join(__dir__, 'img'), File.join(OUT, 'img'))     # картинки сайта: 3D-значки «Почему МониТорг» (Fluent Emoji, MIT)
+# значок вкладки: без него браузер просит /favicon.ico и получает 404 (13.10 — сигнал мониторинга после переезда на monitorg.by)
+%w[favicon.svg favicon.ico apple-touch-icon.png].each { |f| FileUtils.cp(File.join(__dir__, f), File.join(OUT, f)) }
 File.write(File.join(OUT, 'admin', 'index.html'),
            adm.sub('__SB_URL__') { ENV['SB_URL'].to_s }.sub('__SB_KEY__') { ENV['SB_KEY'].to_s }.sub('__BUILD__', now.to_s))
 

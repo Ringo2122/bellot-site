@@ -7,6 +7,7 @@
 # Строка на лот — чтобы в истории репозитория было видно, что изменилось за прогон.
 require 'json'
 require 'fileutils'
+require 'digest'
 
 module Store
   ROOT = File.expand_path('..', __dir__)
@@ -29,12 +30,18 @@ module Store
     File.write(LOTS, "[\n#{body}\n]\n")
   end
 
+  # имя файла лота — не длиннее 255 байт: у expert-torgi ключ — адрес лота целиком (13.10 архив упал на «File name too long»);
+  # короче 240 — как было, длиннее — начало и хеш
+  def fname(key)
+    key.bytesize > 240 ? "#{key.byteslice(0, 200).scrub('')}-#{Digest::MD5.hexdigest(key)[0, 12]}" : key
+  end
+
   def det_path(key)
-    File.join(DET, "#{key}.json")
+    File.join(DET, "#{fname(key)}.json")
   end
 
   def ph_path(key)
-    File.join(PH, "#{key}.jpg")
+    File.join(PH, "#{fname(key)}.jpg")
   end
 
   def details(key)
