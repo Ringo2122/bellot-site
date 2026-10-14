@@ -638,7 +638,8 @@ applyTheme(window.THEME);
   .gv{position:relative;border-radius:12px;overflow:hidden}
   .gv .big{cursor:zoom-in;transition:opacity .15s .12s}
   /* пока грузится фото площадки: наша копия 400 px — размытым фоном, поверх — индикатор (появляется через 0,15 с, чтобы не мигать) */
-  .gv .big.lq{filter:blur(6px);transform:scale(1.02)}
+  /* .lq — на экране наша копия (сразу, чётко); оригинал с площадки подменит её, когда загрузится (14.10: была размытой
+     с крутилкой, пока площадка не ответит — у архивных лотов 2–4 с, карточка казалась медленной) */
   .gv.ld .big{opacity:.6}
   .gv.ld::after,.lbx.ld::after{content:'';position:absolute;top:50%;left:50%;width:36px;height:36px;margin:-18px 0 0 -18px;border:3px solid rgba(255,255,255,.45);
     border-top-color:#fff;border-radius:50%;opacity:0;animation:gvspin .8s linear infinite,gvon 0s .15s forwards;pointer-events:none}
@@ -1918,6 +1919,8 @@ function pageCatalog(sc, params){
       pmax:v('f-pmax'), dfrom:v('f-dfrom'), dto:v('f-dto'), plat:v('f-plat'), photo:c('f-photo'), mkt:c('f-mkt'), land:c('f-land'), cat:FSTATE.cat,
       res:FSTATE.st==='arch'?v('f-res'):''};
   };
+  // фильтр или сортировку поменяли внизу списка — список новый, показываем его с начала (14.10: оставались у подвала)
+  const toTop = () => { if(scrollY > 0) window.scrollTo({ top:0, behavior: reduced ? 'auto' : 'smooth' }); };
   const drawPanel = () => {
     $('#fwrap').innerHTML = filterPanel(baseOf(), FSTATE, sc);
     ['f-q','f-top','f-sub','f-res','f-region','f-city','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt','f-land'].forEach(id=>{
@@ -1932,13 +1935,13 @@ function pageCatalog(sc, params){
         // другая область — город прежней не подходит; список городов новой области появляется под «Регионом»
         if(id==='f-region'){ FSTATE.city = ''; const op = $('#fp').classList.contains('open'); drawPanel();
           if(op) $('#fp').classList.add('open'); }
-        render(); });
+        render(); toTop(); });
     });
     document.querySelectorAll('#fp select').forEach(dd);
     requestAnimationFrame(fitFilters);
     // площадки — выпадающим списком с галочками, можно несколько (значение — в скрытом поле f-plat через запятую)
     mdd($('#f-pdd'), JSON.parse($('#f-pdd').dataset.items), new Set(String(FSTATE.plat||'').split(',').filter(Boolean)), a => {
-      $('#f-plat').value = a.join(','); read(); render(); });
+      $('#f-plat').value = a.join(','); read(); render(); toTop(); });
     // «Сбросить» — к исходному виду этой страницы: раздел, лента («Истекающие», «Новые»), режим «Активные / Архив»
     $('#f-reset').onclick = () => { FSTATE = { st:FSTATE.st, cur:FSTATE.cur };
       if(view==='soon') FSTATE.soon = 1; if(view==='new'){ FSTATE.fresh = 1; FSTATE.sort = 'new'; } if(view==='pin') FSTATE.pin = 1;
@@ -1953,13 +1956,13 @@ function pageCatalog(sc, params){
         if(FSTATE.pmax) FSTATE.pmax = String(c==='USD' ? Math.round(+FSTATE.pmax / USD) : Math.floor((+FSTATE.pmax + .5) * USD));
         SWAP = { cur:fUsd(FSTATE)?'USD':'BYN', ...was, to:{ pmin:FSTATE.pmin, pmax:FSTATE.pmax } };
       }
-      FSTATE.cur = c==='USD' ? 'USD' : undefined; setCurr(c); drawPanel(); render(); });
+      FSTATE.cur = c==='USD' ? 'USD' : undefined; setCurr(c); drawPanel(); render(); toTop(); });
     $('#f-close').onclick = closeDrawer;
     $('#f-apply').onclick = closeDrawer;
     document.querySelectorAll('#f-st button').forEach(b=>b.onclick = () => {
       if((FSTATE.st||'')===b.dataset.st) return;
       FSTATE = {st:b.dataset.st||undefined, q:FSTATE.q, cur:FSTATE.cur};
-      drawPanel(); render();
+      drawPanel(); render(); toTop();
     });
   };
   const render = more => {
@@ -1982,7 +1985,7 @@ function pageCatalog(sc, params){
       ${FSTATE.plat?`<div class="fsel">${String(FSTATE.plat).split(',').map(p=>`<button type="button" class="pchip on ${pslug(p)}" data-p="${esc(p)}" title="Убрать площадку"><i class="pdot"></i>${esc(p)}</button>`).join('')}</div>`:''}`;
     document.querySelectorAll('#tb .fsel .pchip').forEach(b=>b.onclick = () => {
       FSTATE.plat = String(FSTATE.plat).split(',').filter(p=>p!==b.dataset.p).join(','); drawPanel(); render(); });
-    $('#f-sort').onchange = e => { FSTATE.sort = e.target.value; render(); };
+    $('#f-sort').onchange = e => { FSTATE.sort = e.target.value; render(); toTop(); };
     dd($('#f-sort'));
     const sv = $('#f-save'); if(sv) sv.onclick = () => saveSearch(sc);
     $('#f-open').onclick = () => { $('#fp').classList.add('open'); $('#ov').classList.add('open'); };
@@ -2425,7 +2428,7 @@ function gload(u){
 function galleryBlock(l, pics){
   const th = pics.map(u=>thumbOf(l.platform, u)), many = pics.length > 1;
   const first = l.photo ? `ph/${encodeURIComponent(l.photo)}.jpg` : pics[0];
-  return `<div class="gv ld" id="gv"><img class="big${l.photo ? ' lq' : ''}" id="gv-img" src="${esc(first)}" alt="${esc(l.name)}">
+  return `<div class="gv${l.photo ? '' : ' ld'}" id="gv"><img class="big${l.photo ? ' lq' : ''}" id="gv-img" src="${esc(first)}" alt="${esc(l.name)}">
       ${many ? '<button class="gv-b gv-p" type="button" aria-label="Предыдущее фото">‹</button><button class="gv-b gv-n" type="button" aria-label="Следующее фото">›</button>' : ''}
       <button class="gv-full" type="button" aria-label="Открыть на весь экран" title="На весь экран">⤢</button>${many ? `<span class="gv-cnt" id="gv-cnt">1 / ${pics.length}</span>` : ''}</div>
     ${!many ? '' : th.every(Boolean) ? `<div class="gv-strip">${th.map((t,i)=>`<button type="button" data-i="${i}"${i?'':' class="on"'} aria-label="Фото ${i+1}"><img src="${esc(t)}" loading="lazy" alt=""></button>`).join('')}</div>`
@@ -2440,9 +2443,8 @@ function viewer(pics, img, box, onShow){
     if(!pics.length) return;
     i = (n + pics.length) % pics.length; const u = pics[i]; want = u;
     if(onShow) onShow(i);
-    box.classList.add('ld');
-    // наша копия на экране, а площадка не отвечает — показываем копию чётко, оригинал подменит её, когда загрузится
-    if(img.classList.contains('lq')) setTimeout(()=>{ if(want === u && img.classList.contains('lq')){ img.classList.remove('lq'); box.classList.remove('ld'); } }, 2500);
+    // наша копия на экране — без крутилки: оригинал подменит её, когда площадка ответит
+    if(!(img.classList.contains('lq') && i === 0)) box.classList.add('ld');
     gload(u).then(()=>{ if(want !== u) return; img.src = u; img.classList.remove('lq'); box.classList.remove('ld'); })
       .catch(()=>{ if(want !== u) return; const k = pics.indexOf(u); if(k >= 0){ pics.splice(k, 1); if(onShow) onShow(-1, k); } show(i); });   // площадка удалила фото
     pre(i);
