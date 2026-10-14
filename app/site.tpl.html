@@ -973,6 +973,25 @@ applyTheme(window.THEME);
   .unote{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--hair)}
   .unote label{display:grid;gap:4px;font-size:12px;color:var(--ink-3);font-weight:700}
   .unote select,.unote textarea{font:inherit;font-weight:400;font-size:14px;padding:6px 8px;border:1px solid var(--hair-2);border-radius:8px;background:var(--card);color:var(--ink);resize:vertical}
+  /* окно сайта (mdlg): сохранение и удаление поиска */
+  .mdl-ov{position:fixed;inset:0;background:rgba(15,17,22,.45);z-index:200;display:grid;place-items:center;padding:16px}
+  .mdl{position:relative;background:var(--card);color:var(--ink);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.25);width:min(460px,100%);padding:22px 22px 18px}
+  .mdl h3{font:700 20px/1.25 var(--head);margin:0 30px 6px 0}
+  .mdl-sub{color:var(--ink-2);font-size:14px;margin:0 0 16px}
+  .mdl-lab{display:block;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
+  .mdl-in{width:100%;border:1px solid var(--hair-2);border-radius:10px;padding:11px 12px;font:inherit;font-size:15px;color:var(--ink);background:var(--card);outline:none}
+  .mdl-in:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+  .mdl-chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}
+  .mdl-chips span{background:var(--accent-l);color:var(--brand-d);border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:600}
+  .mdl-acts{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}
+  .mdl-x{position:absolute;right:14px;top:12px;border:0;background:none;font-size:22px;line-height:1;color:var(--ink-3);cursor:pointer}
+  /* новые лоты по сохранённому поиску: плашка над списком каталога */
+  .nw-ban{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--accent-l);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+    border-radius:14px;padding:14px 18px;margin:0 0 14px}
+  .nw-ban .t{flex:1;min-width:240px}.nw-ban b{display:block;font-size:16px}.nw-ban .t span{color:var(--ink-2);font-size:14px}
+  .nw-x{border:0;background:none;font-size:22px;line-height:1;color:var(--ink-3);cursor:pointer;padding:0 4px}
+  @media (max-width:600px){ .nw-ban{position:relative;padding:14px 40px 14px 16px}.nw-ban .t{min-width:0}.nw-ban .btn{width:100%}.nw-x{position:absolute;top:8px;right:8px} }
+  .srow .nw-n{color:var(--accent)}
   .ssave{display:inline-flex;align-items:center;gap:6px}
   .ssave svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
   #utoast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:10px 16px;border-radius:12px;
@@ -1979,9 +1998,32 @@ function pageCatalog(sc, params){
     if(arch && !ARCH){ $('#tb').innerHTML=''; $('#res').innerHTML = '<div class="skel"></div><div class="skel" style="margin-top:10px"></div>';
       loadArch().then(()=>{ if($('#fwrap') && FSTATE.st==='arch'){ drawPanel(); render(true); } }); return; }
     const base = baseOf(), list = applyFilters(base, FSTATE), nf_ = nFilters(FSTATE);
+    // сохранённый поиск: только его новые лоты (SSNEW) или плашка «по вашему поиску N новых»
+    let shown = list, nb = '', nwS = null;
+    // вход в кабинет ещё догружается (открыли каталог по ссылке) — перерисуем, когда станет ясно, кто зашёл
+    if(!ME && UB && UREADY && !render.w){ render.w = 1; UREADY.then(()=>{ if(ME && $('#res')) render(true); }); }
+    if(ME && !arch){
+      if(!SSL) ssLoad().then(()=>{ if($('#res')) render(true); });
+      else { const key = ssKey(curSearch(sc));
+        if(SSNEW && SSNEW.key !== key) SSNEW = null;   // фильтры поменяли — это уже другой поиск
+        if(SSNEW){ shown = list.filter(l=>l.first_seen > SSNEW.since && !SSNEW.seen.has(l.id)); const n = shown.length;
+          nb = `<div class="nw-ban"><div class="t"><b>${n ? `${n} ${plural(n,'новый лот','новых лота','новых лотов')} по поиску «${esc(SSNEW.name)}»` : `Новых лотов по поиску «${esc(SSNEW.name)}» нет`}</b>
+            <span>Всего в этом поиске ${nf(list.length)} ${plural(list.length,'лот','лота','лотов')}.</span></div>
+            <button class="btn pri" type="button" id="nw-all">Показать все ${nf(list.length)} ${plural(list.length,'лот','лота','лотов')} поиска</button></div>`; }
+        else if((nwS = SSL.find(x=>ssKey(x.params || {}) === key))){ const nw = ssNew(nwS, list), top = Math.max(0, ...nw.map(l=>l.first_seen));
+          let hid = 0; try{ hid = +localStorage.getItem('bl_ssx' + nwS.id) || 0; }catch(e){}
+          if(nw.length && top > hid) nb = `<div class="nw-ban"><div class="t"><b>По вашему поиску «${esc(nwS.name)}» ${nw.length} ${plural(nw.length,'новый лот','новых лота','новых лотов')}</b>
+            <span>с вашего прошлого просмотра ${dt(ssSince(nwS))}</span></div>
+            <button class="btn pri" type="button" id="nw-show">Показать новые</button><button class="nw-x" type="button" id="nw-x" aria-label="Скрыть">×</button></div>`;
+          // крестик: скрыть до следующих новых лотов (новыми они при этом остаются)
+          else nwS = null;
+          if(nwS) nwS._top = top; }
+      }
+    }
     const sorts = (FSTATE.q ? [['rel','Сначала точные совпадения']] : []).concat(arch ? SORTS_ARCH : SORTS_ACTIVE), cur = FSTATE.sort || sorts[0][0];
     $('#tb').innerHTML = `<button class="btn fbtn" id="f-open" type="button">Фильтры${nf_?' · '+nf_:''}</button>
-      <span class="cnt">${arch?'В архиве':'Найдено'} <b>${nf(list.length)}</b> ${plural(list.length,'лот','лота','лотов')}${list.length!==base.length?` из ${nf(base.length)}`:''}</span>
+      <span class="cnt">${SSNEW ? `Новых по поиску: <b>${nf(shown.length)}</b> ${plural(shown.length,'лот','лота','лотов')}`
+        : `${arch?'В архиве':'Найдено'} <b>${nf(list.length)}</b> ${plural(list.length,'лот','лота','лотов')}${list.length!==base.length?` из ${nf(base.length)}`:''}`}</span>
       ${arch||!UB?'':`<button class="btn ssave" id="f-save" type="button" title="Новые лоты по этому поиску будут приходить в личный кабинет">${IC.save}<span>Сохранить поиск</span></button>`}
       <select id="f-sort" aria-label="Сортировка">${sorts.map(([v,t])=>`<option value="${v}"${cur===v?' selected':''}>${t}</option>`).join('')}</select>
       ${FSTATE.plat?`<div class="fsel">${String(FSTATE.plat).split(',').map(p=>`<button type="button" class="pchip on ${pslug(p)}" data-p="${esc(p)}" title="Убрать площадку"><i class="pdot"></i>${esc(p)}</button>`).join('')}</div>`:''}`;
@@ -2000,11 +2042,15 @@ function pageCatalog(sc, params){
         if(n) hint = `<div class="hint">В архиве ещё <b>${n}</b> ${plural(n,'совпадение','совпадения','совпадений')} - <a href="#" id="to-arch">показать архив</a></div>`; }
       else loadArch1().then(()=>{ if($('#res')) render(); });
     }
-    $('#res').innerHTML = hint + (list.length
-      ? `<div class="grid">${list.slice(0,show).map(l=>lotCard(l, arch)).join('')}</div>`
-        + (list.length>show ? `<button class="btn more" id="more" type="button">Показать ещё ${Math.min(STEP,list.length-show)} · осталось ${list.length-show}</button>` : '')
+    $('#res').innerHTML = hint + nb + (shown.length
+      ? `<div class="grid">${shown.slice(0,show).map(l=>lotCard(l, arch)).join('')}</div>`
+        + (shown.length>show ? `<button class="btn more" id="more" type="button">Показать ещё ${Math.min(STEP,shown.length-show)} · осталось ${shown.length-show}</button>` : '')
+      : SSNEW ? ''
       : `<div class="panel empty">${arch&&!base.length?'Архив раздела пока пуст - лоты попадают сюда после окончания приёма заявок.':'По этим условиям ничего не нашлось. Попробуйте смягчить фильтры.'}</div>`);
     const mb = $('#more'); if(mb) mb.onclick = () => { show += STEP; render(true); };
+    const na = $('#nw-all'); if(na) na.onclick = () => { SSNEW = null; render(); toTop(); };
+    const ns = $('#nw-show'); if(ns) ns.onclick = () => { ssOpen(nwS); render(); toTop(); };
+    const nx = $('#nw-x'); if(nx) nx.onclick = () => { try{ localStorage.setItem('bl_ssx' + nwS.id, String(nwS._top)); }catch(e){} render(true); };
     syncUrl();
     const ta = $('#to-arch'); if(ta) ta.onclick = e => { e.preventDefault(); FSTATE = {st:'arch', q:FSTATE.q}; drawPanel(); render(); window.scrollTo({top:0,behavior:'smooth'}); };
     paint();
@@ -2805,7 +2851,7 @@ function svcList(){
 /* политика конфиденциальности — текст из админки (texts.privacy_text), пока его нет — заглушка; абзацы — через пустую строку */
 const PRIVACY_DEF = 'Здесь будет политика обработки персональных данных МониТорга: какие данные мы получаем (контакты из заявок на помощь, данные личного кабинета, файлы cookie), зачем, сколько храним и как их удалить.\n\nТекст готовится. По вопросам обработки данных пишите по контактам из подвала сайта.';
 /* ───────── новости ─────────
-   Статьи — из админки (таблица news; робот кладёт их в CFG.news при публикации, фото — файлами). Без базы (локальная сборка) — NEWS ниже:
+   Статьи — из админки (таблица news; робот кладёт их в CFG.news при публикации, фото — файлами). Без базы (локальная сборка) — SSNEW ниже:
    те же три первые статьи — пересказ своими словами реальных новостей 2026 года со ссылкой на источник; фото — Pexels (бесплатная лицензия). */
 const NEWS = [
   { slug:'zemlya-minskij-rajon-16-oktyabrya', date:'2026-09-19', img:'img/news/zemlya-minskij-rajon-16-oktyabrya.jpg',
@@ -3215,7 +3261,7 @@ async function uaccess(){
 async function uhdr(){ const t = await uaccess(); return t ? { Authorization:'Bearer ' + t } : UTOK ? { 'x-user-token':UTOK } : {}; }
 async function ulogout(){
   try{ if(USESS){ const t = await uaccess(); if(t) await uauth('logout', {}, { tok:t }); } else if(UTOK) await urpc('user_logout'); }catch(e){}
-  utok(''); usess(null); ME = null; ULOTS = {}; drawUser();
+  utok(''); usess(null); ME = null; ULOTS = {}; SSL = null; VIEWED = null; SSNEW = null; drawUser();
 }
 let ME = null, ULOTS = {}, UREADY = null;
 const STAGES = [['look','Изучаю'],['visit','Осмотр'],['apply','Готовлю заявку'],['bid','Участвую'],['won','Выиграл'],['drop','Отказался']];
@@ -3297,6 +3343,7 @@ function bindLotUser(l){
     if(nt) nt.onchange = async () => { try{ await ulot(l.id, { note:nt.value.trim()||null }); utoast('Заметка сохранена'); }catch(e){ utoast(e.message, true); } };
   };
   (UREADY || Promise.resolve()).then(()=>{ draw();
+    if(ME && VIEWED) VIEWED.add(l.id);   // открытый лот больше не «новый» по сохранённым поискам
     if(ME) uapi('user_views?on_conflict=user_id,lot', { method:'POST', body:[{ lot:l.id, at:new Date().toISOString() }], prefer:'resolution=merge-duplicates,return=minimal' }).catch(()=>{}); });
   draw();
 }
@@ -3315,18 +3362,66 @@ function searchTitle(p){
 const searchList = p => { const sc = scOf(p.sub); return applyFilters(sc ? DATA.filter(l=>inScope(l, sc)) : p.sec ? DATA.filter(l=>l.section===p.sec) : DATA, p); };
 // раздел площадки, который целиком покрывает подраздел каталога: по нему база отбирает новые лоты для уведомлений
 const SEC_OF = { nedvizhimost:'nedvizhimost', arenda:'arenda', oborudovanie:'oborud', 'transport/legkovye':'avto' };
-async function saveSearch(sc){
-  if(!ME){ needLogin(); return; }
+// условия поиска на текущей странице каталога — как их сохраняет «Сохранить поиск»
+function curSearch(sc){
   const p = {}; if(sc){ p.sub = scPath(sc); const s = SEC_OF[p.sub] || SEC_OF[sc.top]; if(s) p.sec = s; }
   SS_KEYS.forEach(k=>{ if(FSTATE[k]) p[k] = String(FSTATE[k]); });
   // база сравнивает цены в рублях — доллары переводим по сегодняшнему курсу
   if(fUsd(FSTATE)){ if(p.pmin) p.pmin = String(Math.max(0, Math.floor((+p.pmin - .5) * USD))); if(p.pmax) p.pmax = String(Math.ceil((+p.pmax + .5) * USD)); }
-  const name = prompt('Как назвать поиск? Новые лоты по нему будут приходить в личный кабинет.', searchTitle(p));
-  if(name === null) return;
-  try{ await uapi('saved_searches', { method:'POST', body:[{ name:name.trim() || searchTitle(p), params:p, notify:true }], prefer:'return=minimal' });
-    utoast('Поиск сохранён - он в личном кабинете'); }catch(e){ utoast(e.message, true); }
+  return p;
 }
-function openSearch(p){ CARRY = {}; SS_KEYS.forEach(k=>{ if(p[k]) CARRY[k] = p[k]; });
+/* окно сайта вместо системных prompt/confirm (14.10): заголовок, пояснение, своё содержимое, «Отмена» и кнопка действия.
+   get(ov) — что вернуть по кнопке действия (например, текст поля); «Отмена», крестик, Esc, клик мимо — null */
+function mdlg({ title, sub, html = '', ok, cancel = 'Отмена', get }){
+  return new Promise(res=>{
+    const back = document.activeElement, ov = document.createElement('div'); ov.className = 'mdl-ov';
+    ov.innerHTML = `<div class="mdl" role="dialog" aria-modal="true" aria-labelledby="mdl-h"><button class="mdl-x" type="button" aria-label="Закрыть">×</button>
+      <h3 id="mdl-h">${esc(title)}</h3>${sub ? `<p class="mdl-sub">${esc(sub)}</p>` : ''}${html}
+      <div class="mdl-acts"><button class="btn" type="button" data-no>${esc(cancel)}</button><button class="btn pri" type="button" data-ok>${esc(ok)}</button></div></div>`;
+    const done = v => { ov.remove(); document.removeEventListener('keydown', key); if(back && back.focus) back.focus(); res(v); };
+    const okv = () => done(get ? get(ov) : true);
+    const key = e => { if(e.key === 'Escape') done(null); else if(e.key === 'Enter'){ e.preventDefault(); okv(); } };
+    ov.addEventListener('click', e => { if(e.target === ov) done(null); });
+    ov.querySelector('.mdl-x').onclick = ov.querySelector('[data-no]').onclick = () => done(null);
+    ov.querySelector('[data-ok]').onclick = okv;
+    document.addEventListener('keydown', key); document.body.appendChild(ov);
+    const f = ov.querySelector('input') || ov.querySelector('[data-ok]'); f.focus(); if(f.select) f.select();
+  });
+}
+async function saveSearch(sc){
+  if(!ME){ needLogin(); return; }
+  const p = curSearch(sc), t = searchTitle(p);
+  const name = await mdlg({ title:'Сохранить поиск', sub:'Новые лоты по этому поиску будут приходить в личный кабинет.', ok:'Сохранить',
+    html:`<label class="mdl-lab" for="mdl-in">Название</label><input class="mdl-in" id="mdl-in" maxlength="120" value="${esc(t)}">
+      <div class="mdl-chips">${t.split(', ').map(x=>`<span>${esc(x)}</span>`).join('')}</div>`,
+    get: ov => ov.querySelector('#mdl-in').value });
+  if(name === null) return;
+  try{ await uapi('saved_searches', { method:'POST', body:[{ name:name.trim() || t, params:p, notify:true }], prefer:'return=minimal' });
+    SSL = null; utoast('Поиск сохранён в личном кабинете'); }catch(e){ utoast(e.message, true); }
+}
+
+/* новые лоты по сохранённому поиску (14.10): лоты поиска, появившиеся после прошлого просмотра новых (seen_at)
+   и которые человек сам не открывал (user_views). Просмотр новых — по уведомлению, по «Новые» в кабинете или по плашке
+   в каталоге — сдвигает seen_at на «сейчас». SSNEW — каталог показывает только новые по этому поиску */
+let SSNEW = null, SSL = null, VIEWED = null, SSQ = null;
+function ssLoad(){
+  return SSQ || (SSQ = Promise.all([uapi('saved_searches?select=*&order=created_at.desc'), uapi('user_views?select=lot&limit=20000')])
+    .then(([s, v]) => { VIEWED = new Set(v.map(x=>x.lot)); SSL = s; SSQ = null; return s; })
+    .catch(() => { SSQ = null; SSL = []; return []; }));
+}
+const ssSince = s => new Date(s.seen_at || s.created_at).getTime() / 1000;
+const ssNew = (s, list) => { const t = ssSince(s); return list.filter(l=>l.first_seen > t && !(VIEWED && VIEWED.has(l.id))); };
+const ssKey = p => JSON.stringify(['sub', ...SS_KEYS].filter(k=>p[k]).map(k=>[k, String(p[k])]));
+// открыли новые: запоминаем, что показывать сейчас, а отметку «видел» и уведомление по поиску — в базу
+function ssOpen(s){
+  SSNEW = { id:s.id, key:ssKey(s.params || {}), since:ssSince(s), seen:new Set(VIEWED || []), name:s.name };
+  const now = new Date().toISOString(); s.seen_at = now; (SSL || []).forEach(x=>{ if(x.id === s.id) x.seen_at = now; });
+  uapi(`saved_searches?id=eq.${s.id}`, { method:'PATCH', body:{ seen_at:now }, prefer:'return=minimal' }).catch(()=>{});
+  uapi(`notifications?kind=eq.search&link=eq.${encodeURIComponent('#/me/searches/' + s.id)}&read_at=is.null`,
+    { method:'PATCH', body:{ read_at:now }, prefer:'return=minimal' }).then(()=>uload()).catch(()=>{});
+}
+function openSearch(p, s){ CARRY = {}; SS_KEYS.forEach(k=>{ if(p[k]) CARRY[k] = p[k]; });
+  if(s) ssOpen(s);
   location.hash = scOf(p.sub) ? '#/c/' + p.sub : p.sec ? '#/s/' + p.sec : '#/catalog'; }
 
 /* вход, регистрация, подтверждение почты кодом, смена забытого пароля */
@@ -3543,7 +3638,7 @@ function lotLine(l){
   const arch = l.status==='archive', d = leftD(l);
   return `${esc(l.platform)} · ${esc(secName(l.section))} · <b>${nf(l.price)} BYN</b> · ${arch ? (l.why==='removed'?'снят с площадки':'приём заявок завершён') : `заявки до ${dtm(l.req_to)}${d>=0&&d<=7?` <span class="dl">${d<=0?'сегодня':d===1?'завтра':'через '+d+' дн.'}</span>`:''}`}`;
 }
-const NK = { price_down:['Цена ↓','g'], price_up:['Цена ↑',''], deadline:['Сроки',''], torg:['Сроки',''], closed:['Завершён','a'], reopened:['Снова на торгах','g'],
+const NK = { result:['Итоги','g'], price_down:['Цена ↓','g'], price_up:['Цена ↑',''], deadline:['Сроки',''], torg:['Сроки',''], closed:['Завершён','a'], reopened:['Снова на торгах','g'],
   relist:['Снова на торгах','g'], remind3:['Напоминание','a'], remind1:['Напоминание','a'], search:['Новые лоты','b'], order:['Заявка','b'], report:['Отчёт','b'] };
 const agoTxt = t => { const s = (Date.now() - new Date(t)) / 1000; return s < 3600 ? Math.max(1, Math.round(s/60)) + ' мин назад' : s < 86400 ? Math.round(s/3600) + ' ч назад' : dtm(new Date(t)/1000); };
 function notifRow(n){
@@ -3642,20 +3737,25 @@ async function meNotify(M, arg, params){
 }
 
 async function meSearches(M, arg){
-  const rows = await uapi('saved_searches?select=*&order=created_at.desc');
-  if(arg){ const s = rows.find(x=>String(x.id)===arg); if(s){ openSearch(s.params||{}); return; } }
+  SSL = null; const rows = await ssLoad();
+  // ссылка из уведомления «N новых лотов по сохранённому поиску» — сразу к новым
+  if(arg){ const s = rows.find(x=>String(x.id)===arg); if(s){ openSearch(s.params||{}, s); return; } }
   M.innerHTML = `<h1>Сохранённые поиски</h1>
     <p class="lede">Настройте фильтры в каталоге или разделе и нажмите «Сохранить поиск». Когда на площадках появятся новые подходящие лоты, придёт уведомление.</p>
-    ${rows.length ? rows.map(s=>{ const p = s.params || {}, n = searchList(p).length;
+    ${rows.length ? rows.map(s=>{ const p = s.params || {}, all = searchList(p), n = all.length, nw = ssNew(s, all).length;
       return `<div class="panel srow" data-sid="${s.id}"><div class="sbd"><b>${esc(s.name)}</b><span class="muted">${esc(searchTitle(p))}</span>
-          <span>Сейчас подходит: <b>${nf(n)}</b> ${plural(n,'лот','лота','лотов')}</span></div>
+          <span>Сейчас подходит: <b>${nf(n)}</b> ${plural(n,'лот','лота','лотов')}${nw ? ` · новых: <b class="nw-n">${nf(nw)}</b>` : ''}</span></div>
         <label class="chk"><input type="checkbox" data-ntf${s.notify?' checked':''}> присылать новые</label>
-        <button class="btn sm pri" type="button" data-open>Открыть</button><button class="btn sm" type="button" data-del>Удалить</button></div>`; }).join('')
+        ${nw ? `<button class="btn sm pri" type="button" data-new>Новые · ${nf(nw)}</button>` : ''}
+        <button class="btn sm${nw ? '' : ' pri'}" type="button" data-open>Открыть</button><button class="btn sm" type="button" data-del>Удалить</button></div>`; }).join('')
     : '<div class="panel empty">Сохранённых поисков пока нет. <a href="#/catalog">Перейти в каталог</a></div>'}`;
   M.querySelectorAll('.srow').forEach(r=>{ const id = r.dataset.sid, s = rows.find(x=>String(x.id)===id);
     r.querySelector('[data-open]').onclick = () => openSearch(s.params || {});
+    const nb = r.querySelector('[data-new]'); if(nb) nb.onclick = () => openSearch(s.params || {}, s);
     r.querySelector('[data-ntf]').onchange = async e => { try{ await uapi(`saved_searches?id=eq.${id}`, { method:'PATCH', body:{ notify:e.target.checked }, prefer:'return=minimal' }); utoast('Сохранено'); }catch(err){ utoast(err.message, true); } };
-    r.querySelector('[data-del]').onclick = async () => { if(!confirm('Удалить поиск?')) return; try{ await uapi(`saved_searches?id=eq.${id}`, { method:'DELETE' }); r.remove(); }catch(err){ utoast(err.message, true); } }; });
+    r.querySelector('[data-del]').onclick = async () => {
+      if(!await mdlg({ title:'Удалить поиск?', sub:`«${s.name}» - новые лоты по нему больше не будут приходить в личный кабинет.`, ok:'Удалить' })) return;
+      try{ await uapi(`saved_searches?id=eq.${id}`, { method:'DELETE' }); SSL = null; r.remove(); utoast('Поиск удалён'); }catch(err){ utoast(err.message, true); } }; });
 }
 
 async function meCal(M){
