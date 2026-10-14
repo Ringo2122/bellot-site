@@ -3526,6 +3526,7 @@ function pageLogin(params){
       <div class="fg" id="r-note-w" hidden><label for="r-note">Уточните</label><input id="r-note" maxlength="300" placeholder="Коротко, для чего вам сервис"></div>
       <div class="fg"><label class="chk"><input type="checkbox" id="r-ok"> <span>Соглашаюсь на обработку персональных данных в соответствии
         с <a href="#/privacy" target="_blank" rel="noopener">политикой конфиденциальности</a></span></label></div>
+      <div class="fg"><label class="chk"><input type="checkbox" id="r-news"> <span>Получать подборки лотов и новости от МониТорга на почту <span class="opt">- необязательно</span></span></label></div>
       <div class="ferr" id="u-err"></div>
       <button class="btn pri" type="submit" style="width:100%">Зарегистрироваться</button></form>
       <div class="lrow"><span class="muted">Уже есть кабинет?</span><a href="${href('in')}">Войти</a></div>`;
@@ -3545,7 +3546,7 @@ function pageLogin(params){
       $('#u-err').textContent = err; if(err) return;
       const b = $('#uf button'); busy(b, true, 'Регистрируем…');
       try{
-        const j = await uauth('signup', { email, password:pass, data:{ name, phone, purpose, purpose_note:note, consent:true } });
+        const j = await uauth('signup', { email, password:pass, data:{ name, phone, purpose, purpose_note:note, consent:true, news:$('#r-news').checked } });
         if(j.access_token){ usess(j); utok(''); await go(); return; }        // подтверждение почты выключено
         const u = j.user || j;
         if(Array.isArray(u.identities) && !u.identities.length){ busy(b, false, 'Зарегистрироваться');
@@ -3934,6 +3935,9 @@ async function meProfile(M){
     <div class="panel me-p"><h2>Уведомления</h2><p class="muted" style="margin-top:0">Приходят в личный кабинет. Доставка на почту и в Telegram - позже.</p>
       ${NT.map(([k,t])=>`<label class="chk"><input type="checkbox" data-nt="${k}"${on(k)?' checked':''}${guest?' disabled':''}> ${t}</label>`).join('')}
       <p class="muted">Заявки и отчёты приходят всегда.</p></div>
+    ${guest ? '' : `<div class="panel me-p"><h2>Рассылка</h2>
+      <label class="chk"><input type="checkbox" id="p-news"${ME.news?' checked':''}> Получать подборки лотов и новости от МониТорга на почту</label>
+      <p class="muted">Отписаться можно здесь в любой момент.</p></div>`}
     <div class="panel me-p"><h2>Пароль</h2>${guest ? '<p class="muted" style="margin:0">У гостевого входа пароль не меняется.</p>' : `<div class="me-form">
       <div class="fg"><label for="p-old">Текущий пароль</label><input id="p-old" type="password" autocomplete="current-password"></div>
       <div class="fg"><label for="p-new">Новый пароль</label><input id="p-new" type="password" autocomplete="new-password"></div>
@@ -3945,6 +3949,9 @@ async function meProfile(M){
   if($('#p-forgot')) $('#p-forgot').onclick = async e => { e.preventDefault(); const em = ME.email; await ulogout(); location.hash = '#/login?mode=reset'; setTimeout(()=>{ const i = $('#f-mail'); if(i) i.value = em; }, 50); };
   M.querySelectorAll('[data-nt]').forEach(i=>i.onchange = async () => { const n = {}; M.querySelectorAll('[data-nt]').forEach(x=>{ if(!x.checked) n[x.dataset.nt] = false; });
     try{ await urpc('user_update', { p:{ notify:n } }); ME.notify = n; utoast('Сохранено'); }catch(e){ utoast(e.message, true); } });
+  if($('#p-news')) $('#p-news').onchange = async () => { const on = $('#p-news').checked;
+    try{ await urpc('user_update', { p:{ news:on } }); ME.news = on; utoast(on ? 'Подписка на рассылку включена' : 'Вы отписались от рассылки'); }
+    catch(e){ $('#p-news').checked = !on; utoast(e.message, true); } };
   const pw = $('#p-pw');
   // кабинет по почте: старый пароль проверяем входом, новый задаём в Supabase; гостевой и старые входы — как было
   if(pw) pw.onclick = async () => { try{
