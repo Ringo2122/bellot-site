@@ -304,7 +304,12 @@ const plural = (n,a,b,c) => { n = Math.abs(n)%100; const m = n%10; return n>10&&
 
 /* ── связь с базой ── */
 let TOKEN = ''; try{ TOKEN = localStorage.getItem('bl_adm') || ''; }catch(e){}
+// номер перехода между разделами: ответ, пришедший после ухода со страницы, её больше не рисует
+// (14.10: «Аналитика» грузится долго и, догрузившись, открывалась поверх «Проверки»)
+let RN = 0;
+const STALE = new Error('stale');
 async function api(path, o={}){
+  const n = RN;
   const h = { apikey: KEY, 'Content-Type':'application/json' };
   if(TOKEN) h['x-admin-token'] = TOKEN;
   if(o.prefer) h.Prefer = o.prefer;
@@ -313,6 +318,7 @@ async function api(path, o={}){
   if(!r.ok){ let j = {}; try{ j = await r.json(); }catch(e){}
     if(/Нет доступа/.test(j.message||'') && !o.login){ logout(true); }
     throw new Error(j.message || ('ошибка ' + r.status)); }
+  if(!o.keep && !o.method && n !== RN) throw STALE;
   if(o.count){ const rows = await r.json(); return { rows, total: +((r.headers.get('content-range')||'').split('/')[1]) || rows.length }; }
   const t = await r.text(); return t ? JSON.parse(t) : null;
 }
@@ -484,10 +490,11 @@ const V = () => $('#view');
 async function route(){
   const [page, qs] = (location.hash.slice(1) || 'dash').split('?');
   const params = new URLSearchParams(qs||'');
+  const n = ++RN;
   drawNav(); RELOAD = () => {};
   V().innerHTML = '<p class="muted">Загрузка…</p>';
   const fn = { dash:pDash, stats:pStats, queue:pQueue, lots:pLots, dups:pDups, market:pMarket, leads:pLeads, lotrep:pLotRep, users:pUsers, sources:pSources, calc:pCalc, bot:pBot, home:pHome, services:pServices, news:pNews, texts:pHome, access:pAccess }[page] || pDash;
-  try{ await fn(params); }catch(err){ V().innerHTML = `<div class="empty">Не получилось загрузить: ${esc(err.message)}</div>`; }
+  try{ await fn(params); }catch(err){ if(err === STALE || n !== RN) return; V().innerHTML = `<div class="empty">Не получилось загрузить: ${esc(err.message)}</div>`; }
 }
 addEventListener('hashchange', route);
 
@@ -832,20 +839,22 @@ const TX_DEF = {
     ['Подбор лотов под задачу','Следим за всеми площадками и присылаем варианты под ваш бюджет, регион и цель.']]
 };
 /* Аналитика — общий модуль stats.js (тот же код в личном кабинете) */
-async function loadAll(path){ const out = []; for(let off = 0; ; off += 1000){ const r = await api(`${path}&limit=1000&offset=${off}`); out.push(...r); if(r.length < 1000) return out; } }
+async function loadAll(path, o){ const out = []; for(let off = 0; ; off += 1000){ const r = await api(`${path}&limit=1000&offset=${off}`, o); out.push(...r); if(r.length < 1000) return out; } }
 // данные аналитики держим 5 минут: смена фильтра не перекачивает тысячи лотов
 let STATS_DATA = null;
 async function pStats(params){
   const f = Object.fromEntries(['per','sec','plat','reg','kind'].map(k=>[k, params.get(k) || '']));
   if(!STATS_DATA || Date.now() - STATS_DATA.at > 300000){
-    const since = new Date(Date.now() - 365*86400000).toISOString();
+    // догружаем, даже если ушли со страницы, — в следующий раз откроется сразу; рисуем, только если ещё здесь
+    const n = RN, since = new Date(Date.now() - 365*86400000).toISOString(), K = { keep:true };
     const [lots, daily, leads, bots, sales] = await Promise.all([
-      loadAll(`lots?select=${BLStats.FIELDS}&order=key`),
-      api('daily?select=day,stats&order=day.asc&limit=400'),
-      api('leads?select=created_at,status&limit=5000'),
-      api(`bot_runs?select=at,sent,stats&at=gte.${since}&limit=20000`),
-      loadAll('sales?select=*&order=key,at') ]);
+      loadAll(`lots?select=${BLStats.FIELDS}&order=key`, K),
+      api('daily?select=day,stats&order=day.asc&limit=400', K),
+      api('leads?select=created_at,status&limit=5000', K),
+      api(`bot_runs?select=at,sent,stats&at=gte.${since}&limit=20000`, K),
+      loadAll('sales?select=*&order=key,at', K) ]);
     STATS_DATA = { at:Date.now(), lots, daily, leads, bots, sales };
+    if(n !== RN) return;
   }
   const { lots, daily, leads, bots, sales } = STATS_DATA;
   await loadSettings();

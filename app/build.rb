@@ -32,6 +32,7 @@ require_relative 'similar'
 require_relative 'zones'
 require_relative 'bav'
 require_relative 'cats'
+require_relative 'area'
 
 OUT  = ENV['OUT'] || File.join(Store::ROOT, '_site')
 TMP  = File.join(Store::ROOT, 'tmp')
@@ -110,6 +111,13 @@ lots.each do |l|
   # область, а не город: «г. Речица» из старых записей → «Гомельская область» (фильтр «Регион» — только области и Минск);
   # каждый раз заново — правила regions.rb уточняются («Могилёв, Гомельское шоссе» был Гомельской)
   l['region'] = region_of(l['location'])
+  # площади нет отдельной строкой — ищем в названии и описании (app/area.rb)
+  if %w[nedvizhimost arenda].include?(l['section']) && !l['area_num'].to_f.positive?
+    land = l['sub_ru'].to_s =~ /участ/i || l['name'].to_s =~ /\A\s*земельн\S*\s+участ/i
+    txt = ([l['name']] + Store.details(l['key']).flat_map { |s| (s['rows'] || []).map { |r| r.join(': ') } }).join(' ')
+    a = Area.of(txt, land: !!land)
+    l['area_num'] = a if a
+  end
   l['debtor'] = 'Физическое лицо' if ENV['MASK'] && l['debtor'].to_s =~ FIO
   l['id'] = id_of(l['key'])
   l['photo'] = File.exist?(Store.ph_path(l['key'])) ? l['id'] : nil
