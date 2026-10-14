@@ -1931,7 +1931,23 @@ function pageCatalog(sc, params){
     <div class="layout"><div id="fwrap"></div><div><div class="toolbar" id="tb"></div><div id="res"></div></div></div></div>`;
   document.title = title + TSUF;
 
-  const closeDrawer = () => { $('#fp')?.classList.remove('open'); $('#ov').classList.remove('open'); };
+  // поменяли фильтры внизу списка — показываем список с начала (14.10: оставались у подвала), но не во время ввода
+  // (15.10: страница дёргалась на каждой цифре суммы и уводила панель): пока человек в панели фильтров — мышь, ввод
+  // или открытый выпадающий список, на телефоне — открытая шторка — страница стоит; ушёл из панели — один раз поднимаем
+  // к началу списка, и только если оно ушло вверх за экран. Сортировка, «Активные / Архив», «Сбросить» — сразу
+  let dirty = false;
+  const toList = () => { dirty = false; const tb = $('#tb'), hd = document.querySelector('header.main'); if(!tb) return;
+    const hb = hd ? hd.getBoundingClientRect().bottom : 0, top = tb.getBoundingClientRect().top;
+    if(top < hb) window.scrollBy({ top: top - hb - 12, behavior: reduced ? 'auto' : 'smooth' }); };
+  const inPanel = n => !!(n && n.closest && (n.closest('#fp') || n.closest('.dd-l')));
+  const settle = () => { if(!dirty || !$('#fwrap')) return;
+    if($('#fp')?.classList.contains('open') || inPanel(document.activeElement) || document.querySelector('#fp:hover, .dd-l:hover')) return;
+    toList(); };
+  $('#fwrap').addEventListener('focusout', e => { if(!inPanel(e.relatedTarget)) setTimeout(settle, 0); });
+  if(window.__fset) document.removeEventListener('mouseover', window.__fset);
+  window.__fset = e => { if(dirty && !inPanel(e.target)) settle(); };
+  document.addEventListener('mouseover', window.__fset);
+  const closeDrawer = () => { $('#fp')?.classList.remove('open'); $('#ov').classList.remove('open'); if(dirty) setTimeout(toList, 60); };
   let SWAP = null;   // последнее переключение валюты: прежние «от/до» — чтобы вернуть их при обратном переключении
   const read = () => { SWAP = null;
     const v = id => (document.getElementById(id)||{}).value || '';
@@ -1940,8 +1956,6 @@ function pageCatalog(sc, params){
       pmax:v('f-pmax'), dfrom:v('f-dfrom'), dto:v('f-dto'), plat:v('f-plat'), photo:c('f-photo'), mkt:c('f-mkt'), land:c('f-land'), cat:FSTATE.cat,
       res:FSTATE.st==='arch'?v('f-res'):''};
   };
-  // фильтр или сортировку поменяли внизу списка — список новый, показываем его с начала (14.10: оставались у подвала)
-  const toTop = () => { if(scrollY > 0) window.scrollTo({ top:0, behavior: reduced ? 'auto' : 'smooth' }); };
   const drawPanel = () => {
     $('#fwrap').innerHTML = filterPanel(baseOf(), FSTATE, sc);
     ['f-q','f-top','f-sub','f-res','f-region','f-city','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt','f-land'].forEach(id=>{
@@ -1956,17 +1970,17 @@ function pageCatalog(sc, params){
         // другая область — город прежней не подходит; список городов новой области появляется под «Регионом»
         if(id==='f-region'){ FSTATE.city = ''; const op = $('#fp').classList.contains('open'); drawPanel();
           if(op) $('#fp').classList.add('open'); }
-        render(); toTop(); });
+        render(); dirty = true; });
     });
     document.querySelectorAll('#fp select').forEach(dd);
     requestAnimationFrame(fitFilters);
     // площадки — выпадающим списком с галочками, можно несколько (значение — в скрытом поле f-plat через запятую)
     mdd($('#f-pdd'), JSON.parse($('#f-pdd').dataset.items), new Set(String(FSTATE.plat||'').split(',').filter(Boolean)), a => {
-      $('#f-plat').value = a.join(','); read(); render(); toTop(); });
+      $('#f-plat').value = a.join(','); read(); render(); dirty = true; });
     // «Сбросить» — к исходному виду этой страницы: раздел, лента («Истекающие», «Новые»), режим «Активные / Архив»
     $('#f-reset').onclick = () => { FSTATE = { st:FSTATE.st, cur:FSTATE.cur };
       if(view==='soon') FSTATE.soon = 1; if(view==='new'){ FSTATE.fresh = 1; FSTATE.sort = 'new'; } if(view==='pin') FSTATE.pin = 1;
-      drawPanel(); render(); window.scrollTo({ top:0, behavior:'smooth' }); };
+      drawPanel(); render(); toList(); };
     // валюта цены «от/до»: введённые суммы пересчитываются по курсу. Переключили туда и обратно, ничего не меняя, —
     // возвращаются прежние числа; доллары → рубли — границы, при которых под ценой та же сумма в долларах
     document.querySelectorAll('#f-cur button').forEach(b=>b.onclick = () => { const c = b.dataset.c; if(c===(fUsd(FSTATE)?'USD':'BYN')) return;
@@ -1977,13 +1991,13 @@ function pageCatalog(sc, params){
         if(FSTATE.pmax) FSTATE.pmax = String(c==='USD' ? Math.round(+FSTATE.pmax / USD) : Math.floor((+FSTATE.pmax + .5) * USD));
         SWAP = { cur:fUsd(FSTATE)?'USD':'BYN', ...was, to:{ pmin:FSTATE.pmin, pmax:FSTATE.pmax } };
       }
-      FSTATE.cur = c==='USD' ? 'USD' : undefined; setCurr(c); drawPanel(); render(); toTop(); });
+      FSTATE.cur = c==='USD' ? 'USD' : undefined; setCurr(c); drawPanel(); render(); dirty = true; });
     $('#f-close').onclick = closeDrawer;
     $('#f-apply').onclick = closeDrawer;
     document.querySelectorAll('#f-st button').forEach(b=>b.onclick = () => {
       if((FSTATE.st||'')===b.dataset.st) return;
       FSTATE = {st:b.dataset.st||undefined, q:FSTATE.q, cur:FSTATE.cur};
-      drawPanel(); render(); toTop();
+      drawPanel(); render(); toList();
     });
   };
   const render = more => {
@@ -2029,7 +2043,7 @@ function pageCatalog(sc, params){
       ${FSTATE.plat?`<div class="fsel">${String(FSTATE.plat).split(',').map(p=>`<button type="button" class="pchip on ${pslug(p)}" data-p="${esc(p)}" title="Убрать площадку"><i class="pdot"></i>${esc(p)}</button>`).join('')}</div>`:''}`;
     document.querySelectorAll('#tb .fsel .pchip').forEach(b=>b.onclick = () => {
       FSTATE.plat = String(FSTATE.plat).split(',').filter(p=>p!==b.dataset.p).join(','); drawPanel(); render(); });
-    $('#f-sort').onchange = e => { FSTATE.sort = e.target.value; render(); toTop(); };
+    $('#f-sort').onchange = e => { FSTATE.sort = e.target.value; render(); toList(); };
     dd($('#f-sort'));
     const sv = $('#f-save'); if(sv) sv.onclick = () => saveSearch(sc);
     $('#f-open').onclick = () => { $('#fp').classList.add('open'); $('#ov').classList.add('open'); };
@@ -2048,8 +2062,8 @@ function pageCatalog(sc, params){
       : SSNEW ? ''
       : `<div class="panel empty">${arch&&!base.length?'Архив раздела пока пуст - лоты попадают сюда после окончания приёма заявок.':'По этим условиям ничего не нашлось. Попробуйте смягчить фильтры.'}</div>`);
     const mb = $('#more'); if(mb) mb.onclick = () => { show += STEP; render(true); };
-    const na = $('#nw-all'); if(na) na.onclick = () => { SSNEW = null; render(); toTop(); };
-    const ns = $('#nw-show'); if(ns) ns.onclick = () => { ssOpen(nwS); render(); toTop(); };
+    const na = $('#nw-all'); if(na) na.onclick = () => { SSNEW = null; render(); toList(); };
+    const ns = $('#nw-show'); if(ns) ns.onclick = () => { ssOpen(nwS); render(); toList(); };
     const nx = $('#nw-x'); if(nx) nx.onclick = () => { try{ localStorage.setItem('bl_ssx' + nwS.id, String(nwS._top)); }catch(e){} render(true); };
     syncUrl();
     const ta = $('#to-arch'); if(ta) ta.onclick = e => { e.preventDefault(); FSTATE = {st:'arch', q:FSTATE.q}; drawPanel(); render(); window.scrollTo({top:0,behavior:'smooth'}); };
