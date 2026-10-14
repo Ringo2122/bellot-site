@@ -46,16 +46,22 @@ alter table lots add column if not exists price0 numeric;
 alter table lots add column if not exists area_num numeric;
 alter table lots add column if not exists debtor text;
 alter table lots add column if not exists result jsonb;   -- итоги торгов: st, start, price, bids, users, at
+alter table lots add column if not exists sub text;       -- подраздел каталога, как определил робот («transport/legkovye»)
+alter table lots add column if not exists terms jsonb;     -- условия торгов, как прочитал робот (только у активных)
+alter table lots add column if not exists pics jsonb;      -- фото площадки ссылками (только у активных)
 alter table lots add column if not exists prev text[];    -- прошлые торги того же объекта (id лотов архива) — для «выставлен снова»
 
 -- ── решения человека ──
 create table if not exists overrides (
   key text primary key,
-  fields jsonb not null default '{}',          -- name, section, price, req_to, torg, location, descr, market
+  fields jsonb not null default '{}',          -- name, section, sub, price, req_to, torg, location, area_num, debtor, descr, market,
+                                               -- terms, hide_pics, removed, result
   mod text check (mod in ('approved', 'review', 'hidden')),
   pinned boolean not null default false,
   updated_at timestamptz not null default now()
 );
+alter table overrides add column if not exists note text;    -- заметка для себя, только в админке
+alter table overrides add column if not exists base jsonb;   -- значения площадки на момент правки: площадка их сменила — замечание
 create table if not exists lot_photos (
   key text primary key,
   data text not null,                          -- JPEG в base64, уже уменьшенный в браузере
@@ -145,7 +151,7 @@ end $$;
 -- Копия каталога вместе с решениями: для списков в админке
 drop view if exists lots_v;   -- lots.* раскрывается при создании: новые колонки — только пересозданием
 create view lots_v with (security_invoker = true) as
-select l.*, o.mod, coalesce(o.pinned, false) as pinned, coalesce(o.fields, '{}'::jsonb) as fields,
+select l.*, o.mod, coalesce(o.pinned, false) as pinned, coalesce(o.fields, '{}'::jsonb) as fields, o.note, o.base,
        o.updated_at as ov_at, (o.fields is not null and o.fields <> '{}'::jsonb) as edited,
        case when o.mod = 'hidden' then 'hidden'
             when o.mod = 'review' then 'queue'

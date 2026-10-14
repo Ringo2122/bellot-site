@@ -1675,7 +1675,7 @@ function resultBlock(l){
     </dl>
     ${r.note ? `<p class="note">${esc(r.note[0].toUpperCase() + r.note.slice(1))}.</p>` : ''}
     ${r.st === 'failed' ? '<p class="note">Несостоявшиеся торги часто повторяют со снижением цены - если лот выставят снова, он вернётся в каталог.</p>' : ''}
-    <p class="note">По данным площадки: <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.platform)} ↗</a></p></aside>`;
+    <p class="note">${r.man ? 'По данным МониТорга. Лот на площадке' : 'По данным площадки'}: <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.platform)} ↗</a></p></aside>`;
 }
 
 /* ───────── фильтры ───────── */
@@ -2183,7 +2183,7 @@ function calcBlock(l, det){
   const feeName = l.platform==='beltorgi.by' ? 'Аукционный сбор' : SCALE ? 'Услуги площадки' : l.platform==='etpvit.by' ? 'Обслуживание ЭТП'
     : 'Вознаграждение организатору';
   const pctTxt = v => String(v).replace('.',',') + '%';
-  const feeNote = cc.note ? cc.note : !known ? 'Площадка не указала сборы по этому лоту - впишите, если знаете.'
+  const feeNote = t.man ? 'Условия уточнены МониТоргом по документам торгов.' : cc.note ? cc.note : !known ? 'Площадка не указала сборы по этому лоту - впишите, если знаете.'
     : l.platform==='beltorgi.by'
       ? 'Из карточки лота на площадке.' + (t.fee_later ? ' Сумму затрат площадка объявит до начала торгов - впишите её, когда узнаете.' : '')
     : l.platform==='konfiskat.by'

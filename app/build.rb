@@ -126,8 +126,10 @@ lots.each do |l|
 end
 
 # копия для админки — значения площадки, до правок человека
-MIRROR = %w[key id art platform section name price req_to torg location region url].freeze
+MIRROR = %w[key id art platform section name price req_to torg location region url area_num debtor].freeze
 orig = lots.map { |l| [l['key'], MIRROR.map { |k| [k, l[k]] }.to_h] }.to_h
+# условия торгов и фото площадки — для карточки в админке (только у активных: архив за год весил бы мегабайты)
+raw = lots.map { |l| [l['key'], l.slice('terms', 'pics')] }.to_h
 
 # ── правки человека: его значение главнее площадки ──
 descr = {}
@@ -139,6 +141,24 @@ lots.each do |l|
   l['region'] = region_of(l['location']) unless f['location'].to_s.strip.empty?
   l['section'] = f['section'] if SECS.include?(f['section'])
   l['price'] = f['price'].to_f if f['price'].to_f.positive?
+  l['area_num'] = f['area_num'].to_f if f['area_num'].to_f.positive?
+  l['debtor'] = f['debtor'].to_s.strip unless f['debtor'].to_s.strip.empty?
+  # условия торгов из админки поверх площадки: вписанный шаг или сбор заменяет то, что робот прочитал о нём (14.10)
+  if (tm = f['terms']).is_a?(Hash) && tm.any?
+    t = (l['terms'] || {}).dup
+    t = t.reject { |k, _| %w[step_abs step_pct step_base first_pct step_min_pct].include?(k) } if tm['step_abs'] || tm['step_pct']
+    t = t.reject { |k, _| %w[fee_scale fee_base fee_min].include?(k) } if tm['fee_pct']
+    t = t.reject { |k, _| %w[fee_later fee_upto fee_scale].include?(k) } if tm['fee_abs']
+    t.delete('vat_add') if tm.key?('vat')
+    l['terms'] = t.merge(tm).merge('man' => 1)
+  end
+  # скрытые фото площадки; скрыто первое — наша копия главного фото тоже (она с него), в каталоге — заглушка или своё фото
+  hp = Array(f['hide_pics'])
+  if hp.any?
+    first = (l['pics'] || [])[0]
+    l['pics'] -= hp if l['pics'].is_a?(Array)
+    l['photo'] = nil if hp.include?('main') || (first && hp.include?(first))
+  end
   %w[req_to torg].each { |k| l[k] = f[k].to_i if f[k].to_i.positive? }
   descr[l['key']] = f['descr'].to_s.strip unless f['descr'].to_s.strip.empty?
   if (m = f['market'])
@@ -157,11 +177,28 @@ lots.each do |l|
       l.merge!('status' => 'archive', 'closed' => l['req_to'], 'why' => 'deadline')
     end
   end
+  # снят с торгов вручную: площадка сняла лот, а робот этого не увидел
+  if f['removed'].to_i.positive? && l['status'] == 'active'
+    l.merge!('status' => 'archive', 'closed' => f['removed'].to_i, 'why' => 'removed')
+  end
+  # итог торгов из админки — когда робот не смог его забрать
+  if (r = f['result']).is_a?(Hash) && %w[sold single failed cancelled].include?(r['st']) && l['status'] == 'archive'
+    l['result'] = { 'st' => r['st'], 'start' => l['price'], 'price' => r['price'].to_f.positive? ? r['price'].to_f : nil,
+                    'at' => (l['torg'] || l['req_to']).to_i, 'man' => 1 }.compact
+  end
   l['pin'] = 1 if o['pinned'] && l['status'] == 'active'
 end
 
 # раздел и подраздел каталога («transport/legkovye») — после правок человека: раздел мог смениться (app/cats.rb)
 lots.each { |l| l['sub'] = Cats.of(l, ->(k) { Store.details(k) }) }
+# подраздел, выбранный в админке, главнее робота (14.10); для админки — что определил бы робот по разделу площадки
+auto_sub = {}
+lots.each do |l|
+  f = (OV[l['key']] || {})['fields'] || {}
+  next unless f['sub'] || f['section']
+  auto_sub[l['key']] = Cats.of(l.merge('section' => orig[l['key']]['section']), ->(k) { Store.details(k) })
+  l['sub'] = f['sub'] if Cats.valid?(f['sub'])
+end
 # город или район внутри области — второй уровень фильтра «Регион» (regions.rb), тоже после правок адреса в админке
 lots.each { |l| l['city'] = place_of(l['location'], l['region']) }
 
@@ -248,9 +285,16 @@ active.select { |l| l['price'].to_f.positive? }.group_by { |l| l['price'].to_f.r
     dup_with[b['key']] ||= a['key']
   end
 end
+# название, по которому лот не узнать: «Лот № 3», «Имущество», «Транспортное средство»
+BAD_NAME = /\A(лот\s*№?\s*\d+|имущество|недвижимое имущество|транспортное средство|автомобиль|легковой автомобиль|грузовой автомобиль|объект|здание|сооружение|оборудование|товары?|изолированное помещение|капитальное строение)\.?\z/i
+# замечания, из-за которых новый лот не задерживается: видны в админке, на сайт лот выходит сразу
+SOFT = %w[no_area].freeze
+same = ->(v) { v.is_a?(Numeric) ? v.to_f.round(2) : v.to_s.strip }
 reasons = {}
 active.each do |l|
   r = []
+  o = OV[l['key']] || {}
+  fresh = MOD_SINCE.positive? && l['first_seen'].to_i > MOD_SINCE
   r << 'no_photo' unless l['photo'] || l['phx'] || l['platform'] == 'mgcn.by'   # МГЦН фото не публикует вовсе — не замечание
   r << 'no_price' unless l['price'].to_f.positive?
   r << 'no_city' if l['location'].to_s.strip.empty? || l['region'].to_s.empty?   # нет адреса или по нему не определилась область
@@ -259,13 +303,20 @@ active.each do |l|
     r << 'rule_deadline'
   end
   r << 'dup_maybe' if dup_with[l['key']]
+  r << 'bad_dates' if l['torg'].to_i.positive? && l['torg'].to_i < l['req_to'].to_i - 60   # торги раньше конца приёма заявок
+  r << 'bad_name' if l['name'].to_s.strip.size < 4 || l['name'].to_s.strip =~ BAD_NAME
+  r << 'no_area' if fresh && l['section'] == 'nedvizhimost' && !l['area_num'].to_f.positive?
+  # площадка изменила поле, которое поправили в админке: base — значения площадки на момент правки
+  if (b = o['base']).is_a?(Hash) && b.any? { |k, v| orig[l['key']].key?(k) && same.(orig[l['key']][k]) != same.(v) }
+    r << 'plat_changed'
+  end
   reasons[l['key']] = r
 end
 queued = 0
 active.reject! do |l|
   o = OV[l['key']] || {}
   fresh = MOD_SINCE.positive? && l['first_seen'].to_i > MOD_SINCE
-  hold = o['mod'] == 'review' || (fresh && reasons[l['key']].any? && o['mod'] != 'approved')
+  hold = o['mod'] == 'review' || (fresh && (reasons[l['key']] - SOFT).any? && o['mod'] != 'approved')
   next false unless hold
   hidden_why[l['key']] = 'mod'
   # склеенные с ним ждут вместе с ним
@@ -437,14 +488,16 @@ FileUtils.cp_r(File.join(__dir__, 'img'), File.join(OUT, 'img'))     # карт�
 # значок вкладки: без него браузер просит /favicon.ico и получает 404 (13.10 — сигнал мониторинга после переезда на monitorg.by)
 %w[favicon.svg favicon.ico apple-touch-icon.png admin-icon.svg admin-icon.png admin-icon-180.png logo-mark.png logo-mark-dark.png].each { |f| FileUtils.cp(File.join(__dir__, f), File.join(OUT, f)) }
 File.write(File.join(OUT, 'admin', 'index.html'),
-           adm.sub('__SB_URL__') { ENV['SB_URL'].to_s }.sub('__SB_KEY__') { ENV['SB_KEY'].to_s }.sub('__BUILD__', now.to_s))
+           adm.sub('__SB_URL__') { ENV['SB_URL'].to_s }.sub('__SB_KEY__') { ENV['SB_KEY'].to_s }.sub('__BUILD__', now.to_s).sub('__CATS__') { JSON.generate(Cats.tree) })
 
 # копия каталога для админки: значения площадки + отметки сборки (что показано, почему скрыто)
 published = active.map { |l| [l['key'], true] }.to_h
 mirror = lots.map do |l|
   o = orig[l['key']]
   o.merge('photo' => !l['photo'].nil?, 'status' => l['status'], 'closed' => l['closed'], 'why' => l['why'],
-          'first_seen' => l['first_seen'], 'area_num' => l['area_num'], 'debtor' => l['debtor'], 'city' => l['city'],
+          'first_seen' => l['first_seen'], 'city' => l['city'],
+          'terms' => l['status'] == 'active' ? raw[l['key']]['terms'] : nil, 'pics' => l['status'] == 'active' ? raw[l['key']]['pics'] : nil,
+          'sub' => auto_sub.fetch(l['key'], l['sub']),
           'price0' => (l['prices'] || []).size > 1 ? l['prices'].first[1] : nil,
           'result' => l['result'] && l['result'].reject { |k, _| %w[checked tries].include?(k) },
           'market' => l['market'] && l['market'].slice('median', 'n', 'source', 'low', 'high', 'manual', 'link'),

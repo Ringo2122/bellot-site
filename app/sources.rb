@@ -84,6 +84,14 @@ module Src
     Time.local(m[3].to_i, m[2].to_i, m[1].to_i, m[4].to_i, m[5].to_i).to_i
   end
 
+  # «28 октября 2026 11:00» → время (etpvit пишет даты на странице лота словами)
+  MONTHS = %w[января февраля марта апреля мая июня июля августа сентября октября ноября декабря].freeze
+  def ts_words(s)
+    m = s.to_s.match(/(\d{1,2})\s+([а-я]+)\s+(\d{4})\D+(\d{1,2}):(\d{2})/) or return nil
+    mon = MONTHS.index(m[2]) or return nil
+    Time.local(m[3].to_i, mon + 1, m[1].to_i, m[4].to_i, m[5].to_i).to_i
+  end
+
   # «1 743», «0.1121 (га)» → м²
   def area_m2(key, val)
     n = val.to_s.tr(',', '.').gsub(/[^\d.]/, '')[/\d+(\.\d+)?/].to_f
@@ -1373,6 +1381,9 @@ module Src
     t['fee_pct'] = num($1) if tx =~ /затрат на обслуживание ЭТП:.{0,80}?или\s*([\d.,]+)\s*%\s*от ставки победителя/
     org = tx[/Сумма затрат на организацию и проведение торгов:?\s*(.{0,40})/, 1].to_s
     org =~ /\A[\d\s.,]+BYN/ ? t['fee_abs'] = num(org[/[\d\s.,]+/]) : t['fee_later'] = true
+    # дата торгов — со страницы: служебный запрос площадки (Res.ea_info) у etpvit отдаёт её на сутки раньше (14.10, 66 лотов)
+    torg = ts_words(tx[/Время начала торгов:\s*([^:]{8,30}:\d{2})/, 1])
+    d['torg'] = torg if torg
     d.merge('location' => place.to_s.empty? ? nil : place, 'debtor' => seller,
             'terms' => (d['terms'] || {}).merge(t).merge(vat_of(tx)).reject { |_, v| v.nil? || v == 0.0 })
   end

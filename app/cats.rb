@@ -26,6 +26,9 @@ module Cats
     TREE.map { |k, n, ic, subs| { 'k' => k, 'n' => n, 'ic' => ic, 'subs' => subs.map { |sk, sn| { 'k' => sk, 'n' => sn } } } }
   end
 
+  # подраздел из админки («transport/legkovye») — только из дерева выше
+  def self.valid?(s) TREE.any? { |k, _, _, subs| subs.any? { |sk, _| s == "#{k}/#{sk}" } } end
+
   L = '(?<![а-яё])'   # «начало слова» для кириллицы: \b в Ruby её не понимает
   def self.rx(s) Regexp.new(s.gsub('\\b<', L), Regexp::IGNORECASE) end
 

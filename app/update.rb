@@ -54,7 +54,7 @@ MINP = MIN_PRICE.merge((CFG['min_price'] || {}).map { |k, v| [k, v.to_f] }.to_h)
 # робот дозаполняет их постепенно — не больше TERMS_CAP страниц за прогон, чтобы не нагружать площадки.
 TERMS_CAP = (ENV['TERMS_CAP'] || 800).to_i
 # версия условий по площадкам: у лота ниже — робот перечитает условия (13.10: сборы и НДС у новых площадок)
-TERMS_V = { 'beltorgi.by' => 2, 'torgi.gov.by' => 3, 'etpvit.by' => 3, 'expert-torgi.by' => 3, 'realtorgi.by' => 3,
+TERMS_V = { 'beltorgi.by' => 2, 'torgi.gov.by' => 3, 'etpvit.by' => 4, 'expert-torgi.by' => 3, 'realtorgi.by' => 3,
             'iintorgi.by' => 3, 'lotsale.by' => 3 }.freeze
 # e-auction: дата онлайн-торгов есть только в служебном запросе площадки — у известных лотов добираем постепенно
 EA_TORG_CAP = (ENV['EA_TORG_CAP'] || 700).to_i
@@ -229,6 +229,7 @@ new_left = NEW_CAP.dup
 closed = File.exist?(CLOSED_FILE) ? (JSON.parse(File.read(CLOSED_FILE, encoding: 'UTF-8')) rescue {}) : {}
 closed.reject! { |_, t| t.to_i < now - 30 * 86_400 }
 ea_torg_left = EA_TORG_CAP
+torg_left = 300
 stat['удалено: площадка исключена'] = dropped if dropped.positive?
 # коды символов в названиях, записанных раньше, чем их стал понимать Src.decode (05.10: «Orenstein &#038; Koppel», «&lt;ГС-14.02&gt;»)
 db.each_value do |l|
@@ -290,6 +291,7 @@ end
                   upd['terms'] = (old['terms'] || {}).merge(c['d']['terms'])
                 elsif (d2 = fetch_detail(c))   # площадка не ответила — попробуем в следующий прогон
                   upd['terms'] = d2['terms'] || {}
+                  upd['torg'] = d2['torg'] if c['platform'] == 'etpvit.by' && d2['torg']   # v4: дата торгов со страницы
                 end
                 mx.synchronize { stat['дозаполнены условия'] += 1 }
               end
@@ -346,6 +348,17 @@ end
             elsif c['req_to'].to_i.positive? && c['req_to'] != old['req_to']
               upd['req_to'] = c['req_to']
             end
+            # дата торгов раньше конца приёма заявок: лот перевыставили, а дата осталась прежней (14.10: у 54 лотов ИПМ
+            # торги «29.09» при заявках до 26.10) — перечитываем со страницы; e-auction — служебным запросом в следующий прогон
+            rq = (upd['req_to'] || old['req_to']).to_i
+            if old['torg'].to_i.positive? && old['torg'].to_i < rq - 60 && !upd.key?('torg') && mx.synchronize { (torg_left -= 1) >= 0 }
+              if c['platform'] == 'e-auction.by'
+                upd['torg'] = nil
+              elsif (d5 = fetch_detail(c))
+                upd['torg'] = d5['torg'].to_i > rq - 60 ? d5['torg'] : nil
+              end
+              mx.synchronize { stat['дата торгов перечитана'] += 1 }
+            end
             mx.synchronize do
               if upd['price']
                 (old['prices'] ||= [[old['first_seen'], old['price']]]) << [now, upd['price']]
@@ -387,7 +400,7 @@ end
             end
             if %w[e-auction.by etpvit.by].include?(plat) && c['eid']
               rec['eid'] = c['eid']
-              t = Res.ea_torg(Res.ea_info(c['eid'], plat == 'etpvit.by' ? Src::EV : Src::EA))
+              t = !(plat == 'etpvit.by' && rec['torg']) && Res.ea_torg(Res.ea_info(c['eid'], plat == 'etpvit.by' ? Src::EV : Src::EA))
               rec['torg'] = t if t
             end
             rec['tk'] = d['tk'] if d['tk']

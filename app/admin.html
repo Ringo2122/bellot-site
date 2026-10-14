@@ -174,6 +174,13 @@
   .dw-foot{position:fixed;bottom:0;right:0;width:min(720px,100%);background:#fff;border-top:1px solid var(--hair);padding:12px 20px;display:flex;gap:10px;align-items:center}
   .ph-edit{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
   .ph-edit img{width:200px;height:140px;object-fit:cover;border-radius:8px;background:#f4f4f5}
+  .pics{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:10px}
+  .pics label{position:relative;display:block;cursor:pointer}
+  .pics img{width:100%;height:80px;object-fit:cover;border-radius:6px;background:#f4f4f5;display:block}
+  .pics span{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--ink-2);margin-top:3px}
+  .pics label.off img{opacity:.3}
+  .warn{background:var(--accent-l);color:#9a4f0e;border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13px}
+  .lot .note{font-size:13px;margin-top:5px;padding:4px 8px;background:#fffbe6;border-radius:6px;color:var(--ink-2)}
   .orig{font-size:12px;color:var(--ink-3);margin-top:3px;max-height:90px;overflow:auto}
   .radios{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0}
   .radios label{display:flex;gap:5px;align-items:center}
@@ -254,8 +261,24 @@ const PLAT_RU = {'e-auction.by':'e-auction.by (БелЮрОбеспечение)
   'expert-torgi.by':'expert-torgi.by (Эксперт-Услуга, Гомель)','realtorgi.by':'realtorgi.by (Реалконсалтинг)','iintorgi.by':'iintorgi.by (ИИН Торги)'};
 const SECS = [['nedvizhimost','Недвижимость'],['avto','Легковые авто'],['gruz','Грузовые и автобусы'],['spec','Спецтехника'],['oborud','Оборудование'],['arenda','Право аренды']];
 const SEC_RU = Object.fromEntries(SECS);
+// разделы и подразделы каталога сайта (app/cats.rb): «transport/legkovye»
+const CATS = __CATS__;
+const catOf = s => { const [t, k] = String(s||'').split('/'), top = CATS.find(x=>x.k===t); return { top, sub: top && top.subs.find(x=>x.k===k) }; };
+// подраздел из админки → внутренний раздел лота (минимальная цена, выключение разделов, заглушки фото)
+const SUB_SEC = {legkovye:'avto', gruzovye:'gruz', pricepy:'gruz', avtobusy:'gruz', spectehnika:'spec', selhoztehnika:'spec'};
+const subSec = (v, cur) => { const [t, k] = v.split('/');
+  return t==='transport' ? SUB_SEC[k] || (['avto','gruz','spec'].includes(cur) ? cur : 'avto') : {nedvizhimost:'nedvizhimost', oborudovanie:'oborud', arenda:'arenda'}[t]; };
 const MIN_DEF = {oborud:500};
-const REASON = {no_photo:'нет фото', no_price:'нет цены', no_city:'не определилась область - поправьте адрес', rule_deadline:'срок заявок по правилу (извещение - скан)', dup_maybe:'похож на лот другой площадки'};
+const REASON = {no_photo:'нет фото', no_price:'нет цены', no_city:'не определилась область - поправьте адрес', rule_deadline:'срок заявок по правилу (извещение - скан)', dup_maybe:'похож на лот другой площадки',
+  bad_dates:'торги раньше конца приёма заявок', bad_name:'неинформативное название', no_area:'нет площади',
+  plat_changed:'площадка изменила поле, которое вы правили'};
+// поля, у которых запоминаем значение площадки на момент правки: площадка его сменит — замечание «площадка изменила поле»
+const BASE_K = ['name','price','req_to','torg','location','area_num','debtor'];
+const FLD_RU = {name:'Название', price:'Цена', req_to:'Приём заявок до', torg:'Дата торгов', location:'Местоположение', area_num:'Площадь', debtor:'Продавец / должник'};
+const RES_RU = {sold:'Продан', single:'Продан единственному участнику', failed:'Торги не состоялись', cancelled:'Торги отменены'};
+const VAT = {in:{vat:'Цена указана с НДС'}, add:{vat:'К цене может добавиться НДС 20% - зависит от продавца', vat_add:true}, no:{vat:'НДС не облагается'}};
+const vatKey = t => !t || !t.vat ? '' : t.vat_add ? 'add' : /^Цена указана/.test(t.vat) ? 'in' : /не облагается/.test(t.vat) ? 'no' : '';
+const subOpts = v => CATS.map(t=>`<optgroup label="${esc(t.n)}">${t.subs.map(x=>`<option value="${t.k}/${x.k}"${v===t.k+'/'+x.k?' selected':''}>${esc(x.n)}</option>`).join('')}</optgroup>`).join('');
 const HIDDEN = {mod:'ждёт проверки', hidden:'скрыт вами', dup:'склеен с другим лотом', plat_off:'площадка выключена', sec_off:'раздел выключен'};
 const TRIG = {schedule:'по расписанию', admin:'из админки', push:'обновление кода', workflow_dispatch:'вручную на GitHub', manual:'вручную', setup:'подключение админки'};
 // разделы, которые читает Telegram-бот (tgbot.rb, SECTIONS)
@@ -388,9 +411,9 @@ function lotRow(l, acts, extra){
     <label class="ck"><input type="checkbox" class="sel" value="${esc(l.key)}" aria-label="Выбрать"></label>
     <div class="th">${img}</div>
     <div><a class="nm" href="#" data-act="edit">${esc(name)}</a>
-      <div class="meta">${esc(l.platform)} · ${esc(SEC_RU[f.section||l.section]||l.section)} · <b>${nf(price)} BYN</b> · заявки до ${dt(req)}${loc?' · '+esc(loc):''}
+      <div class="meta">${esc(l.platform)} · ${esc((catOf(f.sub||l.sub).sub||{}).n||SEC_RU[f.section||l.section]||l.section)} · <b>${nf(price)} BYN</b> · заявки до ${dt(req)}${loc?' · '+esc(loc):''}
         · <a href="${esc(l.url)}" target="_blank" rel="noopener">на площадке ↗</a>${l.published&&l.status==='active'?` · <a href="../#/lot/${enc(l.id)}" target="_blank" rel="noopener">на сайте ↗</a>`:''}</div>
-      ${stateChips(l)}${extra||''}</div>
+      ${stateChips(l)}${l.note?`<div class="note">Заметка: ${esc(l.note)}</div>`:''}${extra||''}</div>
     <div class="acts">${acts(l)}</div></div>`;
 }
 const B = (act, text, cls='') => `<button class="btn sm ${cls}" data-act="${act}">${text}</button>`;
@@ -400,6 +423,20 @@ async function setMod(keys, mod){
   if(!keys.length) return;
   await upsert('overrides', keys.map(k=>({ key:k, mod, updated_at:nowIso() })));
   toast(mod==='approved'?'Одобрено':mod==='hidden'?'Скрыто':mod==='review'?'Отправлено на проверку':'Решение снято');
+}
+// «Всё верно» после замечания «площадка изменила поле»: запоминаем новые значения площадки
+async function refreshBase(keys){
+  const rows = (await api(`lots_v?key=${inq(keys)}&base=not.is.null&select=key,base,${BASE_K.join(',')}`)) || [];
+  if(rows.length) await upsert('overrides', rows.map(r=>({ key:r.key, base:Object.fromEntries(Object.keys(r.base).map(k=>[k, r[k]])), updated_at:nowIso() })));
+}
+// подраздел у нескольких лотов сразу: правка дописывается к остальным правкам лота
+async function setSub(keys, v){
+  const [ls, ovs] = await Promise.all([ api(`lots?key=${inq(keys)}&select=key,section,sub`), api(`overrides?key=${inq(keys)}&select=key,fields`) ]);
+  const of = Object.fromEntries(ovs.map(o=>[o.key, o.fields||{}]));
+  await upsert('overrides', ls.map(l=>{ const f = Object.assign({}, of[l.key]); delete f.sub; delete f.section;
+    if(v !== l.sub){ f.sub = v; const sec = subSec(v, l.section); if(sec !== l.section) f.section = sec; }
+    return { key:l.key, fields:f, updated_at:nowIso() }; }));
+  toast(`Подраздел изменён у ${ls.length} ${plural(ls.length,'лота','лотов','лотов')}. На сайте - после публикации`);
 }
 async function setPin(key, on){ await upsert('overrides', [{ key, pinned:on, updated_at:nowIso() }]); toast(on?'Закреплено в «Рекомендуем»':'Откреплено'); }
 
@@ -412,14 +449,17 @@ document.getElementById('view').addEventListener('click', async e=>{
   try{
     if(act==='edit') return openEditor(key);
     b.disabled = true;
-    if(act==='approve') await setMod([key],'approved');
+    if(act==='approve'){ await setMod([key],'approved'); await refreshBase([key]); }
     else if(act==='hide') await setMod([key],'hidden');
     else if(act==='review') await setMod([key],'review');
     else if(act==='auto') await setMod([key],null);
     else if(act==='pin') await setPin(key, true);
     else if(act==='unpin') await setPin(key, false);
     else if(act==='bulk-approve' || act==='bulk-hide'){ const k = selected(); if(!k.length){ toast('Отметьте лоты галочками', true); b.disabled=false; return; }
-      await setMod(k, act==='bulk-approve'?'approved':'hidden'); }
+      await setMod(k, act==='bulk-approve'?'approved':'hidden'); if(act==='bulk-approve') await refreshBase(k); }
+    else if(act==='bulk-sub'){ const k = selected(), v = $('#bsub').value;
+      if(!k.length || !v){ toast(!k.length ? 'Отметьте лоты галочками' : 'Выберите подраздел', true); b.disabled=false; return; }
+      await setSub(k, v); }
     else if(act==='merge' || act==='split'){ await upsert('dup_rules', [{ a:b.dataset.a, b:b.dataset.b, kind:act }], 'a,b'); toast(act==='merge'?'Лоты будут склеены':'Лоты больше не будут склеиваться'); }
     else if(act==='rule-del'){ await api(`dup_rules?a=eq.${enc(b.dataset.a)}&b=eq.${enc(b.dataset.b)}`, { method:'DELETE' }); toast('Правило удалено'); }
     else if(act==='mk-off' || act==='mk-auto'){ await setMarket(key, act==='mk-off' ? {off:true} : null); }
@@ -511,7 +551,7 @@ function runDetails(r){
 /* Проверка */
 async function pQueue(params){
   const tab = params.get('tab') || 'wait';
-  const q = { wait:'status=eq.active&mstate=eq.queue', remarks:'status=eq.active&published=is.true&mstate=eq.auto&reasons=neq.{}', hidden:'mstate=eq.hidden' }[tab];
+  const q = { wait:'status=eq.active&mstate=eq.queue', remarks:'status=eq.active&published=is.true&or=(and(mstate.eq.auto,reasons.neq.{}),reasons.cs.{plat_changed})', hidden:'mstate=eq.hidden' }[tab];
   const acts = tab==='hidden'
     ? l => B('auto','Вернуть') + B('edit','Изменить')
     : tab==='remarks'
@@ -528,11 +568,12 @@ async function pQueue(params){
     $('#qlist').innerHTML = rows.length
       ? `<div class="bar"><label><input type="checkbox" id="selall"> выбрать все на странице</label>
           ${tab!=='hidden'?B('bulk-approve',tab==='remarks'?'Всё верно у выбранных':'Одобрить выбранные','ok')+B('bulk-hide','Скрыть выбранные','bad'):''}
+          <select id="bsub"><option value="">Подраздел…</option>${subOpts('')}</select>${B('bulk-sub','Сменить подраздел у выбранных')}
           <span class="muted">${nf(total)} ${plural(total,'лот','лота','лотов')}${total>rows.length?`, показаны первые ${rows.length}`:''}</span></div>` + rows.map(l=>lotRow(l, acts, sim(l))).join('')
       : `<div class="empty">${tab==='wait'?'Очередь пуста - все новые лоты в порядке.':tab==='remarks'?'Замечаний нет.':'Скрытых лотов нет.'}</div>`;
   };
   V().innerHTML = `<h1>Проверка лотов</h1>
-    <p class="lede">Новый лот с замечаниями - нет фото, цены или города, срок заявок поставлен по правилу, похож на лот другой площадки - не показывается на сайте, пока вы его не одобрите. Уже опубликованные лоты тоже можно снять на проверку или скрыть.</p>
+    <p class="lede">Новый лот с замечаниями - нет фото, цены или города, срок заявок поставлен по правилу, похож на лот другой площадки, торги раньше конца приёма заявок, неинформативное название - не показывается на сайте, пока вы его не одобрите. Новые лоты недвижимости без площади выходят на сайт сразу, но попадают в «На сайте с замечаниями» - туда же лоты, у которых площадка изменила поле, поправленное вами. Уже опубликованные лоты тоже можно снять на проверку или скрыть.</p>
     <div class="tabs"><a href="#queue" class="${tab==='wait'?'on':''}">Ждут проверки</a><a href="#queue?tab=remarks" class="${tab==='remarks'?'on':''}">На сайте с замечаниями</a><a href="#queue?tab=hidden" class="${tab==='hidden'?'on':''}">Скрытые</a></div>
     <div id="qlist"><p class="muted">Загрузка…</p></div>`;
   await RELOAD();
@@ -568,7 +609,9 @@ async function pLots(params){
   RELOAD = async () => {
     const { rows, total } = await api(`lots_v?${filt.filter(Boolean).join('&')}&select=*&order=${S[sort]||S.new}&limit=50&offset=${page*50}`, { count:true });
     const pages = Math.ceil(total/50);
-    $('#llist').innerHTML = (rows.length ? `<p class="muted">${nf(total)} ${plural(total,'лот','лота','лотов')}</p>` + rows.map(l=>lotRow(l, acts)).join('') : '<div class="empty">Ничего не нашлось.</div>')
+    $('#llist').innerHTML = (rows.length ? `<div class="bar"><label><input type="checkbox" id="selall"> выбрать все на странице</label>
+        <select id="bsub"><option value="">Подраздел…</option>${subOpts('')}</select>${B('bulk-sub','Сменить подраздел у выбранных')}
+        <span class="muted">${nf(total)} ${plural(total,'лот','лота','лотов')}</span></div>` + rows.map(l=>lotRow(l, acts)).join('') : '<div class="empty">Ничего не нашлось.</div>')
       + (pages>1 ? `<div class="pager">${page>0?`<a class="btn sm" href="#" id="pp">← Назад</a>`:''}<span>страница ${page+1} из ${pages}</span>${page<pages-1?`<a class="btn sm" href="#" id="pn">Дальше →</a>`:''}</div>` : '');
     const pp = $('#pp'), pn = $('#pn');
     if(pp) pp.onclick = e=>{ e.preventDefault(); set('p', page-1); };
@@ -1357,28 +1400,64 @@ async function openEditor(key){
   const curPhoto = ph[0] ? ph[0].data : l.photo ? `${RAW}ph/${enc(key)}.jpg` : '';
   const val = k => f[k]!=null ? f[k] : '';
   const hint = (k, shown) => `<div class="hint">С площадки: ${shown||'-'}${f[k]!=null?` · <a data-reset="${k}">вернуть значение площадки</a>`:''}</div>`;
+  // площадка изменила поле, которое правили: значение площадки на момент правки (base) и сейчас
+  const shw = (k, v) => k==='price' ? nf(v)+' BYN' : k==='req_to'||k==='torg' ? dt(v) : k==='area_num' ? nf(v)+' м²' : String(v==null?'-':v);
+  const changed = l.base ? Object.keys(l.base).filter(k=>String(l.base[k]??'') !== String(l[k]??'')) : [];
+  // условия торгов: как прочитал робот (rt) и правки (ft)
+  const rt = l.terms || {}, ft = Object.assign({}, f.terms || {});
+  const tval = k => ft[k]!=null ? ft[k] : '';
+  const thint = (k, sfx) => `<div class="hint">Робот: ${rt[k]!=null && rt[k]!=='' ? String(rt[k]).replace('.',',') + sfx : '-'}</div>`;
+  // фото площадки: можно скрыть отдельные; без списка — наша копия главного фото
+  const pics = (l.pics && l.pics.length) ? l.pics : l.photo ? ['main'] : [];
+  const hide = new Set(f.hide_pics || []);
+  const picSrc = u => u==='main' ? `${RAW}ph/${enc(key)}.jpg` : u;
+  const res = f.result || {};
   dw.innerHTML = `<div class="dw" role="dialog" aria-label="Карточка лота">
     <div class="dw-h"><h2>${esc(f.name||l.name)}</h2><button class="x" id="dwx" aria-label="Закрыть">×</button></div>
     <p class="muted" style="margin-top:-6px">${esc(l.platform)} · <a href="${esc(l.url)}" target="_blank" rel="noopener">на площадке ↗</a>${l.published&&l.status==='active'?` · <a href="../#/lot/${enc(l.id)}" target="_blank" rel="noopener">на сайте ↗</a>`:''} · ключ ${esc(l.key)}</p>
     ${stateChips(l)}
+    ${changed.length ? `<div class="warn"><b>Площадка изменила поле, которое вы правили.</b> ${changed.map(k=>`${FLD_RU[k]||k}: было ${esc(shw(k, l.base[k]))} → стало ${esc(shw(k, l[k]))}`).join('; ')}. Проверьте свою правку и сохраните карточку - замечание уйдёт.</div>` : ''}
     <div class="panel" style="margin-top:12px"><h2>Публикация</h2>
       <div class="radios">${[['','по правилам (авто)'],['approved','одобрен'],['review','на проверке - не показывать'],['hidden','скрыт']].map(([k,t])=>`<label><input type="radio" name="mod" value="${k}"${(l.mod||'')===k?' checked':''}> ${t}</label>`).join('')}</div>
       <label style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="e-pin"${l.pinned?' checked':''}> ★ Закрепить в блоке «Рекомендуем» на главной</label></div>
     <div class="panel"><h2>Фото</h2><div class="ph-edit"><img id="e-img" src="${esc(curPhoto)}" alt="" ${curPhoto?'':'hidden'}>
       <div><label class="btn">Загрузить своё фото<input type="file" id="e-file" accept="image/*" hidden></label>
       ${ph[0]?'<button class="btn bad" id="e-phdel" style="margin-left:6px">Убрать своё фото</button>':''}
-      <div class="hint muted" style="margin-top:6px">Своё фото заменит фото площадки.</div></div></div></div>
+      <div class="hint muted" style="margin-top:6px">Своё фото заменит фото площадки.</div></div></div>
+      ${pics.length ? `<p class="muted" style="margin:12px 0 0">Фото площадки - отметьте те, что не нужно показывать. Если скрыть первое, в каталоге будет заглушка, пока не загрузите своё фото.</p>
+      <div class="pics">${pics.map((u,i)=>`<label class="${hide.has(u)?'off':''}"><img src="${esc(picSrc(u))}" loading="lazy" alt="" onerror="this.style.visibility='hidden'"><span><input type="checkbox" class="hp" value="${esc(u)}"${hide.has(u)?' checked':''}> скрыть${i?'':' (первое)'}</span></label>`).join('')}</div>` : ''}</div>
     <div class="panel"><h2>Данные лота</h2><p class="muted" style="margin-top:0">Измените только то, что нужно. Изменённое поле робот больше не перезаписывает, даже если площадка его поменяет.</p>
       <label class="fld"><span>Название</span><textarea rows="2" data-f="name" placeholder="${esc(l.name)}">${esc(val('name'))}</textarea>${hint('name', esc(l.name))}</label>
       <div class="grid2">
-        <label class="fld"><span>Раздел</span><select data-f="section"><option value="">как у площадки</option>${SECS.map(([k,t])=>`<option value="${k}"${f.section===k?' selected':''}>${t}</option>`).join('')}</select>${hint('section', esc(SEC_RU[l.section]||l.section))}</label>
+        <label class="fld"><span>Раздел</span><select id="e-top"></select><div class="hint">Робот: ${esc((catOf(l.sub).top||{}).n||'-')}</div></label>
+        <label class="fld"><span>Подраздел</span><select id="e-sub"></select><div class="hint">Робот: ${esc((catOf(l.sub).sub||{}).n||'-')}${f.sub||f.section?' · <a id="e-subr">вернуть как у робота</a>':''}</div></label>
         <label class="fld"><span>Стартовая цена, BYN</span><input type="number" min="0" step="1" data-f="price" placeholder="${esc(l.price)}" value="${esc(val('price'))}">${hint('price', nf(l.price)+' BYN')}</label>
         <label class="fld"><span>Приём заявок до</span><input type="datetime-local" data-f="req_to" value="${toLocal(f.req_to)}">${hint('req_to', dt(l.req_to))}</label>
         <label class="fld"><span>Дата торгов</span><input type="datetime-local" data-f="torg" value="${toLocal(f.torg)}">${hint('torg', dt(l.torg))}</label>
+        <label class="fld"><span>Местоположение</span><input data-f="location" placeholder="${esc(l.location||'')}" value="${esc(val('location'))}">${hint('location', esc(l.location))}</label>
+        <label class="fld"><span>Площадь, м²</span><input type="number" min="0" step="0.1" data-f="area_num" placeholder="${esc(l.area_num||'')}" value="${esc(val('area_num'))}">${hint('area_num', l.area_num ? nf(l.area_num)+' м²' : '')}</label>
+        <label class="fld"><span>Продавец / должник</span><input data-f="debtor" placeholder="${esc(l.debtor||'')}" value="${esc(val('debtor'))}">${hint('debtor', esc(l.debtor))}</label>
       </div>
-      <label class="fld"><span>Местоположение</span><input data-f="location" placeholder="${esc(l.location||'')}" value="${esc(val('location'))}">${hint('location', esc(l.location))}</label>
       <label class="fld"><span>Описание</span><textarea rows="5" data-f="descr" placeholder="Пусто — описание площадки">${esc(val('descr'))}</textarea>
         <div class="orig">С площадки: ${origDescr?esc(origDescr):'описания нет'}</div>${f.descr?'<div class="hint"><a data-reset="descr">вернуть описание площадки</a></div>':''}</label></div>
+    <div class="panel"><h2>Условия торгов - для калькулятора</h2>
+      <p class="muted" style="margin-top:0">Заполните только то, что робот прочитал неверно или не нашёл. Вписанный шаг или сбор заменяет прочитанный роботом.</p>
+      <div class="grid2">
+        <label class="fld"><span>Задаток, BYN</span><input type="number" min="0" step="0.01" data-t="deposit" value="${esc(tval('deposit'))}">${thint('deposit',' BYN')}</label>
+        <label class="fld"><span>Шаг торгов, BYN</span><input type="number" min="0" step="0.01" data-t="step_abs" value="${esc(tval('step_abs'))}">${thint('step_abs',' BYN')}</label>
+        <label class="fld"><span>Шаг торгов, % от начальной</span><input type="number" min="0" step="0.1" data-t="step_pct" value="${esc(tval('step_pct'))}">${thint('step_pct','%')}</label>
+        <label class="fld"><span>Сбор площадки / вознаграждение, % от цены</span><input type="number" min="0" step="0.1" data-t="fee_pct" value="${esc(tval('fee_pct'))}">${thint('fee_pct','%')}</label>
+        <label class="fld"><span>Затраты на организацию торгов, BYN</span><input type="number" min="0" step="0.01" data-t="fee_abs" value="${esc(tval('fee_abs'))}">${thint('fee_abs',' BYN')}${rt.fee_later?'<div class="hint">Робот: площадка объявит сумму позже</div>':''}</label>
+        <label class="fld"><span>НДС</span><select id="e-vat"><option value="">как у площадки</option>${[['in','Цена указана с НДС'],['add','К цене может добавиться НДС 20%'],['no','НДС не облагается']].map(([k,t])=>`<option value="${k}"${vatKey(ft)===k?' selected':''}>${t}</option>`).join('')}</select><div class="hint">Робот: ${esc(rt.vat||'-')}</div></label>
+      </div></div>
+    <div class="panel"><h2>Статус и итоги торгов</h2>
+      ${l.status==='active' || f.removed ? `<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="e-rm"${f.removed?' checked':''}> Снят с торгов - площадка сняла лот или торги отменили${f.removed?` (отмечено ${dt(f.removed)})`:''}</label>
+        <div class="hint muted" style="margin:4px 0 0 22px">Лот уйдёт с сайта в архив с пометкой «Снят».</div>` : ''}
+      ${l.status==='archive' ? `<div class="grid2" style="margin-top:8px">
+        <label class="fld"><span>Итог торгов</span><select id="e-res"><option value="">как у робота</option>${Object.entries(RES_RU).map(([k,t])=>`<option value="${k}"${res.st===k?' selected':''}>${t}</option>`).join('')}</select>
+          <div class="hint">Робот: ${l.result && !l.result.man && RES_RU[l.result.st] ? RES_RU[l.result.st] + (l.result.price>0 ? ', ' + nf(l.result.price) + ' BYN' : '') : 'итога нет'}</div></label>
+        <label class="fld"><span>Цена продажи, BYN</span><input type="number" min="0" step="1" id="e-resp" value="${esc(res.price||'')}"></label></div>` : '<p class="muted" style="margin:6px 0 0">Итог торгов можно вписать, когда лот уйдёт в архив.</p>'}</div>
+    <div class="panel"><h2>Заметка для себя</h2><textarea rows="2" id="e-note" style="width:100%" placeholder="Видна только в админке">${esc(l.note||'')}</textarea></div>
     <div class="panel"><h2>Рыночный ориентир</h2>
       <p class="muted" style="margin-top:0">${l.market?`Робот: медиана ${nf(l.market.median)} BYN по ${l.market.n} объявлениям ${esc(l.market.source||'')}.`:'Робот не нашёл ориентир.'}</p>
       <div class="radios">${[['auto','автоматический'],['off','не показывать'],['own','своя оценка']].map(([k,t])=>`<label><input type="radio" name="mk" value="${k}"${(fm?(fm.off?'off':'own'):'auto')===k?' checked':''}> ${t}</label>`).join('')}</div>
@@ -1391,6 +1470,16 @@ async function openEditor(key){
   dw.onclick = e=>{ if(e.target===dw) close(); };
   dw.querySelectorAll('[data-reset]').forEach(a=>a.onclick = ()=>{ const k = a.dataset.reset; delete f[k];
     const el = dw.querySelector(`[data-f="${k}"]`); if(el) el.value = ''; a.closest('.hint').textContent = 'Будет значение площадки'; });
+  // раздел → список его подразделов; выбранное сейчас — правка из админки или как определил робот
+  const sub0 = f.sub || l.sub || '';
+  const fillSub = (t, v) => { const top = CATS.find(x=>x.k===t);
+    $('#e-sub').innerHTML = (t ? '' : '<option value="">не определён</option>') + (top ? top.subs.map(x=>`<option value="${t}/${x.k}"${v===t+'/'+x.k?' selected':''}>${esc(x.n)}</option>`).join('') : ''); };
+  $('#e-top').innerHTML = (sub0 ? '' : '<option value="">не определён</option>') + CATS.map(x=>`<option value="${x.k}"${sub0.startsWith(x.k+'/')?' selected':''}>${esc(x.n)}</option>`).join('');
+  fillSub(sub0.split('/')[0], sub0);
+  $('#e-top').onchange = () => { const t = $('#e-top').value; fillSub(t, (l.sub||'').startsWith(t+'/') ? l.sub : ''); };
+  if($('#e-subr')) $('#e-subr').onclick = () => { delete f.sub; delete f.section; $('#e-top').value = (l.sub||'').split('/')[0]; fillSub($('#e-top').value, l.sub||'');
+    $('#e-subr').parentNode.textContent = 'Будет как у робота'; };
+  dw.querySelectorAll('.hp').forEach(c=>c.onchange = ()=>c.closest('label').classList.toggle('off', c.checked));
   dw.querySelectorAll('input[name=mk]').forEach(r=>r.onchange = ()=>{ $('#mk-own').hidden = r.value!=='own' || !r.checked; });
   $('#e-file').onchange = async e=>{ const file = e.target.files[0]; if(!file) return;
     try{ newPhoto = await shrinkPhoto(file); dropPhoto = false; $('#e-img').src = newPhoto; $('#e-img').hidden = false; }catch(err){ toast(err.message, true); } };
@@ -1401,19 +1490,33 @@ async function openEditor(key){
     dw.querySelectorAll('[data-f]').forEach(el=>{
       const k = el.dataset.f; let v = el.value.trim();
       if(v==='') return;
-      if(k==='price'){ v = +v; if(!(v>0) || v===+l.price) return; }
+      if(k==='price' || k==='area_num'){ v = +v; if(!(v>0) || v===+l[k]) return; }
       else if(k==='req_to' || k==='torg'){ v = fromLocal(v); if(!v || v===l[k]) return; }
-      else if(k==='section'){ if(v===l.section) return; }
       else if(k==='descr'){ if(v===origDescr.trim()) return; }
       else if(v===String(l[k]||'').trim()) return;
       fields[k] = v;
     });
+    const sv = $('#e-sub').value;
+    if(sv && sv !== l.sub){ fields.sub = sv; const sec = subSec(sv, l.section); if(sec !== l.section) fields.section = sec; }
+    else if(!f.sub && f.section && sv === sub0) fields.section = f.section;   // старая правка: раздел без подраздела
+    // условия торгов: только то, что отличается от прочитанного роботом
+    const terms = {};
+    dw.querySelectorAll('[data-t]').forEach(el=>{ const k = el.dataset.t, v = el.value.trim(); if(v==='' || !(+v>=0)) return; if(+v!==+rt[k]) terms[k] = +v; });
+    const vk = $('#e-vat').value; if(vk) Object.assign(terms, VAT[vk]);
+    if(Object.keys(terms).length) fields.terms = terms;
+    const hp = [...dw.querySelectorAll('.hp:checked')].map(c=>c.value); if(hp.length) fields.hide_pics = hp;
+    if($('#e-rm') && $('#e-rm').checked) fields.removed = f.removed || Math.floor(Date.now()/1000);
+    if($('#e-res') && $('#e-res').value){ const st = $('#e-res').value, pr = +$('#e-resp').value;
+      if((st==='sold' || st==='single') && !(pr>0)){ toast('Впишите цену продажи', true); btn.disabled = false; return; }
+      fields.result = { st }; if(pr>0 && st!=='failed' && st!=='cancelled') fields.result.price = pr; }
+    // значения площадки для поправленных полей: площадка их сменит — робот пришлёт замечание
+    const bk = BASE_K.filter(k=>fields[k]!=null), base = bk.length ? Object.fromEntries(bk.map(k=>[k, l[k]??null])) : null;
     const mk = dw.querySelector('input[name=mk]:checked').value;
     if(mk==='off') fields.market = { off:true };
     else if(mk==='own'){ const v = +$('#mk-v').value; if(!(v>0)){ toast('Впишите оценку в BYN', true); btn.disabled = false; return; } fields.market = { median:v, note:$('#mk-n').value.trim() }; }
     const mod = dw.querySelector('input[name=mod]:checked').value || null;
     try{
-      await upsert('overrides', [{ key, fields, mod, pinned:$('#e-pin').checked, updated_at:nowIso() }]);
+      await upsert('overrides', [{ key, fields, mod, pinned:$('#e-pin').checked, note:$('#e-note').value.trim() || null, base, updated_at:nowIso() }]);
       if(newPhoto) await upsert('lot_photos', [{ key, data:newPhoto, updated_at:nowIso() }]);
       else if(dropPhoto) await api(`lot_photos?key=eq.${enc(key)}`, { method:'DELETE' });
       toast('Сохранено. На сайте — после публикации'); close(); await refreshStats(); await RELOAD();
