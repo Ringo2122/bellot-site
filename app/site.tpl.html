@@ -1900,6 +1900,8 @@ const CAT_POS = {};   // адрес каталога → { y, show, t }
 let CAT_NOW = null;   // открытый каталог: { hash, show }
 function pageCatalog(sc, params){
   FSTATE = CARRY || {}; CARRY = null;
+  // пришли сменой раздела в фильтре — то же место страницы (роутер прокрутит к RESTORE_Y), шторка — как была
+  const keep = FKEEP; FKEEP = null; if(keep) RESTORE_Y = keep.y;
   FKEYS.forEach(k=>{ const v = params.get(k); if(v) FSTATE[k] = v; });
   // валюта цены: из адреса; суммы без пометки — в рублях; иначе — последний выбор посетителя
   if(FSTATE.cur!=='USD' || !USD) FSTATE.cur = !FSTATE.pmin && !FSTATE.pmax && CURR==='USD' ? 'USD' : undefined;
@@ -1935,7 +1937,7 @@ function pageCatalog(sc, params){
   // (15.10: страница дёргалась на каждой цифре суммы и уводила панель): пока человек в панели фильтров — мышь, ввод
   // или открытый выпадающий список, на телефоне — открытая шторка — страница стоит; ушёл из панели — один раз поднимаем
   // к началу списка, и только если оно ушло вверх за экран. Сортировка, «Активные / Архив», «Сбросить» — сразу
-  let dirty = false;
+  let dirty = !!keep, PTM = null;
   const toList = () => { dirty = false; const tb = $('#tb'), hd = document.querySelector('header.main'); if(!tb) return;
     const hb = hd ? hd.getBoundingClientRect().bottom : 0, top = tb.getBoundingClientRect().top;
     if(top < hb) window.scrollBy({ top: top - hb - 12, behavior: reduced ? 'auto' : 'smooth' }); };
@@ -1960,17 +1962,25 @@ function pageCatalog(sc, params){
     $('#fwrap').innerHTML = filterPanel(baseOf(), FSTATE, sc);
     ['f-q','f-top','f-sub','f-res','f-region','f-city','f-pmin','f-pmax','f-dfrom','f-dto','f-plat','f-photo','f-mkt','f-land'].forEach(id=>{
       const el = document.getElementById(id); if(!el) return;
-      el.addEventListener(el.tagName==='SELECT'||el.type==='checkbox'||el.type==='date'?'change':'input', ()=>{
+      const run = () => { PTM = null;
         read();
-        // раздел и подраздел — это страница каталога: переходим, забрав остальные фильтры с собой
+        // раздел и подраздел — это страница каталога: переходим, забрав остальные фильтры с собой; страница остаётся
+        // на месте (15.10: переход поднимал наверх), на телефоне шторка фильтров остаётся открытой
         if(id==='f-top' || id==='f-sub'){ const t = $('#f-top').value, s = id==='f-sub' ? el.value : ''; CARRY = {};
           CARRY_KEYS.forEach(k=>{ if(FSTATE[k]) CARRY[k] = FSTATE[k]; });
           if(t!=='nedvizhimost') delete CARRY.land;   // «только земельные участки» — у недвижимости
+          FKEEP = { y:scrollY, open:$('#fp').classList.contains('open') };
           location.hash = t ? '#/c/' + t + (s ? '/' + s : '') : '#/catalog'; return; }
         // другая область — город прежней не подходит; список городов новой области появляется под «Регионом»
         if(id==='f-region'){ FSTATE.city = ''; const op = $('#fp').classList.contains('open'); drawPanel();
           if(op) $('#fp').classList.add('open'); }
-        render(); dirty = true; });
+        render(); dirty = true; };
+      // цена: список обновляем, когда перестали печатать (0,7 с) или нажали Enter / ушли из поля, а не на каждую цифру
+      // (15.10: при вводе «30000» список подбирался на «3», «30»… и прыгал)
+      const pr = id==='f-pmin' || id==='f-pmax';
+      el.addEventListener(el.tagName==='SELECT'||el.type==='checkbox'||el.type==='date'?'change':'input', ()=>{
+        if(pr){ clearTimeout(PTM); PTM = setTimeout(run, 700); } else run(); });
+      if(pr) el.addEventListener('change', ()=>{ if(PTM){ clearTimeout(PTM); run(); } });
     });
     document.querySelectorAll('#fp select').forEach(dd);
     requestAnimationFrame(fitFilters);
@@ -2072,6 +2082,7 @@ function pageCatalog(sc, params){
   $('#ov').onclick = closeDrawer;
   // render(true) — не сбрасывать объём списка: при возврате с лота он восстановлен выше
   drawPanel(); render(true);
+  if(keep && keep.open){ $('#fp').classList.add('open'); $('#ov').classList.add('open'); }
 }
 
 function marketBlock(l){
@@ -3948,7 +3959,7 @@ async function meProfile(M){
 }
 
 /* ───────── роутер с переходом страниц ───────── */
-let CUR = null, PREV = null, RESTORE_Y = null;
+let CUR = null, PREV = null, RESTORE_Y = null, FKEEP = null;
 function render(path, params){
   for(const box of ['#nav', '#mmenu']){
     const links = [...document.querySelectorAll(box + ' a:not(.btn)')], full = location.hash || '#/';
