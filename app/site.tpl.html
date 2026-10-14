@@ -2512,6 +2512,14 @@ function bindLotReport(l){
     }catch(err){ b.disabled = false; b.textContent = 'Отправить'; $('#rep-err').textContent = err.message; }
   });
 }
+// заголовок вкладки: название без VIN (14.10: у bt-146037 вкладка показывала кусок VIN вместо «МониТорг»),
+// длинное — по целому слову, чтобы «- МониТорг» не уходил далеко за край
+const lotTitle = l => {
+  let t = String(l.name || '').replace(/[\s,;(]*(?:vin|вин)\s*[:№#-]?\s*[A-HJ-NPR-Z0-9]{8,17}\)?/gi, '')
+    .replace(/[\s,;(]*\b(?=[A-HJ-NPR-Z0-9]*\d)(?=[A-HJ-NPR-Z0-9]*[A-HJ-NPR-Z])[A-HJ-NPR-Z0-9]{17}\b\)?/g, '').replace(/\s+/g, ' ').trim();
+  if(t.length > 50) t = t.slice(0, 50).replace(/[\s,;:(-]+[^\s]*$/, '') + '…';
+  return t || String(l.name || '').slice(0, 50);
+};
 function pageLot(id){
   let l = byId(id);
   if(!l && !ARCH){   // сначала свежий архив, не нашёлся — весь
@@ -2521,7 +2529,7 @@ function pageLot(id){
   }
   if(!l){ document.title = 'Лот не найден' + TSUF; $('#app').innerHTML = `<div class="wrap">${crumbs([['Лот не найден']])}<div class="panel empty">Лот не найден - возможно, он уже удалён из архива.</div></div>`; return; }
   const arch = l.status==='archive', d = left(l), pc = pchg(l);
-  document.title = l.name.slice(0,60) + TSUF;
+  document.title = lotTitle(l) + TSUF;
   $('#app').innerHTML = `<div class="wrap">
     ${(() => { const sc = scOf(l.sub), t = sc && catTop(sc.top);
       const tr = t ? [[t.n, '#/c/'+t.k], ...(sc.sub ? [[scName(sc), '#/c/'+scPath(sc)]] : [])] : [[secName(l.section), '#/s/'+l.section]];
