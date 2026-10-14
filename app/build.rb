@@ -314,7 +314,8 @@ active.each do |l|
   r << 'dup_maybe' if dup_with[l['key']]
   r << 'bad_dates' if l['torg'].to_i.positive? && l['torg'].to_i < l['req_to'].to_i - 60   # торги раньше конца приёма заявок
   r << 'bad_name' if l['name'].to_s.strip.size < 4 || l['name'].to_s.strip =~ BAD_NAME
-  r << 'no_area' if fresh && l['section'] == 'nedvizhimost' && !l['area_num'].to_f.positive?
+  # torgi.gov.by площадь часто не публикует вовсе (только в техпаспорте) — там замечание не нужно (решение Артёма 14.10)
+  r << 'no_area' if fresh && l['section'] == 'nedvizhimost' && !l['area_num'].to_f.positive? && l['platform'] != 'torgi.gov.by'
   # площадка изменила поле, которое поправили в админке: base — значения площадки на момент правки
   if (b = o['base']).is_a?(Hash) && b.any? { |k, v| orig[l['key']].key?(k) && same.(orig[l['key']][k]) != same.(v) }
     r << 'plat_changed'
