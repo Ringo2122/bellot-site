@@ -90,6 +90,9 @@ MOD_SINCE = CFG['mod_since'].to_i   # лоты, появившиеся позж�
 
 now = Time.now.to_i
 lots = Store.load
+# все площадки, с которых берём лоты (активные и архив) — число на главной: «… с 18 площадок» (14.10: считали только
+# площадки с открытыми лотами, у minskestate закрылись оба — стало 17)
+nplat = lots.map { |l| l['platform'] }.uniq.size
 # ссылки со страниц площадок — только http(s): ссылка вида «javascript:…» на сайт не попадёт, даже если площадку взломают
 web = ->(u) { u.is_a?(String) && u =~ %r{\Ahttps?://}i ? u : nil }
 lots.each do |l|
@@ -404,6 +407,7 @@ html = tpl.sub('__DATA__') { JSON.generate(active.map(&slim)) }
           .sub('__SNAP__', now.to_s).sub('__ARCHN__') { JSON.generate(archn) }
           .sub('__CFG__') { JSON.generate(pub) }
           .sub('__PLACES__') { JSON.generate(PLACES.transform_values { |v| v.map(&:first) + [OTHER_PLACE] }) }
+          .sub('__NPLAT__', nplat.to_s)
           .sub('__THEME__') { JSON.generate((pub['home'] || {})['theme'] || {}) }   # общий стиль — до отрисовки, без мигания
 File.write(File.join(OUT, 'index.html'), html)
 File.write(File.join(OUT, 'arch.js'), "__arch(#{JSON.generate(arch1.map(&slim))});")
