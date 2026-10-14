@@ -678,7 +678,7 @@ applyTheme(window.THEME);
   .dl{display:inline-block;margin-left:6px;font-size:12px;padding:1px 8px;border-radius:12px;
     background:var(--accent-l);color:var(--accent);font-weight:700}
   .cta{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
-  .cta .btn{flex:1;text-align:center}
+  .cta .btn{flex:1 1 0;min-width:0;text-align:center}   /* равные колонки, как у ряда «В избранное» ниже (14.10: ряды не совпадали) */
   .accs{margin-top:24px;display:flex;flex-direction:column;gap:10px}
   details.acc{background:var(--card);border:1px solid var(--hair);border-radius:12px;box-shadow:var(--sh);overflow:hidden}
   details.acc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 18px;
@@ -955,8 +955,9 @@ applyTheme(window.THEME);
   .favb:hover{transform:scale(1.08);color:var(--accent)}
   .favb svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
   .favb.on{color:var(--accent)}.favb.on svg{fill:currentColor}
-  #ubox .ucta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-  #ubox .ucta .btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:13.5px}
+  #ubox .ucta{display:flex;flex-wrap:wrap;gap:9px;margin-top:9px}
+  #ubox .ucta .btn{flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:13.5px;text-align:center}
+  #ubox .ucta .btn span{white-space:normal;line-height:1.25}
   #ubox .ucta svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;flex:none}
   #ubox .ucta .btn.on{border-color:var(--accent);color:var(--accent)}
   #ubox .ucta .btn.on svg{fill:currentColor}
@@ -2585,7 +2586,12 @@ function pageLot(id){
     // «Право аренды»: вместо калькулятора покупки — расчёт аренды по ставке из извещения
     if(!arch) l.section==='arenda' ? rentBlock(l, det.r) : calcBlock(l, det);
     // все фото карточки площадки
-    if(det.p && det.p.length && !GAL_OFF.includes(l.platform)){ const pics = det.p.slice(); $('.gal').innerHTML = galleryBlock(l, pics); bindGallery(l, pics); }
+    if(det.p && det.p.length && !GAL_OFF.includes(l.platform)){ const pics = det.p.slice(), draw = () => { if(CUR!=='/lot/'+encodeURIComponent(id)) return; $('.gal').innerHTML = galleryBlock(l, pics); bindGallery(l, pics); };
+      // архив: площадки часто удаляют фото после торгов (14.10, konfiskat kf-511571: 17 из 18 пропадали на глазах) —
+      // сначала тихо проверяем первые два; не открылись — оставляем нашу копию главного фото с пометкой
+      if(arch && l.photo) Promise.any(pics.slice(0, 2).map(gload)).then(draw, () => { const g = $('.gal');
+        if(g && CUR==='/lot/'+encodeURIComponent(id)) g.insertAdjacentHTML('beforeend', `<p class="gv-src">Фото на площадке удалены после торгов - показываем сохранённую копию.</p>`); });
+      else draw(); }
     // похожие завершённые торги, история объекта; карта — только у активных
     $('#xsim').innerHTML = (det.c ? simBlock(l, det.c) : '') + (det.h ? histBlock(l, det.h) : '') + (!arch && det.g ? mapBlock(l, det.g) : '');
     if(!arch && det.g) drawMap(det.g);
