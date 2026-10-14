@@ -2590,7 +2590,7 @@ function pageLot(id){
       // архив: площадки часто удаляют фото после торгов (14.10, konfiskat kf-511571: 17 из 18 пропадали на глазах) —
       // сначала тихо проверяем первые два; не открылись — оставляем нашу копию главного фото с пометкой
       if(arch && l.photo) Promise.any(pics.slice(0, 2).map(gload)).then(draw, () => { const g = $('.gal');
-        if(g && CUR==='/lot/'+encodeURIComponent(id)) g.insertAdjacentHTML('beforeend', `<p class="gv-src">Фото на площадке удалены после торгов - показываем сохранённую копию.</p>`); });
+        if(g && CUR==='/lot/'+encodeURIComponent(id)) g.insertAdjacentHTML('beforeend', `<p class="gv-src">Фото из архива МониТорг</p>`); });
       else draw(); }
     // похожие завершённые торги, история объекта; карта — только у активных
     $('#xsim').innerHTML = (det.c ? simBlock(l, det.c) : '') + (det.h ? histBlock(l, det.h) : '') + (!arch && det.g ? mapBlock(l, det.g) : '');
