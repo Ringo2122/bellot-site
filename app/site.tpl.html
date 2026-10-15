@@ -908,7 +908,7 @@ applyTheme(window.THEME);
   }
   @media (max-width:980px){
     .help,.cx-grid{grid-template-columns:1fr}
-    .hform{position:static}
+    .hform{position:static;order:-1}   /* на телефоне сначала форма заявки, потом преимущества и тексты (15.10) */
     .how{grid-template-columns:repeat(2,1fr)}
     .stiles{grid-template-columns:repeat(2,1fr)}
     .car-track{grid-auto-columns:calc((100% - 28px)/3)}
@@ -1898,6 +1898,8 @@ function phoneMask(inp){
     const v = inp.value;
     if(!v.startsWith('+375')){ prev = v; return; }                 // «+375» стёрли — свободный ввод
     let d = v.replace(/\D/g,'').slice(3);
+    // стирают, а цифр номера уже нет — не возвращаем «+375 » обратно: можно стереть и сам код страны (15.10)
+    if(e.inputType && e.inputType.startsWith('delete') && !d.length){ prev = v; return; }
     const pd = prev.startsWith('+375') ? prev.replace(/\D/g,'').slice(3) : null;
     // стёрли скобку, пробел или дефис — убираем и цифру перед ним, иначе маска вернула бы знак на место
     if(e.inputType && e.inputType.startsWith('delete') && pd !== null && d === pd) d = d.slice(0, -1);
@@ -3647,7 +3649,7 @@ function pageLogin(params){
       <div class="fg" data-f="name"><label for="r-name">Имя${R}</label><input id="r-name" autocomplete="name" aria-required="true"></div>
       <div class="fg" data-f="mail"><label for="r-mail">Почта${R}</label><input id="r-mail" type="email" autocomplete="email" aria-required="true"></div>
       <div class="fg" data-f="pass"><label for="r-pass">Пароль${R}</label><input id="r-pass" type="password" autocomplete="new-password" aria-required="true">
-        <div class="fhint">Не короче 6 символов</div></div>
+        <div class="fhint">Минимум 6 символов</div></div>
       <div class="fg"><label id="r-purp-l">Для чего вам МониТорг</label><div class="dd"><button type="button" class="dd-b" id="r-purp" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="r-purp-l"></button></div></div>
       <div class="fg" id="r-note-w" hidden><label for="r-note">Уточните</label><input id="r-note" maxlength="300" placeholder="Коротко, для чего вам сервис"></div>
       <div class="fg" data-f="ok"><label class="chk"><input type="checkbox" id="r-ok" aria-required="true"> <span>Согласен на обработку персональных данных в соответствии
@@ -3666,7 +3668,7 @@ function pageLogin(params){
     const check = () => { const e = {}, email = v('r-mail').toLowerCase();
       if(!v('r-name')) e.name = 1;
       if(!email) e.mail = 1; else if(!MAIL_RE.test(email)) e.mail = 'Проверьте адрес почты';
-      const pl = $('#r-pass').value.length; if(!pl) e.pass = 1; else if(pl < 6) e.pass = 'Пароль - не короче 6 символов';
+      const pl = $('#r-pass').value.length; if(!pl) e.pass = 1; else if(pl < 6) e.pass = 'Пароль - минимум 6 символов';
       if(!$('#r-ok').checked) e.ok = 1;
       return e; };
     const btnState = () => $('#uf button[type=submit]').classList.toggle('off', Object.keys(check()).length > 0);
@@ -3721,7 +3723,7 @@ function pageLogin(params){
       <p style="margin-top:0">${esc(lead)} ${rec ? 'на почту' : 'на'} <b>${esc(email)}</b>. Если письма нет в разделе «Входящие» - загляните в «Спам».</p>
       <form id="uf" novalidate><div class="fg"><label for="c-code">Код из письма</label>
         <input id="c-code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required></div>
-      ${rec ? `<div class="fg"><label for="c-pass">Новый пароль</label><input id="c-pass" type="password" autocomplete="new-password" required><div class="fhint">Не короче 6 символов</div></div>
+      ${rec ? `<div class="fg"><label for="c-pass">Новый пароль</label><input id="c-pass" type="password" autocomplete="new-password" required><div class="fhint">Минимум 6 символов</div></div>
         <div class="fg"><label for="c-pass2">Новый пароль ещё раз</label><input id="c-pass2" type="password" autocomplete="new-password" required></div>` : ''}
       <div class="ferr" id="u-err"></div><button class="btn pri" type="submit" style="width:100%">${rec ? 'Сменить пароль и войти' : 'Подтвердить'}</button></form>
       <div class="lrow"><button class="lnk" type="button" id="c-again" style="margin:0">Отправить код ещё раз</button><a href="${href(rec ? 'reset' : 'up')}">Другая почта</a></div>`;
@@ -3736,7 +3738,7 @@ function pageLogin(params){
       e.preventDefault(); const code = $('#c-code').value.replace(/\s/g,''), b = $('#uf button');
       if(!/^\d{6,10}$/.test(code)){ $('#u-err').textContent = 'Введите код из письма'; return; }
       if(rec){ const p = $('#c-pass').value;
-        const er = p.length < 6 ? 'Пароль - не короче 6 символов' : p !== $('#c-pass2').value ? 'Пароли не совпадают' : '';
+        const er = p.length < 6 ? 'Пароль - минимум 6 символов' : p !== $('#c-pass2').value ? 'Пароли не совпадают' : '';
         if(er){ $('#u-err').textContent = er; return; } }
       busy(b, true);
       try{
@@ -4106,7 +4108,7 @@ async function meProfile(M){
   // кабинет по почте: старый пароль проверяем входом, новый задаём в Supabase; гостевой и старые входы — как было
   if(pw) pw.onclick = async () => { try{
     if(ME.auth){ const n = $('#p-new').value;
-      if(n.length < 6) throw new Error('Новый пароль - не короче 6 символов');
+      if(n.length < 6) throw new Error('Новый пароль - минимум 6 символов');
       if(n !== $('#p-new2').value) throw new Error('Новые пароли не совпадают');
       let j; try{ j = await uauth('token?grant_type=password', { email:ME.email, password:$('#p-old').value }); }
       catch(e){ throw new Error(e.code === 'invalid_credentials' || e.code === 'invalid_grant' ? 'Текущий пароль указан неверно' : e.message); }
