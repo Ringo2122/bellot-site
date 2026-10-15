@@ -1013,7 +1013,21 @@ applyTheme(window.THEME);
   .ltabs a.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(24,24,27,.1)}
   .fhint{font-size:12px;color:var(--ink-3);margin-top:4px}.fhint.ok{color:#2e7d32}.fhint.bad{color:#c0392b}
   .fg label .opt{text-transform:none;letter-spacing:0;font-weight:400}
-  .fg label .req{color:var(--brand);margin-left:2px}   /* обязательное поле заявки — звёздочка */
+  .fg label .req{color:var(--brand);margin-left:2px}   /* обязательное поле — звёздочка */
+  /* незаполненное обязательное поле — красная рамка; согласие — красный текст (15.10) */
+  .fg.bad input,.fg.bad .dd-b{border-color:#c0392b;box-shadow:0 0 0 3px rgba(192,57,43,.12)}
+  .fg.bad .chk{color:#c0392b}
+  .fg.bad .chk input{outline:2px solid #c0392b;outline-offset:1px}
+  .btn.pri.off{opacity:.55}
+  .dd-b.ph span{color:var(--ink-3)}
+  .reqnote{font-size:12.5px;color:var(--ink-3);margin:10px 0 0}
+  /* показать / скрыть пароль */
+  .pw{position:relative}
+  .pw input{padding-right:40px}
+  .pw-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;background:none;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-3);border-radius:6px}
+  .pw-eye:hover{color:var(--ink)}
+  .pw-eye svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .fg input.code{font-size:22px;letter-spacing:6px;text-align:center;font-weight:700;padding:10px}
   .login-card .lrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:13.5px}
   .login-card .lrow .lnk:disabled{color:var(--ink-3);cursor:default}
@@ -1863,6 +1877,78 @@ function mdd(btn, items, sel, onChange){
     ['pointerdown', 'scroll', 'keydown'].forEach(t => addEventListener(t, away, true)); addEventListener('resize', away); };
   btn.onclick = () => ul ? close() : open();
   label();
+}
+
+/* Выбор нескольких вариантов — вид и анимация как у dd(); список не закрывается после выбора (форма регистрации, 15.10).
+   opts — варианты (строки), sel — Set выбранных, ph — подпись, когда ничего не выбрано */
+/* Телефон в заявке (15.10): при фокусе сразу «+375 », дальше — только коды 29, 25, 33, 44 и номер: +375 (29) 123-45-67.
+   Стёр «+375» — значит номер другой страны или особый: дальше вводится как угодно, без маски */
+function phoneMask(inp){
+  if(!inp) return;
+  const CODES = ['29','25','33','44'];
+  const fmt = d => { let o = '+375'; if(d.length) o += ' (' + d.slice(0,2); if(d.length >= 2) o += ')';
+    if(d.length > 2) o += ' ' + d.slice(2,5); if(d.length > 5) o += '-' + d.slice(5,7); if(d.length > 7) o += '-' + d.slice(7,9); return o; };
+  const ok = d => !d.length || (d.length === 1 ? ['2','3','4'].includes(d) : CODES.includes(d.slice(0,2)));
+  let prev = inp.value;
+  // сохранённый в профиле номер +375… — сразу в формате маски
+  if(/^\+?375/.test(prev.replace(/[\s()-]/g,''))){ const d = prev.replace(/\D/g,'').slice(3, 12); if(ok(d)) inp.value = prev = fmt(d); }
+  inp.addEventListener('focus', () => { if(!inp.value){ inp.value = prev = '+375 '; } });
+  inp.addEventListener('blur', () => { if(inp.value.trim() === '+375'){ inp.value = prev = ''; } });
+  inp.addEventListener('input', e => {
+    const v = inp.value;
+    if(!v.startsWith('+375')){ prev = v; return; }                 // «+375» стёрли — свободный ввод
+    let d = v.replace(/\D/g,'').slice(3);
+    const pd = prev.startsWith('+375') ? prev.replace(/\D/g,'').slice(3) : null;
+    // стёрли скобку, пробел или дефис — убираем и цифру перед ним, иначе маска вернула бы знак на место
+    if(e.inputType && e.inputType.startsWith('delete') && pd !== null && d === pd) d = d.slice(0, -1);
+    while(d.length && !ok(d.slice(0, Math.min(d.length, 2)))) d = d.slice(0, -1);   // недопустимый код — не принимаем
+    d = d.slice(0, 9);
+    inp.value = prev = d.length ? fmt(d) : '+375 ';
+  });
+}
+
+function pickMany(btn, opts, sel, onChange, ph){
+  if(!btn) return;
+  let ul = null;
+  const label = () => { const a = opts.filter(o=>sel.has(o));
+    btn.innerHTML = `<span>${a.length ? a.map(esc).join('; ') : esc(ph)}</span><svg viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>`;
+    btn.classList.toggle('ph', !a.length); };
+  const draw = () => { ul.innerHTML = opts.map((o, i) => `<li role="option" data-i="${i}"${sel.has(o) ? ' class="sel" aria-selected="true"' : ' aria-selected="false"'}>${esc(o)}</li>`).join(''); };
+  const place = () => { const r = btn.getBoundingClientRect(), h = ul.offsetHeight, below = innerHeight - r.bottom - 8;
+    const up = below < h && r.top - 8 > below;
+    ul.classList.toggle('up', up);
+    ul.style.left = Math.max(8, Math.min(r.left, innerWidth - ul.offsetWidth - 8)) + 'px';
+    ul.style.top = (up ? Math.max(8, r.top - h - 4) : r.bottom + 4) + 'px'; };
+  const away = e => { if(e.type === 'scroll' && ul && ul.contains(e.target)) return;
+    if(e.type === 'pointerdown' && (btn.contains(e.target) || (ul && ul.contains(e.target)))) return;
+    if(e.type === 'keydown' && e.key !== 'Escape') return; close(); };
+  const close = () => { if(!ul) return; const u = ul; ul = null;
+    btn.parentElement.classList.remove('open'); btn.setAttribute('aria-expanded', 'false');
+    u.classList.add('out'); setTimeout(() => u.remove(), reduced ? 0 : 120);
+    ['pointerdown', 'scroll', 'keydown'].forEach(t => removeEventListener(t, away, true)); removeEventListener('resize', away); };
+  const open = () => {
+    ul = document.createElement('ul'); ul.className = 'dd-l'; ul.setAttribute('role', 'listbox'); ul.setAttribute('aria-multiselectable', 'true');
+    draw(); ul.style.minWidth = btn.offsetWidth + 'px'; ul.style.maxWidth = Math.max(btn.offsetWidth, 280) + 'px';
+    ul.onclick = e => { const li = e.target.closest('li'); if(!li) return; const o = opts[+li.dataset.i];
+      sel.has(o) ? sel.delete(o) : sel.add(o); draw(); label(); onChange([...sel]); };
+    document.body.append(ul); place();
+    btn.parentElement.classList.add('open'); btn.setAttribute('aria-expanded', 'true');
+    ['pointerdown', 'scroll', 'keydown'].forEach(t => addEventListener(t, away, true)); addEventListener('resize', away); };
+  btn.onclick = () => ul ? close() : open();
+  label();
+}
+/* глазик у полей пароля: показать / скрыть введённое */
+const EYE = '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.9 8.3 2 12 2 12s3.6 7 10 7a9.9 9.9 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+function eyes(root){
+  root.querySelectorAll('input[type=password]').forEach(i => {
+    if(i.parentNode.classList.contains('pw')) return;
+    const w = document.createElement('div'); w.className = 'pw'; i.before(w); w.append(i);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pw-eye'; b.setAttribute('aria-label', 'Показать пароль'); b.innerHTML = EYE;
+    b.onclick = () => { const show = i.type === 'password'; i.type = show ? 'text' : 'password';
+      b.innerHTML = show ? EYE_OFF : EYE; b.setAttribute('aria-label', show ? 'Скрыть пароль' : 'Показать пароль'); i.focus(); };
+    w.append(b);
+  });
 }
 
 function filterPanel(list, f, sc){
@@ -2776,14 +2862,17 @@ function pageHelp(params){
           <input class="hp" id="h-web" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
           <div class="ferr" id="h-err"></div>
           <button class="btn pri" type="submit" style="width:100%">Отправить заявку</button>
-          <p class="note">Нажимая «Отправить», вы соглашаетесь, что мы свяжемся с вами по указанным контактам.</p>
+          <p class="note">Нажимая «Отправить», вы соглашаетесь на обработку персональных данных в соответствии с <a href="#/privacy" target="_blank" rel="noopener">политикой конфиденциальности</a>.</p>
         </form>
       </aside>
     </div></div>`;
+  dd($('#h-svc'));
+  phoneMask($('#h-phone'));
   $('#hf').addEventListener('submit', e=>{
     e.preventDefault();
     const name = $('#h-name').value.trim(), phone = $('#h-phone').value.replace(/\D/g,''), mail = $('#h-mail').value.trim();
-    const err = !name ? 'Укажите имя' : phone.length < 9 ? 'Проверьте номер телефона' : (mail && !/^\S+@\S+\.\S+$/.test(mail)) ? 'Проверьте email' : '';
+    const by = $('#h-phone').value.startsWith('+375');   // белорусский номер — полностью: +375 и 9 цифр
+    const err = !name ? 'Укажите имя' : (by ? phone.length !== 12 : phone.length < 7) ? 'Проверьте номер телефона' : (mail && !/^\S+@\S+\.\S+$/.test(mail)) ? 'Проверьте email' : '';
     $('#h-err').textContent = err;
     if(err) return;
     const btn = $('#hf button[type=submit]'), lotv = $('#h-lot').value.trim(), ph = $('#h-phone').value.trim();
@@ -3288,7 +3377,7 @@ const AUTH_ERR = [
   [/invalid_credentials|invalid login credentials/i, 'Неверная почта или пароль'],
   [/email_not_confirmed|email not confirmed/i, 'Почта ещё не подтверждена'],
   [/user_already_exists|already registered/i, 'Эта почта уже зарегистрирована. Войдите или восстановите пароль'],
-  [/weak_password|password should/i, 'Слишком простой пароль: нужно не меньше 8 символов'],
+  [/weak_password|password should/i, 'Слишком короткий пароль: нужно не меньше 6 символов'],
   [/otp_expired|has expired or is invalid|invalid otp/i, 'Код неверный или устарел. Запросите новый'],
   [/after (\d+) second/i, raw => 'Повторно отправить код можно через ' + raw.match(/after (\d+) second/i)[1] + ' с'],
   [/over_email_send_rate_limit|email rate limit/i, 'Слишком много писем за час. Попробуйте позже'],
@@ -3525,6 +3614,7 @@ function pageLogin(params){
       <button class="btn pri" type="submit" style="width:100%">Войти</button></form>
       <div class="lrow"><a href="${href('reset')}">Забыли пароль?</a><a href="${href('up')}">Зарегистрироваться</a></div>
       <p class="note">Посмотреть кабинет без регистрации: гостевой вход - логин <b>guest</b>, пароль <b>guest</b>.</p>`;
+    eyes(C);
     $('#u-login').focus();
     $('#uf').addEventListener('submit', async e=>{
       e.preventDefault(); $('#u-err').textContent = '';
@@ -3551,40 +3641,54 @@ function pageLogin(params){
 
   // регистрация
   const viewUp = () => {
+    // обязательные: имя, почта, пароль (от 6 символов, любой), согласие на обработку данных — помечены звёздочкой (15.10)
+    const R = '<span class="req" aria-hidden="true">*</span>';
     C.innerHTML = `${tabs('up')}<form id="uf" autocomplete="on" novalidate>
-      <div class="fg"><label for="r-name">Имя</label><input id="r-name" autocomplete="name" required></div>
-      <div class="fg"><label for="r-mail">Почта</label><input id="r-mail" type="email" autocomplete="email" required></div>
-      <div class="fg"><label for="r-pass">Пароль</label><input id="r-pass" type="password" autocomplete="new-password" minlength="8" required>
-        <div class="fhint">Не короче 8 символов</div></div>
-      <div class="fg"><label for="r-pass2">Пароль ещё раз</label><input id="r-pass2" type="password" autocomplete="new-password" required>
-        <div class="fhint" id="r-match"></div></div>
-      <div class="fg"><label for="r-phone">Телефон <span class="opt">- необязательно</span></label><input id="r-phone" type="tel" autocomplete="tel" placeholder="+375 (29) 000-00-00"></div>
-      <div class="fg"><label for="r-purp">Для чего вам МониТорг</label><select id="r-purp" required>
-        <option value="">Выберите…</option>${regPurposes().map(p=>`<option>${esc(p)}</option>`).join('')}<option>${OTHER}</option></select></div>
+      <div class="fg" data-f="name"><label for="r-name">Имя${R}</label><input id="r-name" autocomplete="name" aria-required="true"></div>
+      <div class="fg" data-f="mail"><label for="r-mail">Почта${R}</label><input id="r-mail" type="email" autocomplete="email" aria-required="true"></div>
+      <div class="fg" data-f="pass"><label for="r-pass">Пароль${R}</label><input id="r-pass" type="password" autocomplete="new-password" aria-required="true">
+        <div class="fhint">Не короче 6 символов</div></div>
+      <div class="fg"><label id="r-purp-l">Для чего вам МониТорг</label><div class="dd"><button type="button" class="dd-b" id="r-purp" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="r-purp-l"></button></div></div>
       <div class="fg" id="r-note-w" hidden><label for="r-note">Уточните</label><input id="r-note" maxlength="300" placeholder="Коротко, для чего вам сервис"></div>
-      <div class="fg"><label class="chk"><input type="checkbox" id="r-ok"> <span>Соглашаюсь на обработку персональных данных в соответствии
-        с <a href="#/privacy" target="_blank" rel="noopener">политикой конфиденциальности</a></span></label></div>
-      <div class="fg"><label class="chk"><input type="checkbox" id="r-news"> <span>Получать подборки лотов и новости от МониТорга на почту <span class="opt">- необязательно</span></span></label></div>
+      <div class="fg" data-f="ok"><label class="chk"><input type="checkbox" id="r-ok" aria-required="true"> <span>Согласен на обработку персональных данных в соответствии
+        с <a href="#/privacy" target="_blank" rel="noopener">политикой конфиденциальности</a>${R}</span></label></div>
+      <div class="fg"><label class="chk"><input type="checkbox" id="r-news"> <span>Получать подборки лотов и новости от МониТорга на почту</span></label></div>
       <div class="ferr" id="u-err"></div>
-      <button class="btn pri" type="submit" style="width:100%">Зарегистрироваться</button></form>
+      <button class="btn pri off" type="submit" style="width:100%">Зарегистрироваться</button>
+      <p class="reqnote"><span style="color:var(--brand)">*</span> - обязательные поля</p></form>
       <div class="lrow"><span class="muted">Уже есть кабинет?</span><a href="${href('in')}">Войти</a></div>`;
+    eyes(C);
     $('#r-name').focus();
-    const match = () => { const a = $('#r-pass').value, b2 = $('#r-pass2').value, m = $('#r-match');
-      m.textContent = !b2 ? '' : a === b2 ? 'Пароли совпадают' : 'Пароли не совпадают'; m.className = 'fhint ' + (!b2 ? '' : a === b2 ? 'ok' : 'bad'); };
-    $('#r-pass').oninput = match; $('#r-pass2').oninput = match;
-    $('#r-purp').onchange = () => { $('#r-note-w').hidden = $('#r-purp').value !== OTHER; };
+    const purp = new Set();
+    pickMany($('#r-purp'), [...regPurposes(), OTHER], purp, a => { $('#r-note-w').hidden = !a.includes(OTHER); }, 'Выберите - можно несколько');
+    const v = id => $('#' + id).value.trim();
+    // что не так с обязательными полями: { поле: текст ошибки }
+    const check = () => { const e = {}, email = v('r-mail').toLowerCase();
+      if(!v('r-name')) e.name = 1;
+      if(!email) e.mail = 1; else if(!MAIL_RE.test(email)) e.mail = 'Проверьте адрес почты';
+      const pl = $('#r-pass').value.length; if(!pl) e.pass = 1; else if(pl < 6) e.pass = 'Пароль - не короче 6 символов';
+      if(!$('#r-ok').checked) e.ok = 1;
+      return e; };
+    const btnState = () => $('#uf button[type=submit]').classList.toggle('off', Object.keys(check()).length > 0);
+    // поле исправили — красная рамка уходит сразу
+    const live = () => { const e = check(); C.querySelectorAll('.fg.bad').forEach(g=>{ if(!e[g.dataset.f]) g.classList.remove('bad'); });
+      if(!C.querySelector('.fg.bad')) $('#u-err').textContent = ''; btnState(); };
+    $('#uf').addEventListener('input', live); $('#uf').addEventListener('change', live);
     $('#uf').addEventListener('submit', async e=>{
       e.preventDefault();
-      const v = id => $('#' + id).value.trim(), name = v('r-name'), email = v('r-mail').toLowerCase(), pass = $('#r-pass').value,
-        phone = v('r-phone'), purpose = $('#r-purp').value, note = purpose === OTHER ? v('r-note') : '';
-      const err = !name ? 'Укажите имя' : !MAIL_RE.test(email) ? 'Проверьте адрес почты' : pass.length < 8 ? 'Пароль - не короче 8 символов'
-        : pass !== $('#r-pass2').value ? 'Пароли не совпадают' : (phone && phone.replace(/\D/g,'').length < 9) ? 'Проверьте номер телефона'
-        : !purpose ? 'Выберите, для чего вам МониТорг' : (purpose === OTHER && !note) ? 'Уточните, для чего вам МониТорг'
-        : !$('#r-ok').checked ? 'Нужно согласие на обработку персональных данных' : '';
-      $('#u-err').textContent = err; if(err) return;
-      const b = $('#uf button'); busy(b, true, 'Регистрируем…');
+      const er = check(), keys = Object.keys(er);
+      C.querySelectorAll('[data-f]').forEach(g=>g.classList.toggle('bad', !!er[g.dataset.f]));
+      if(keys.length){
+        // все пустые обязательные — общей фразой; заполнено, но неверно (почта, короткий пароль) — своей
+        const msg = keys.map(k=>er[k]).filter(x=>x!==1);
+        $('#u-err').textContent = keys.some(k=>er[k]===1) ? 'Пожалуйста, заполните обязательные поля' + (msg.length ? '. ' + msg.join('. ') : '') : msg.join('. ');
+        C.querySelector('.fg.bad input').focus(); return; }
+      $('#u-err').textContent = '';
+      const name = v('r-name'), email = v('r-mail').toLowerCase(), pass = $('#r-pass').value;
+      const list = [...regPurposes(), OTHER].filter(o=>purp.has(o)), purpose = list.join('; '), note = purp.has(OTHER) ? v('r-note') : '';
+      const b = $('#uf button[type=submit]'); busy(b, true, 'Регистрируем…');
       try{
-        const j = await uauth('signup', { email, password:pass, data:{ name, phone, purpose, purpose_note:note, consent:true, news:$('#r-news').checked } });
+        const j = await uauth('signup', { email, password:pass, data:{ name, phone:'', purpose, purpose_note:note, consent:true, news:$('#r-news').checked } });
         if(j.access_token){ usess(j); utok(''); await go(); return; }        // подтверждение почты выключено
         const u = j.user || j;
         if(Array.isArray(u.identities) && !u.identities.length){ busy(b, false, 'Зарегистрироваться');
@@ -3617,11 +3721,11 @@ function pageLogin(params){
       <p style="margin-top:0">${esc(lead)} ${rec ? 'на почту' : 'на'} <b>${esc(email)}</b>. Если письма нет в разделе «Входящие» - загляните в «Спам».</p>
       <form id="uf" novalidate><div class="fg"><label for="c-code">Код из письма</label>
         <input id="c-code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required></div>
-      ${rec ? `<div class="fg"><label for="c-pass">Новый пароль</label><input id="c-pass" type="password" autocomplete="new-password" required><div class="fhint">Не короче 8 символов</div></div>
+      ${rec ? `<div class="fg"><label for="c-pass">Новый пароль</label><input id="c-pass" type="password" autocomplete="new-password" required><div class="fhint">Не короче 6 символов</div></div>
         <div class="fg"><label for="c-pass2">Новый пароль ещё раз</label><input id="c-pass2" type="password" autocomplete="new-password" required></div>` : ''}
       <div class="ferr" id="u-err"></div><button class="btn pri" type="submit" style="width:100%">${rec ? 'Сменить пароль и войти' : 'Подтвердить'}</button></form>
       <div class="lrow"><button class="lnk" type="button" id="c-again" style="margin:0">Отправить код ещё раз</button><a href="${href(rec ? 'reset' : 'up')}">Другая почта</a></div>`;
-    $('#c-code').focus();
+    eyes(C); $('#c-code').focus();
     const again = $('#c-again'); let t = 0;
     const wait = () => { t = 60; again.disabled = true; const tick = () => { if(!again.isConnected) return;
       if(--t <= 0){ again.disabled = false; again.textContent = 'Отправить код ещё раз'; } else { again.textContent = `Отправить ещё раз через ${t} с`; setTimeout(tick, 1000); } }; tick(); };
@@ -3632,7 +3736,7 @@ function pageLogin(params){
       e.preventDefault(); const code = $('#c-code').value.replace(/\s/g,''), b = $('#uf button');
       if(!/^\d{6,10}$/.test(code)){ $('#u-err').textContent = 'Введите код из письма'; return; }
       if(rec){ const p = $('#c-pass').value;
-        const er = p.length < 8 ? 'Пароль - не короче 8 символов' : p !== $('#c-pass2').value ? 'Пароли не совпадают' : '';
+        const er = p.length < 6 ? 'Пароль - не короче 6 символов' : p !== $('#c-pass2').value ? 'Пароли не совпадают' : '';
         if(er){ $('#u-err').textContent = er; return; } }
       busy(b, true);
       try{
@@ -3989,6 +4093,7 @@ async function meProfile(M){
       ${ME.auth ? '<div class="fg"><label for="p-new2">Новый пароль ещё раз</label><input id="p-new2" type="password" autocomplete="new-password"></div>' : ''}</div>
       ${ME.auth ? `<p class="muted">Забыли текущий? <a href="#" id="p-forgot">Сменить пароль по коду из письма</a></p>` : ''}
       <button class="btn" type="button" id="p-pw">Сменить пароль</button>`}</div>`;
+  eyes(M);
   if($('#p-save')) $('#p-save').onclick = async () => { try{ await urpc('user_update', { p:Object.assign({ name:$('#p-name').value, phone:$('#p-phone').value, telegram:$('#p-tg').value }, ME.auth ? {} : { email:$('#p-mail').value }) }); await uload(); utoast('Сохранено'); }catch(e){ utoast(e.message, true); } };
   if($('#p-reg')) $('#p-reg').onclick = async e => { e.preventDefault(); await ulogout(); location.hash = '#/login?mode=up'; };
   if($('#p-forgot')) $('#p-forgot').onclick = async e => { e.preventDefault(); const em = ME.email; await ulogout(); location.hash = '#/login?mode=reset'; setTimeout(()=>{ const i = $('#f-mail'); if(i) i.value = em; }, 50); };
@@ -4001,7 +4106,7 @@ async function meProfile(M){
   // кабинет по почте: старый пароль проверяем входом, новый задаём в Supabase; гостевой и старые входы — как было
   if(pw) pw.onclick = async () => { try{
     if(ME.auth){ const n = $('#p-new').value;
-      if(n.length < 8) throw new Error('Новый пароль - не короче 8 символов');
+      if(n.length < 6) throw new Error('Новый пароль - не короче 6 символов');
       if(n !== $('#p-new2').value) throw new Error('Новые пароли не совпадают');
       let j; try{ j = await uauth('token?grant_type=password', { email:ME.email, password:$('#p-old').value }); }
       catch(e){ throw new Error(e.code === 'invalid_credentials' || e.code === 'invalid_grant' ? 'Текущий пароль указан неверно' : e.message); }
