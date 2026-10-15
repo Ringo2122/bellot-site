@@ -2,7 +2,7 @@
 # encoding: utf-8
 #
 # Заливка кода в Ringo2122/monitorg одним коммитом через GitHub API (git на машине нет).
-#   MSG="…" ruby tools/push.rb   код: app/ (с app/noph/, app/img/), .github/workflows/, tools/, supabase/, README.md — data/ не трогает.
+#   MSG="…" ruby tools/push.rb   код: app/ (с app/noph/, app/img/, app/fonts/, app/vendor/), .github/workflows/, tools/, supabase/, README.md — data/ не трогает.
 #   Файл, удалённый здесь из этих папок, удаляется и в репозитории.
 # Память (data/) ведёт робот. Заливать её отсюда поверх — значит стереть то, что он собрал.
 require 'json'
@@ -34,7 +34,7 @@ base = api('GET', "repos/#{REPO}/git/commits/#{parent}")['tree']['sha']
 # только файлы (в списке есть и папки: «app/img» — не файл, удалять его как файл нельзя)
 remote = api('GET', "repos/#{REPO}/git/trees/#{base}?recursive=1")['tree'].select { |t| t['type'] == 'blob' }.map { |t| t['path'] }
 
-files = Dir.chdir(ROOT) { Dir['app/*', 'app/noph/*', 'app/img/*', 'app/img/news/*', '.github/workflows/*', 'tools/*', 'supabase/*', 'README.md'].select { |f| File.file?(f) } }
+files = Dir.chdir(ROOT) { Dir['app/*', 'app/noph/*', 'app/img/*', 'app/img/news/*', 'app/fonts/**/*', 'app/vendor/**/*', '.github/workflows/*', 'tools/*', 'supabase/*', 'README.md'].select { |f| File.file?(f) } }
 
 tree = files.map do |f|
   b = api('POST', "repos/#{REPO}/git/blobs",
