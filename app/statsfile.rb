@@ -27,8 +27,9 @@ module StatsFile
   SITE = ENV['STATS_SITE'] || 'https://monitorg.by'   # STATS_SITE — для проверки на локальной копии
   VER = 1
   LOT_COLS = %w[id name url platform section price price0 req_to first_seen closed why status published hidden_why region
-                location market reasons photo area_num debtor result].freeze   # = BLStats.FIELDS в stats.js
-  SALE_COLS = %w[key at id platform section region location name debtor area_num url st start price bids users].freeze
+                location market reasons photo area_num debtor result city].freeze   # = BLStats.FIELDS в stats.js
+  # city — город/район (regions.rb), rnd — круг торгов объекта, s1 — начальная цена 1-го круга (similar.rb)
+  SALE_COLS = %w[key at id platform section region location name debtor area_num url st start price bids users city rnd s1].freeze
   FULL_EVERY = 7 * 86_400   # копию итогов сверяем с базой целиком раз в неделю
 
   def cols(rows, cols) { 'c' => cols, 'r' => rows.map { |x| cols.map { |k| x[k] } } } end

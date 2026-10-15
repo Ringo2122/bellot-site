@@ -843,30 +843,33 @@ async function loadAll(path, o){ const out = []; for(let off = 0; ; off += 1000)
 // данные аналитики держим 5 минут: смена фильтра не перекачивает тысячи лотов
 let STATS_DATA = null;
 async function pStats(params){
-  const f = Object.fromEntries(['per','sec','plat','reg','kind'].map(k=>[k, params.get(k) || '']));
+  const f = Object.fromEntries(['tab','per','sec','plat','reg','city','kind'].map(k=>[k, params.get(k) || '']));
   if(!STATS_DATA || Date.now() - STATS_DATA.at > 300000){
     // догружаем, даже если ушли со страницы, — в следующий раз откроется сразу; рисуем, только если ещё здесь
     const n = RN, since = new Date(Date.now() - 365*86400000).toISOString(), K = { keep:true };
     // лоты и итоги — из зашифрованного файла на сайте (не тратит трафик базы); не открылся — из базы, как раньше
     const fromFile = BLStats.load(() => rpc('stats_key', {}, K)).catch(e => { console.warn('аналитика: файл не открылся -', e); return null; });
-    const [f, daily, leads, bots] = await Promise.all([ fromFile,
+    const [f, daily, leads, bots, runs, misses] = await Promise.all([ fromFile,
       api('daily?select=day,stats&order=day.asc&limit=400', K),
       api('leads?select=created_at,status&limit=5000', K),
-      api(`bot_runs?select=at,sent,stats&at=gte.${since}&limit=20000`, K) ]);
+      api(`bot_runs?select=at,sent,stats&at=gte.${since}&limit=20000`, K),
+      // вкладка «Служебное»: какие списки площадок не прочитались в последних обходах, поиски без результатов
+      api('runs?kind=eq.collect&finished_at=not.is.null&select=at,unread:stats->update->unread&order=at.desc&limit=40', K).catch(()=>[]),
+      api('search_misses?select=q,n,last_at&order=n.desc&limit=200', K).catch(()=>[]) ]);
     const [lots, sales] = f ? [f.lots, f.sales]
       : await Promise.all([ loadAll(`lots?select=${BLStats.FIELDS}&order=key`, K), loadAll('sales?select=*&order=key,at', K) ]);
-    STATS_DATA = { at:Date.now(), lots, daily, leads, bots, sales, src: f ? 'file' : 'db' };
+    STATS_DATA = { at:Date.now(), lots, daily, leads, bots, sales, runs, misses, src: f ? 'file' : 'db' };
     if(n !== RN) return;
   }
-  const { lots, daily, leads, bots, sales } = STATS_DATA;
+  const { lots, daily, leads, bots, sales, runs, misses } = STATS_DATA;
   await loadSettings();
-  const cab = new Set((SET.cab_stats||{}).blocks || BLStats.DEFAULT_CAB);
+  const cab = new Set(((SET.cab_stats||{}).blocks || BLStats.DEFAULT_CAB).map(k=>BLStats.OLD[k] || k));   // старые id блоков — в новые (15.10)
   V().innerHTML = `<h1>Аналитика</h1><p class="lede">Рынок - активные лоты всех площадок без дублей и скрытых вами.</p><div id="an"></div>
     <div class="panel"><h2>Что видят пользователи в личном кабинете</h2>
-      <p class="muted" style="margin-top:0">Отметьте блоки, которые показывать в разделе «Аналитика» кабинета. Действует сразу, публиковать не нужно. «Качество данных» и «Заявки и бот» - только для админки.</p>
+      <p class="muted" style="margin-top:0">Отметьте блоки, которые показывать в разделе «Аналитика» кабинета. Действует сразу, публиковать не нужно. Вкладка «Служебное» - только для админки.</p>
       <div class="grid2">${BLStats.BLOCKS.filter(([k])=>!BLStats.ADMIN_ONLY.includes(k)).map(([k,t])=>`<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-cab="${k}"${cab.has(k)?' checked':''}> ${t}</label>`).join('')}</div>
       <div class="saverow"><button class="btn pri" id="cabsave">Сохранить</button></div></div>`;
-  BLStats.render($('#an'), { lots, daily, leads, bots, sales, f, admin:true, site:'../',
+  BLStats.render($('#an'), { lots, daily, leads, bots, sales, runs, misses, f, admin:true, site:'../',
     href:x => '#stats?' + new URLSearchParams(Object.entries(x).filter(([,v])=>v)).toString() });
   $('#cabsave').onclick = async () => {
     const blocks = [...V().querySelectorAll('[data-cab]:checked')].map(i=>i.dataset.cab);

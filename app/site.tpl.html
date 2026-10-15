@@ -1513,6 +1513,19 @@ function searchLots(list, q){
   if(!res.length) for(const l of list){ const d = descOf(l); if(d && words.every(w=>hasW(primOf(l)[1], w) || hasW(d, w))) res.push([-1, l]); }
   return res.sort((a,b)=>b[0]-a[0]).map(x=>x[1]);
 }
+// поиск по каталогу, не нашедший ни одного активного лота, — в базу (rpc search_miss): в админке — список того, что чинить
+// в поиске (Аналитика → Служебное). Только сам запрос, без адреса и браузера; через 3 с, если запрос не меняли (не на каждую букву)
+const MISS = new Set();
+function logMiss(q){
+  q = String(q||'').trim().toLowerCase().slice(0, 100);
+  if(q.length < 3 || MISS.has(q) || !(CFG.sb && CFG.sb.url) || /Googlebot|bingbot|YandexBot|crawler|spider/i.test(navigator.userAgent)) return;
+  setTimeout(() => {
+    if(String(FSTATE.q||'').trim().toLowerCase() !== q || !SRCH || MISS.has(q) || searchLots(DATA, q).length) return;
+    MISS.add(q);
+    fetch(CFG.sb.url + '/rest/v1/rpc/search_miss', { method:'POST', keepalive:true,
+      headers:{ apikey:CFG.sb.key, Authorization:'Bearer ' + CFG.sb.key, 'Content-Type':'application/json' }, body:JSON.stringify({ p_q:q }) }).catch(()=>{});
+  }, 3000);
+}
 function findLots(q, n){
   const r = searchLots(DATA, q);
   return {total:r.length, top:r.slice(0,n)};
@@ -2073,6 +2086,7 @@ function pageCatalog(sc, params){
     $('#f-open').onclick = () => { $('#fp').classList.add('open'); $('#ov').classList.add('open'); };
     let hint = '';
     if(FSTATE.q && !SRCH) loadSrch().then(()=>{ if($('#res')) render(true); });
+    if(FSTATE.q && !arch) logMiss(FSTATE.q);
     if(!arch && FSTATE.q){
       // по свежему архиву, если весь ещё не загружен: ради подсказки 2 МБ не грузим
       const ar = ARCH || ARCH1;
@@ -3935,17 +3949,18 @@ async function meStats(M, arg, params){
     const blocks = (cfg[0] && cfg[0].v && cfg[0].v.blocks) || BLStats.DEFAULT_CAB;
     // лоты и итоги — из зашифрованного файла на сайте; не открылся — из базы, как раньше (и сообщение нам в Telegram)
     let out, sales;
-    try{ const f = await BLStats.load(() => urpc('stats_key')); out = f.lots; sales = blocks.includes('sales') ? f.sales : []; }
+    const needSales = blocks.some(b=>['sales','results','months','rounds','chance','platstat'].includes(b));
+    try{ const f = await BLStats.load(() => urpc('stats_key')); out = f.lots; sales = f.sales; }
     catch(e){
       if(window.reportErr) reportErr('Аналитика: файл не открылся, данные взяты из базы - ' + (e && e.message || e), 'аналитика');
       out = []; for(let off = 0; ; off += 1000){ const r = await uapi(`lots?select=${BLStats.FIELDS}&order=key&limit=1000&offset=${off}`); out.push(...r); if(r.length < 1000) break; }
-      sales = []; if(blocks.includes('sales')) for(let off = 0; ; off += 1000){ const r = await uapi(`sales?select=*&order=key,at&limit=1000&offset=${off}`); sales.push(...r); if(r.length < 1000) break; }
+      sales = []; if(needSales) for(let off = 0; ; off += 1000){ const r = await uapi(`sales?select=*&order=key,at&limit=1000&offset=${off}`); sales.push(...r); if(r.length < 1000) break; }
     }
     ME_STATS = { at:Date.now(), out, daily, blocks, sales };
   }
   const { out, daily, blocks, sales } = ME_STATS;
   M.innerHTML = '<h1>Аналитика рынка</h1><p class="lede">Торги по имуществу должников со всех площадок, которые собирает МониТорг.</p><div id="mst"></div>';
-  BLStats.render($('#mst'), { lots:out, daily, sales, blocks, f:Object.fromEntries(['per','sec','plat','reg','kind'].map(k=>[k, params.get(k) || ''])),
+  BLStats.render($('#mst'), { lots:out, daily, sales, blocks, f:Object.fromEntries(['tab','per','sec','plat','reg','city','kind'].map(k=>[k, params.get(k) || ''])),
     href:x => '#/me/stats?' + new URLSearchParams(Object.entries(x).filter(([,v])=>v)).toString() });
 }
 

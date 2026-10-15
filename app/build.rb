@@ -565,9 +565,15 @@ begin
   # прежний файл — в новую версию сайта: тот, кто получил его имя перед выкладкой, его найдёт
   File.binwrite(File.join(OUT, 'st', "#{ST_PREV['name']}.bin"), ST_PREV['bytes']) if ST_PREV
   all_sales = (ADM['sales'] + sales).each_with_object({}) { |x, h| h["#{x['key']}|#{x['at'].to_i}"] = x }.values   # как в базе после sync.rb
+  # для аналитики: город по адресу и круг торгов объекта — в копию итогов не пишем (сверка с базой — по числу строк)
+  rnd = Similar.rounds
+  file_sales = all_sales.map do |x|
+    r = rnd["#{x['key']}|#{x['at'].to_i}"]
+    x.merge('city' => place_of(x['location'], x['region']), 'rnd' => r && r[0], 's1' => r && r[1])
+  end
   data = { 'v' => StatsFile::VER, 'at' => now, 'full_at' => sales_full_at,
            'lots' => StatsFile.cols(mirror.sort_by { |l| l['key'] }, StatsFile::LOT_COLS),
-           'sales' => StatsFile.cols(all_sales.sort_by { |x| [x['key'], x['at'].to_i] }, StatsFile::SALE_COLS) }
+           'sales' => StatsFile.cols(file_sales.sort_by { |x| [x['key'], x['at'].to_i] }, StatsFile::SALE_COLS) }
   bytes, key = StatsFile.seal(data)
   StatsFile.open(bytes, key)   # проверка: расшифровывается
   sname = SecureRandom.hex(16)

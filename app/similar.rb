@@ -52,6 +52,11 @@ module Similar
 
   # lots — память после правок админки; shown — key → id лотов, которые есть на сайте;
   # sales — строки таблицы sales; rows — ->(key) { строки подробностей }
+  # круг торгов для аналитики (15.10): «ключ|дата» завершённых торгов → [номер круга у объекта, начальная цена 1-го круга]
+  def rounds
+    @rounds || {}
+  end
+
   def run(lots, shown, sales, rows)
     by_key = {}
     inf = {}
@@ -95,6 +100,14 @@ module Similar
       end
     end
     extra.each { |k, xs| xs.each { |x| auctions[k] << ent.(k, x.merge('closed' => x['at']), x, x['st']) } }
+
+    # ── круги: завершённые торги одного объекта по дате — 1-й, 2-й, 3-й… (учёт — с октября 2025, раньше архивов нет) ──
+    @rounds = {}
+    groups.each_value do |ks|
+      fin = ks.flat_map { |m| auctions[m].select { |a| FINAL.include?(a['st']) }.map { |a| [m, a] } }.sort_by { |_, a| a['d'] }
+      s1 = fin.first && fin.first[1]['s']
+      fin.each_with_index { |(m, a), i| @rounds["#{m}|#{a['d']}"] = [i + 1, s1] }
+    end
 
     # ── пул для сравнения: только завершённые торги ──
     idx = Hash.new { |h, k| h[k] = [] }
