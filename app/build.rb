@@ -516,7 +516,10 @@ File.write(File.join(OUT, '.nojekyll'), '')
 adm = File.read(File.join(__dir__, 'admin.html'), encoding: 'UTF-8')
 FileUtils.cp(File.join(__dir__, 'stats.js'), File.join(OUT, 'stats.js'))   # аналитика: общая для админки и кабинета
 FileUtils.cp_r(File.join(__dir__, 'noph'), File.join(OUT, 'noph'))   # заглушки «нет фото» по разделам (tools/noph.rb)
-FileUtils.cp_r(File.join(__dir__, 'img'), File.join(OUT, 'img'))     # картинки сайта: 3D-значки «Почему МониТорг» (Fluent Emoji, MIT)
+FileUtils.cp_r(File.join(__dir__, 'img'), File.join(OUT, 'img'))
+# шрифты и библиотека карты — со своего сайта, не с Google и cdnjs (15.10, политика обработки ПД)
+FileUtils.cp_r(File.join(__dir__, 'fonts'), File.join(OUT, 'fonts'))
+FileUtils.cp_r(File.join(__dir__, 'vendor'), File.join(OUT, 'vendor'))     # картинки сайта: 3D-значки «Почему МониТорг» (Fluent Emoji, MIT)
 # значок вкладки: без него браузер просит /favicon.ico и получает 404 (13.10 — сигнал мониторинга после переезда на monitorg.by)
 %w[favicon.svg favicon.ico apple-touch-icon.png admin-icon.svg admin-icon.png admin-icon-180.png logo-mark.png logo-mark-dark.png].each { |f| FileUtils.cp(File.join(__dir__, f), File.join(OUT, f)) }
 File.write(File.join(OUT, 'admin', 'index.html'),

@@ -2,12 +2,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<!-- Политика безопасности: скрипты — свои и карта Leaflet с cdnjs, запросы — только в базу Supabase; фото площадок — с их сайтов -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'">
+<!-- Политика безопасности: скрипты, стили и шрифты — только свои (15.10: шрифты и карта Leaflet — с нашего сайта, не с Google и cdnjs:
+     браузер посетителя не отдаёт IP-адрес серверам в США — политика обработки ПД), запросы — только в базу Supabase; фото площадок — с их сайтов -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'">
 <title>__TITLE__</title>
 <meta name="description" content="__DESC__">
 <meta property="og:type" content="website"><meta property="og:site_name" content="__BRAND__"><meta property="og:title" content="__TITLE__"><meta property="og:description" content="__SHORT__">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Onest:wght@600;700;800&family=PT+Mono&display=swap">
+<link rel="stylesheet" href="/fonts/fonts.css?v=1">
 <link rel="icon" href="favicon.ico?v=3" sizes="32x32"><link rel="icon" href="favicon.svg?v=3" type="image/svg+xml"><link rel="apple-touch-icon" href="apple-touch-icon.png?v=3">
 <script>
 /* Общий стиль из админки («Главная страница» → «Общий стиль»): фирменный цвет, скругление углов, шрифт заголовков.
@@ -39,7 +40,7 @@ function applyTheme(t){
   const f = (t || {}).font; let l = document.getElementById('theme-f');
   if(HEAD_FONTS[f] && f !== 'Onest'){
     if(!l){ l = document.createElement('link'); l.id = 'theme-f'; l.rel = 'stylesheet'; document.head.appendChild(l); }
-    l.href = 'https://fonts.googleapis.com/css2?family=' + HEAD_FONTS[f] + ':wght@600;700;800&display=swap';
+    l.href = '/fonts/head-' + HEAD_FONTS[f].replace('+', '-').toLowerCase() + '.css?v=1';   // шрифты — с нашего сайта (app/fonts)
   } else if(l) l.remove();
 }
 applyTheme(window.THEME);
@@ -2446,12 +2447,12 @@ function histBlock(l, h){
 let LEAF = null;
 function loadLeaflet(){
   if(LEAF) return LEAF;
-  const base = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+  const base = '/vendor/leaflet/1.9.4/';   // с нашего сайта (15.10), файлы — те же, что на cdnjs: хеши ниже совпадают
   const put = (tag, attrs) => new Promise((res, rej)=>{ const e = document.createElement(tag); Object.assign(e, attrs); e.onload = res; e.onerror = rej; document.head.appendChild(e); });
-  // хеши — с cdnjs (api.cdnjs.com/libraries/leaflet/1.9.4?fields=sri): подменённый на CDN файл браузер не загрузит
-  LEAF = Promise.all([put('link', { rel:'stylesheet', href:base + 'leaflet.min.css', crossOrigin:'anonymous', referrerPolicy:'no-referrer',
+  // хеши — с cdnjs (api.cdnjs.com/libraries/leaflet/1.9.4?fields=sri): изменённый файл браузер не загрузит
+  LEAF = Promise.all([put('link', { rel:'stylesheet', href:base + 'leaflet.min.css',
       integrity:'sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==' }),
-    put('script', { src:base + 'leaflet.min.js', crossOrigin:'anonymous', referrerPolicy:'no-referrer',
+    put('script', { src:base + 'leaflet.min.js',
       integrity:'sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==' })])
     .then(()=>window.L).catch(e=>{ LEAF = null; throw e; });
   return LEAF;

@@ -55,6 +55,14 @@ if mirror && ENV['JOB_OK'] != 'false'
   end
 end
 
+# журнал ошибок у посетителей хранится 30 дней (политика обработки ПД, п. 3.8). report_error чистит так же, но только
+# когда приходит новая ошибка — без ошибок старые записи лежали бы сколько угодно
+begin
+  Sb.delete('client_errors', "at=lt.#{(Time.now.utc - 30 * 86_400).strftime('%Y-%m-%dT%H:%M:%SZ')}")
+rescue StandardError => e
+  warn "журнал ошибок сайта не почищен: #{e.message}"
+end
+
 # отчёт: итоги обхода по площадкам, итоги сборки, строки журнала с ошибками
 log = File.exist?(File.join(TMP, 'update.log')) ? File.read(File.join(TMP, 'update.log'), encoding: 'UTF-8') : ''
 bad = log.lines.select { |s| s =~ /в списке 0\b|ошибк|error|не разобран|не прочитан|не ответил|недоступ|подозрительно|aborted/i }
