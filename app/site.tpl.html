@@ -3605,7 +3605,7 @@ function pageLogin(params){
       e.preventDefault(); const email = $('#f-mail').value.trim().toLowerCase(), b = $('#uf button');
       if(!MAIL_RE.test(email)){ $('#u-err').textContent = 'Проверьте адрес почты'; return; }
       busy(b, true, 'Отправляем…');
-      try{ await uauth('recover', { email }); viewCode('recovery', email, 'Если эта почта зарегистрирована, мы отправили на неё код'); }
+      try{ await uauth('recover', { email }); viewCode('recovery', email, 'Мы отправили код для восстановления пароля'); }
       catch(err){ busy(b, false, 'Получить код'); fail(err); }
     });
   };
@@ -3614,7 +3614,7 @@ function pageLogin(params){
   const viewCode = (type, email, lead) => {
     const rec = type === 'recovery';
     C.innerHTML = `<h1>${rec ? 'Новый пароль' : 'Подтвердите почту'}</h1>
-      <p style="margin-top:0">${esc(lead)} на <b>${esc(email)}</b>. Письмо может идти пару минут - загляните и в «Спам».</p>
+      <p style="margin-top:0">${esc(lead)} ${rec ? 'на почту' : 'на'} <b>${esc(email)}</b>. Если письма нет в разделе «Входящие» - загляните в «Спам».</p>
       <form id="uf" novalidate><div class="fg"><label for="c-code">Код из письма</label>
         <input id="c-code" class="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required></div>
       ${rec ? `<div class="fg"><label for="c-pass">Новый пароль</label><input id="c-pass" type="password" autocomplete="new-password" required><div class="fhint">Не короче 8 символов</div></div>
