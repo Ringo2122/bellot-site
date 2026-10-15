@@ -415,5 +415,32 @@
 
   // Колонки копии каталога, нужные аналитике
   const FIELDS = 'id,name,url,platform,section,price,price0,req_to,first_seen,closed,why,status,published,hidden_why,region,location,market,reasons,photo,area_num,debtor,result';
-  window.BLStats = { render, BLOCKS, ADMIN_ONLY, FIELDS, DEFAULT_CAB: BLOCKS.map(b=>b[0]).filter(b=>!ADMIN_ONLY.includes(b) && b!=='sales') };
+  // Данные — зашифрованным файлом с сайта (app/statsfile.rb, 15.10): имя и ключ двух последних файлов даёт база
+  // только вошедшим (rpc stats_key). Новый не открылся — пробуем предыдущий; не открылся и он — ошибка,
+  // и вызывающий берёт данные из базы, как раньше. Так аналитика не тратит бесплатный трафик базы.
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const unpack = t => t.r.map(r => { const o = {}; t.c.forEach((k, i) => { o[k] = r[i]; }); return o; });
+  async function openFile(p){
+    const r = await fetch('/st/' + p.n + '.bin', { cache:'force-cache' });   // имя у каждой сборки новое — кэш не мешает
+    if(!r.ok) throw new Error('сайт ответил ' + r.status);
+    // файл: IV (16) + шифротекст AES-256-CBC + подпись HMAC-SHA256 (32); ключ — 64 байта: шифр и подпись
+    const buf = await r.arrayBuffer(), k = b64(p.k), n = buf.byteLength - 32;
+    if(n < 32) throw new Error('файл слишком короткий');
+    const mk = await crypto.subtle.importKey('raw', k.slice(32), { name:'HMAC', hash:'SHA-256' }, false, ['verify']);
+    if(!await crypto.subtle.verify('HMAC', mk, new Uint8Array(buf, n), new Uint8Array(buf, 0, n))) throw new Error('подпись не сходится');
+    const ck = await crypto.subtle.importKey('raw', k.slice(0, 32), 'AES-CBC', false, ['decrypt']);
+    const plain = await crypto.subtle.decrypt({ name:'AES-CBC', iv:new Uint8Array(buf, 0, 16) }, ck, new Uint8Array(buf, 16, n - 16));
+    const d = JSON.parse(await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+    if(d.v !== 1 || !d.lots || !d.sales || d.lots.r.length < 100) throw new Error('неполные данные');
+    return { lots:unpack(d.lots), sales:unpack(d.sales), at:d.at };
+  }
+  async function load(getKeys){
+    if(!(window.crypto && crypto.subtle && window.DecompressionStream)) throw new Error('браузер не умеет расшифровать файл');
+    const ps = await getKeys();
+    if(!Array.isArray(ps) || !ps.length) throw new Error('файл ещё не подключён');
+    let err;
+    for(const p of ps){ try{ return await openFile(p); }catch(e){ err = e; } }
+    throw err;
+  }
+  window.BLStats = { render, load, BLOCKS, ADMIN_ONLY, FIELDS, DEFAULT_CAB: BLOCKS.map(b=>b[0]).filter(b=>!ADMIN_ONLY.includes(b) && b!=='sales') };
 })();

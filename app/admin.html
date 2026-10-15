@@ -847,13 +847,15 @@ async function pStats(params){
   if(!STATS_DATA || Date.now() - STATS_DATA.at > 300000){
     // догружаем, даже если ушли со страницы, — в следующий раз откроется сразу; рисуем, только если ещё здесь
     const n = RN, since = new Date(Date.now() - 365*86400000).toISOString(), K = { keep:true };
-    const [lots, daily, leads, bots, sales] = await Promise.all([
-      loadAll(`lots?select=${BLStats.FIELDS}&order=key`, K),
+    // лоты и итоги — из зашифрованного файла на сайте (не тратит трафик базы); не открылся — из базы, как раньше
+    const fromFile = BLStats.load(() => rpc('stats_key', {}, K)).catch(e => { console.warn('аналитика: файл не открылся -', e); return null; });
+    const [f, daily, leads, bots] = await Promise.all([ fromFile,
       api('daily?select=day,stats&order=day.asc&limit=400', K),
       api('leads?select=created_at,status&limit=5000', K),
-      api(`bot_runs?select=at,sent,stats&at=gte.${since}&limit=20000`, K),
-      loadAll('sales?select=*&order=key,at', K) ]);
-    STATS_DATA = { at:Date.now(), lots, daily, leads, bots, sales };
+      api(`bot_runs?select=at,sent,stats&at=gte.${since}&limit=20000`, K) ]);
+    const [lots, sales] = f ? [f.lots, f.sales]
+      : await Promise.all([ loadAll(`lots?select=${BLStats.FIELDS}&order=key`, K), loadAll('sales?select=*&order=key,at', K) ]);
+    STATS_DATA = { at:Date.now(), lots, daily, leads, bots, sales, src: f ? 'file' : 'db' };
     if(n !== RN) return;
   }
   const { lots, daily, leads, bots, sales } = STATS_DATA;

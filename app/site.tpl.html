@@ -1296,6 +1296,7 @@ const PLACES = __PLACES__;        // города и районы внутри �
       const u = t.src || t.href || ''; if(u.startsWith(location.origin)) send('Не загрузился файл: ' + u.replace(location.origin, ''), 'файл'); return; }
     send(e.message, (e.filename || '').replace(location.origin, '') + ':' + (e.lineno || '') + ':' + (e.colno || ''));
   }, true);
+  window.reportErr = send;   // для своих сообщений: «аналитика взята из базы — файл не открылся»
   addEventListener('unhandledrejection', e => { const r = e.reason; send('Необработанная ошибка: ' + (r && (r.message || r)), r && r.stack ? String(r.stack).split('\n')[1] : ''); });
 })();
 const SECTIONS = [
@@ -3907,10 +3908,16 @@ async function meStats(M, arg, params){
   await loadStatsJs();
   // данные держим 5 минут: смена фильтра не перекачивает тысячи лотов
   if(!ME_STATS || Date.now() - ME_STATS.at > 300000){
-    const out = []; for(let off = 0; ; off += 1000){ const r = await uapi(`lots?select=${BLStats.FIELDS}&order=key&limit=1000&offset=${off}`); out.push(...r); if(r.length < 1000) break; }
     const [daily, cfg] = await Promise.all([ uapi('daily?select=day,stats&order=day.asc&limit=400'), uapi('settings?k=eq.cab_stats&select=v') ]);
     const blocks = (cfg[0] && cfg[0].v && cfg[0].v.blocks) || BLStats.DEFAULT_CAB;
-    const sales = []; if(blocks.includes('sales')) for(let off = 0; ; off += 1000){ const r = await uapi(`sales?select=*&order=key,at&limit=1000&offset=${off}`); sales.push(...r); if(r.length < 1000) break; }
+    // лоты и итоги — из зашифрованного файла на сайте; не открылся — из базы, как раньше (и сообщение нам в Telegram)
+    let out, sales;
+    try{ const f = await BLStats.load(() => urpc('stats_key')); out = f.lots; sales = blocks.includes('sales') ? f.sales : []; }
+    catch(e){
+      if(window.reportErr) reportErr('Аналитика: файл не открылся, данные взяты из базы - ' + (e && e.message || e), 'аналитика');
+      out = []; for(let off = 0; ; off += 1000){ const r = await uapi(`lots?select=${BLStats.FIELDS}&order=key&limit=1000&offset=${off}`); out.push(...r); if(r.length < 1000) break; }
+      sales = []; if(blocks.includes('sales')) for(let off = 0; ; off += 1000){ const r = await uapi(`sales?select=*&order=key,at&limit=1000&offset=${off}`); sales.push(...r); if(r.length < 1000) break; }
+    }
     ME_STATS = { at:Date.now(), out, daily, blocks, sales };
   }
   const { out, daily, blocks, sales } = ME_STATS;

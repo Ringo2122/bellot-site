@@ -47,6 +47,18 @@ module Sb
     out
   end
 
+  # число строк без самих строк (HEAD, Prefer: count=exact) — сверка копии итогов торгов (statsfile.rb)
+  def count(table)
+    u = URI("#{ENV['SB_URL']}/rest/v1/#{table}?select=key")
+    r = Net::HTTP::Head.new(u)
+    r['apikey'] = ENV['SB_KEY']
+    r['x-admin-token'] = ENV['SB_TOKEN']
+    r['Prefer'] = 'count=exact'
+    res = Net::HTTP.start(u.host, u.port, use_ssl: true, open_timeout: 15, read_timeout: 60) { |h| h.request(r) }
+    raise "Supabase HEAD #{table} → #{res.code}" unless res.code.to_i < 300
+    Integer(res['content-range'].to_s.split('/').last)
+  end
+
   def settings
     @settings ||= get('settings?select=k,v').map { |r| [r['k'], r['v']] }.to_h
   end

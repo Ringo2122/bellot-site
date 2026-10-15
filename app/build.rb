@@ -33,6 +33,7 @@ require_relative 'zones'
 require_relative 'bav'
 require_relative 'cats'
 require_relative 'area'
+require_relative 'statsfile'
 
 OUT  = ENV['OUT'] || File.join(Store::ROOT, '_site')
 TMP  = File.join(Store::ROOT, 'tmp')
@@ -76,7 +77,7 @@ end
 ADM = if Sb.on?
         begin
           { 'cfg' => Sb.settings, 'ov' => Sb.all('overrides').map { |o| [o['key'], o] }.to_h,
-            'rules' => Sb.all('dup_rules'), 'photos' => Sb.all('lot_photos', 'key,updated_at'), 'sales' => Sb.all('sales'),
+            'rules' => Sb.all('dup_rules'), 'photos' => Sb.all('lot_photos', 'key,updated_at'),
             'news' => Sb.get('news?select=*&published=is.true&order=date.desc,updated_at.desc&limit=500'),
             'media' => Sb.get('site_media?select=id,data&limit=500') }
         rescue StandardError => e
@@ -85,6 +86,27 @@ ADM = if Sb.on?
       else
         { 'cfg' => {}, 'ov' => {}, 'rules' => [], 'photos' => [], 'sales' => [] }
       end
+# итоги торгов (для «Сколько за такие отдают» и аналитики): копия из прошлого файла аналитики, если она сходится
+# с базой по числу строк и ей меньше недели; иначе — вся таблица, как раньше (statsfile.rb)
+ST_PTR = Sb.on? ? (Sb.get('stats_file?select=name,key&order=at.desc&limit=1').first rescue nil) : nil
+ST_PREV = StatsFile.previous(ST_PTR)
+sales_full_at = Time.now.to_i
+if Sb.on?
+  begin
+    copy = ST_PREV && ST_PREV['data']
+    n = copy && Time.now.to_i - copy['full_at'].to_i < StatsFile::FULL_EVERY ? (Sb.count('sales') rescue -1) : -1
+    if copy && n == copy['sales']['r'].size
+      ADM['sales'] = StatsFile.rows(copy['sales'])
+      sales_full_at = copy['full_at'].to_i
+      puts "итоги торгов: копия из файла аналитики (#{n}), из базы не качаем"
+    else
+      puts "итоги торгов: из базы целиком#{copy ? " (в базе #{n}, в копии #{copy['sales']['r'].size} или копии больше недели)" : ''}"
+      ADM['sales'] = Sb.all('sales')
+    end
+  rescue StandardError => e
+    abort "база админки не ответила (итоги торгов) — сайт не пересобираю, остаётся прежняя версия: #{e.message}"
+  end
+end
 CFG = ADM['cfg']
 OV = ADM['ov']
 MOD_SINCE = CFG['mod_since'].to_i   # лоты, появившиеся позже, проходят модерацию; 0 — модерация выключена
@@ -530,6 +552,29 @@ sales = lots.flat_map do |l|
   end
 end.uniq { |x| [x['key'], x['at']] }
 File.write(File.join(TMP, 'sales.json'), JSON.generate(sales))
+
+# ── данные «Аналитики» — зашифрованным файлом на сайте (statsfile.rb) ──
+# Не собрался — не страшно: имя в базе не обновится, кабинет и админка возьмут прежний файл или данные из базы
+FileUtils.rm_f(File.join(TMP, 'stats_file.json'))
+FileUtils.mkdir_p(File.join(OUT, 'st'))
+File.write(File.join(OUT, 'robots.txt'), "User-agent: *\nDisallow: /st/\n")   # поисковикам файлы аналитики не нужны
+begin
+  # прежний файл — в новую версию сайта: тот, кто получил его имя перед выкладкой, его найдёт
+  File.binwrite(File.join(OUT, 'st', "#{ST_PREV['name']}.bin"), ST_PREV['bytes']) if ST_PREV
+  all_sales = (ADM['sales'] + sales).each_with_object({}) { |x, h| h["#{x['key']}|#{x['at'].to_i}"] = x }.values   # как в базе после sync.rb
+  data = { 'v' => StatsFile::VER, 'at' => now, 'full_at' => sales_full_at,
+           'lots' => StatsFile.cols(mirror.sort_by { |l| l['key'] }, StatsFile::LOT_COLS),
+           'sales' => StatsFile.cols(all_sales.sort_by { |x| [x['key'], x['at'].to_i] }, StatsFile::SALE_COLS) }
+  bytes, key = StatsFile.seal(data)
+  StatsFile.open(bytes, key)   # проверка: расшифровывается
+  sname = SecureRandom.hex(16)
+  File.binwrite(File.join(OUT, 'st', "#{sname}.bin"), bytes)
+  File.write(File.join(TMP, 'stats_file.json'), JSON.generate('name' => sname, 'key' => key, 'lots' => mirror.size,
+                                                              'sales' => all_sales.size, 'kb' => bytes.size / 1024))
+  puts "аналитика: файл #{bytes.size / 1024} КБ — лотов #{mirror.size}, итогов #{all_sales.size}"
+rescue StandardError => e
+  warn "аналитика: файл не собран (#{e.class}: #{e.message}) — кабинет и админка возьмут прежний или данные из базы"
+end
 File.write(File.join(TMP, 'build.json'), JSON.generate('published' => active.size, 'queue' => queued, 'merged' => dup_of.size,
                                                         'archive' => arch.size, 'photos' => active.count { |l| l['photo'] }))
 

@@ -34,6 +34,18 @@ if mirror && ENV['JOB_OK'] != 'false'
     Sb.upsert('sales', sales.map { |x| x.merge('updated_at' => Time.now.utc.iso8601) }, 'key,at')
     puts "итогов торгов в аналитике: #{sales.size}"
   end
+  # файл «Аналитики» уже на сайте (выкладка — до этого шага): с этой минуты кабинет и админка берут его;
+  # храним три последних — браузер пробует новый, при сбое — предыдущий, потом — данные из базы (statsfile.rb)
+  if (sf = read.('stats_file.json'))
+    begin
+      Sb.upsert('stats_file', [{ 'name' => sf['name'], 'key' => sf['key'], 'at' => Time.now.utc.iso8601,
+                                 'meta' => sf.slice('lots', 'sales', 'kb') }], 'name')
+      Sb.get('stats_file?select=name&order=at.desc&offset=3').each { |o| Sb.delete('stats_file', "name=eq.#{o['name']}") }
+      puts "аналитика: файл #{sf['kb']} КБ подключён"
+    rescue StandardError => e
+      warn "аналитика: имя файла не записано (#{e.message}) — останется прежний"
+    end
+  end
   # личный кабинет: новые лоты по сохранённым поискам и напоминания о сроках — сразу после обновления каталога
   begin
     n = Sb.req('post', 'rpc/cab_tick', {})
