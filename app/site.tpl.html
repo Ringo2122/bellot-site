@@ -416,6 +416,13 @@ applyTheme(window.THEME);
 
   /* ── карточки лотов ── */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(256px,1fr));gap:14px}
+  /* «Похожие лоты» на телефоне — лентой: одна карточка и край следующей, листаются в сторону (15.10) */
+  @media (max-width:560px){
+    .grid.simlots{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;margin-inline:-16px;padding:2px 16px 8px;
+      scroll-padding-inline:16px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .grid.simlots::-webkit-scrollbar{display:none}
+    .grid.simlots>*{flex:0 0 84%;min-width:0;scroll-snap-align:start}
+  }
   .lot{background:var(--card);border:1px solid var(--hair);border-radius:16px;overflow:hidden;
     display:flex;flex-direction:column;transition:.15s;color:var(--ink)}
   .lot:hover{box-shadow:var(--sh-2);text-decoration:none}
@@ -679,7 +686,7 @@ applyTheme(window.THEME);
   .dl{display:inline-block;margin-left:6px;font-size:12px;padding:1px 8px;border-radius:12px;
     background:var(--accent-l);color:var(--accent);font-weight:700}
   .cta{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
-  .cta .btn{flex:1 1 0;min-width:0;text-align:center}   /* равные колонки, как у ряда «В избранное» ниже (14.10: ряды не совпадали) */
+  .cta .btn{flex:1 1 0;min-width:0;text-align:center;white-space:normal;line-height:1.25;display:inline-flex;align-items:center;justify-content:center}   /* 15.10: длинная подпись переносится, как «Следить за изменениями», а не вылезает за кнопку */   /* равные колонки, как у ряда «В избранное» ниже (14.10: ряды не совпадали) */
   .accs{margin-top:24px;display:flex;flex-direction:column;gap:10px}
   details.acc{background:var(--card);border:1px solid var(--hair);border-radius:12px;box-shadow:var(--sh);overflow:hidden}
   details.acc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:14px 18px;
@@ -814,7 +821,7 @@ applyTheme(window.THEME);
   .calcx{margin-top:22px;padding:20px 22px}
   .cx-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:16px}
   .cx-head h2{margin:0}
-  .cx-head .c{font-size:12.5px;color:var(--ok);font-weight:700}
+  .cx-head .c{font-size:12.5px;color:var(--ink-3);font-weight:600}
   .cx-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
   .cx-in label{display:block;font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
   .cx-range{display:flex;align-items:center;gap:12px}
@@ -1114,6 +1121,11 @@ applyTheme(window.THEME);
   .mapsw button.on{background:var(--brand);color:#fff}
   .mapbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
   .mapbtns .btn{padding:8px 13px;font-size:13.5px}
+  /* похожие торги: на компьютере 3, на телефоне 1, остальные — «Показать все» (15.10) */
+  .sim-l:not(.open) .xr:nth-child(n+4){display:none}
+  .sim-more{margin-top:12px}
+  .sim-more.m1{display:none}
+  @media (max-width:560px){ .sim-l:not(.open) .xr:nth-child(n+2){display:none} .sim-more.m1{display:inline-block} }
   @media (max-width:560px){ .xr{flex-direction:column;gap:4px} .xr .xv{text-align:left;align-items:flex-start;flex-direction:row;flex-wrap:wrap;gap:4px 10px} .lmap{height:260px} }
   .lot .ft .rs{font-weight:700}.lot .ft .rs.ok{color:var(--ok)}.lot .ft .rs.no{color:#9a4f0e}
   /* ── цвет площадки: полоса на карточке лота, точка в подсказках поиска, кнопки фильтра, календарь ──
@@ -2234,19 +2246,19 @@ function calcBlock(l, det){
   const spOpts = m.pick ? [0.5,1,2,3,4,5].filter(x=>x>=(t.step_min_pct||0.5) && x<=(t.step_pct||5)) : [];
   $('#calcx').innerHTML = `
     <div class="cx-head"><h2>Калькулятор покупки</h2>
-      <span class="c">${known?'условия площадки по этому лоту подставлены автоматически':'площадка не указала условия - считаем по типовым'}</span></div>
+      <span class="c">${known?'Условия площадки по этому лоту подставлены автоматически':'Площадка не указала условия - считаем по типовым'}</span></div>
     <div class="cx-grid">
       <div class="cx-in">
-        <label for="cx-n">Сколько раз поднимут цену на торгах</label>
-        <div class="cx-range"><input type="range" id="cx-n" min="0" max="40" value="3"><output id="cx-nv">3</output></div>
+        <label for="cx-n">Сколько будет ставок</label>
+        <div class="cx-range"><input type="range" id="cx-n" min="1" max="40" value="1"><output id="cx-nv">1</output></div>
         <div class="cx-hint" id="cx-hint"></div>
         ${m.pick?`<label for="cx-sp" style="margin-top:14px">Размер шага</label>
           <select id="cx-sp">${spOpts.map(x=>`<option value="${x}"${x===(t.step_pct||5)?' selected':''}>${String(x).replace('.',',')}% от начальной</option>`).join('')}</select>`:''}
         <div class="cx-scale" id="cx-scale"></div>
         <ul class="cx-rules">
-          <li><span>Шаг торгов</span><b>${esc(m.stepTxt)}</b></li>
+          <li><span>Шаг торгов</span><b id="cx-step">${esc(m.stepTxt)}</b></li>
           <li><span>Задаток</span><b>${nf(m.deposit)} BYN${m.est.deposit?` - оценка ${String(m.depPct).replace('.',',')}%`:''}</b></li>
-          ${m.single?`<li><span>Единственный участник</span><b>покупает за ${nf(m.single)} BYN (+${t.single_pct}%)</b></li>`:''}
+          ${m.single?`<li><span>Единственный участник</span><b>купит за ${nf(m.single)} BYN (+${t.single_pct}%)</b></li>`:''}
           ${t.min_price?`<li><span>Минимальная стоимость</span><b>${nf(t.min_price)} BYN</b></li>`:''}
           ${vatTxt?`<li><span>НДС</span><b>${esc(vatTxt)}</b></li>`:''}
         </ul>
@@ -2268,11 +2280,11 @@ function calcBlock(l, det){
     const pctOf = p => fpv !== '' ? (parseFloat(fpv)||0) : SCALE ? scalePct(p) : 0;
     const prizeOf = p => { const pc = pctOf(p); return pc ? Math.max((t.fee_base==='start' ? m.P : p)*pc/100, t.fee_min||0) : 0; };
     const feeOf = p => prizeOf(p) + fa + (vat ? p*0.2 : 0);
-    const price = n===0 && m.single ? m.single : m.at(n, sp);
+    const price = m.at(n, sp);
     const fees = feeOf(price), total = price + fees, rest = Math.max(total - m.deposit, 0), fp = pctOf(price);
-    $('#cx-hint').textContent = n===0
-      ? (m.single ? 'Без борьбы: вы единственный участник.' : 'Покупка по стартовой цене.')
-      : `Цена выросла на ${Math.round((price/m.P-1)*100)}% от стартовой.`;
+    $('#cx-hint').textContent = `Цена выросла на ${Math.round((price/m.P-1)*100)}% от стартовой.`;
+    // шаг выбирает участник (e-auction и др.): в описании — шаг, по которому считаем сейчас, и допустимая вилка
+    if(m.pick) $('#cx-step').textContent = `первая ставка +${String(t.first_pct).replace('.',',')}% к начальной, дальше по ${String(sp).replace('.',',')}% от начальной (участник выбирает шаг от ${String(t.step_min_pct||0.5).replace('.',',')} до ${String(t.step_pct||5).replace('.',',')}%)`;
     let mk = '';
     if(l.market){
       const med = l.market.median, d = Math.round((med-total)/med*100);
@@ -2415,7 +2427,7 @@ const usTxt = n => n ? ` · ${n} ${plural(n,'участник','участник
 function simBlock(l, c){
   const arch = l.status==='archive', veh = l.section!=='nedvizhimost';
   const est = !arch && l.platform!=='belauction.by' && c.sold >= 2 && c.pm != null && l.price > 0 ? Math.round(l.price * (1 + c.pm / 100)) : null;
-  return `<section class="panel xs" id="x-sim"><h2>Сколько за такие отдают на самом деле</h2>
+  return `<section class="panel xs" id="x-sim"><h2>Сколько за такие лоты отдают на торгах</h2>
     <p class="xsub">Завершённые торги похожих объектов: <b>${esc(c.by)}</b>${veh ? ' · любой регион' : ''}</p>
     <div class="xk">
       <div><b>${c.n}</b><span>завершилось торгов</span></div>
@@ -2427,11 +2439,18 @@ function simBlock(l, c){
     </div>
     ${est ? `<p class="xest">Если торги пройдут как у похожих, этот лот уйдёт примерно за <b>${nf(est)} BYN</b> (${sgn(c.pm)} к стартовой цене).</p>` : ''}
     <h3>Похожие завершённые торги</h3>
-    <div class="xl">${c.items.map(a=>`<div class="xr"><div class="xn">${aucLink(a)}<span>${dt(a.d)} · ${esc(a.p)}${a.y ? ` · ${a.y} г. в.` : ''}${a.a ? ` · ${nf(a.a)} м²` : ''}${usTxt(a.us)}</span></div>
+    <div class="xl sim-l">${c.items.map(a=>`<div class="xr"><div class="xn">${aucLink(a)}<span>${dt(a.d)} · ${esc(a.p)}${a.y ? ` · ${a.y} г. в.` : ''}${a.a ? ` · ${nf(a.a)} м²` : ''}${usTxt(a.us)}</span></div>
       <div class="xv">${a.s > 0 ? `<span class="mut">начальная ${nf(a.s)} BYN</span>` : ''}${aucRes(a)}</div></div>`).join('')}</div>
-    <p class="note">${c.sold < 3 ? 'Продаж пока мало - ориентир грубый. ' : ''}Сравниваем ${veh ? 'ту же марку и модель, год выпуска ±2, в любом регионе' : 'объекты той же категории в том же населённом пункте'}. Медиана - середина ряда: половина продаж дешевле, половина дороже.</p>
+    ${c.items.length > 1 ? `<button type="button" class="btn sim-more${c.items.length <= 3 ? ' m1' : ''}" data-n="${c.items.length}">Показать все (${c.items.length})</button>` : ''}
+    <p class="note">${c.sold < 3 ? 'Продаж пока мало - ориентир грубый. ' : ''}Сравниваем ${veh ? 'ту же марку и модель, год выпуска ±2, в любом регионе' : 'объекты той же категории в том же населённом пункте'}.</p>
   </section>`;
 }
+document.addEventListener('click', e => {
+  const b = e.target.closest('.sim-more'); if(!b) return;
+  const list = b.previousElementSibling, open = list.classList.toggle('open');
+  b.textContent = open ? 'Свернуть' : `Показать все (${b.dataset.n})`;
+  if(!open){ const s = b.closest('section'); if(s.getBoundingClientRect().top < 0) s.scrollIntoView({ block:'start' }); }
+});
 function histBlock(l, h){
   const arch = l.status==='archive', last = h.find(a=>a.st!=='active');
   const now = h.find(a=>a.st==='active');
@@ -2441,8 +2460,7 @@ function histBlock(l, h){
   else if(arch && now) lead = `Объект снова на торгах - приём заявок до ${dt(now.d)}.`;
   return `<section class="panel xs" id="x-hist"><h2>История объекта</h2><p class="xsub">${lead}</p>
     <div class="xl">${h.map(a=>`<div class="xr"><div class="xn"><b>${dt(a.d)}</b> · ${esc(a.p)}<span>${aucLink(a)}</span></div>
-      <div class="xv">${a.s > 0 ? `<span class="mut">${a.st==='active' ? 'стартовая' : 'начальная'} ${nf(a.s)} BYN</span>` : ''}${a.st==='active' ? `<b class="ok">Сейчас на торгах</b>` : aucRes(a)}${a.us ? `<span class="mut">${a.us} ${plural(a.us,'участник','участника','участников')}</span>` : ''}</div></div>`).join('')}</div>
-    <p class="note">Тот же объект узнаём по VIN, инвентарному или кадастровому номеру, у недвижимости - ещё по названию и адресу.</p></section>`;
+      <div class="xv">${a.s > 0 ? `<span class="mut">${a.st==='active' ? 'стартовая' : 'начальная'} ${nf(a.s)} BYN</span>` : ''}${a.st==='active' ? `<b class="ok">Сейчас на торгах</b>` : aucRes(a)}${a.us ? `<span class="mut">${a.us} ${plural(a.us,'участник','участника','участников')}</span>` : ''}</div></div>`).join('')}</div></section>`;
 }
 let LEAF = null;
 function loadLeaflet(){
@@ -2651,12 +2669,14 @@ function pageLot(id){
         ${l.market?marketBlock(l):''}
       </div>
     </div>
+    <div id="xhist"></div>
+    <div class="accs" id="accs"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     <div id="xsim"></div>
     ${arch?'':'<section class="panel calcx" id="calcx"><div class="skel"></div></section>'}
-    <div class="accs" id="accs"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+    <div id="xmap"></div>
     ${arch?'':(() => { const same = x => l.sub ? x.sub===l.sub : x.section===l.section;
       return `<div class="sec"><div class="sec-h"><h2>Похожие лоты</h2><a href="#/${l.sub ? 'c/'+l.sub : 's/'+l.section}">Весь подраздел →</a></div>
-      <div class="grid">${DATA.filter(x=>same(x)&&x.id!==l.id).slice(0,4).map(lotCard).join('')}</div></div>`; })()}
+      <div class="grid simlots">${DATA.filter(x=>same(x)&&x.id!==l.id).slice(0,4).map(lotCard).join('')}</div></div>`; })()}
   </div>`;
   bindLotUser(l);
   bindLotReport(l);
@@ -2674,8 +2694,10 @@ function pageLot(id){
       if(arch && l.photo) Promise.any(pics.slice(0, 2).map(gload)).then(draw, () => { const g = $('.gal');
         if(g && CUR==='/lot/'+encodeURIComponent(id)) g.insertAdjacentHTML('beforeend', `<p class="gv-src">Фото из архива МониТорг</p>`); });
       else draw(); }
-    // похожие завершённые торги, история объекта; карта — только у активных
-    $('#xsim').innerHTML = (det.c ? simBlock(l, det.c) : '') + (det.h ? histBlock(l, det.h) : '') + (!arch && det.g ? mapBlock(l, det.g) : '');
+    // порядок под карточкой (15.10, Артём): история объекта, сведения о лоте, похожие торги, калькулятор, карта (только у активных)
+    $('#xhist').innerHTML = det.h ? histBlock(l, det.h) : '';
+    $('#xsim').innerHTML = det.c ? simBlock(l, det.c) : '';
+    $('#xmap').innerHTML = !arch && det.g ? mapBlock(l, det.g) : '';
     if(!arch && det.g) drawMap(det.g);
     // одноимённые секции склеиваем, порядок — от важного к справочному
     const groups = {};
@@ -2683,7 +2705,7 @@ function pageLot(id){
     const names = Object.keys(groups).sort((a,b)=>{ const i=SEC_ORDER.indexOf(a), j=SEC_ORDER.indexOf(b);
       return (i<0?99:i)-(j<0?99:j); });
     $('#accs').innerHTML = names.length
-      ? `<h2 class="accs-h">Сведения о лоте</h2>` + names.map((t,i)=>acc('s'+i, t, rowsHtml(groups[t]), i===0,
+      ? `<h2 class="accs-h">Сведения о лоте</h2>` + names.map((t,i)=>acc('s'+i, t, rowsHtml(groups[t]), i===0 && !matchMedia('(max-width:560px)').matches,   // на телефоне все свёрнуты (15.10)
           groups[t].length+' '+plural(groups[t].length,'пункт','пункта','пунктов'))).join('')
       : '<div class="panel empty">Подробных сведений площадка не опубликовала.</div>';
   });
