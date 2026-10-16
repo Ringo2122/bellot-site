@@ -34,6 +34,7 @@ require_relative 'bav'
 require_relative 'cats'
 require_relative 'area'
 require_relative 'statsfile'
+require_relative 'vat'
 
 OUT  = ENV['OUT'] || File.join(Store::ROOT, '_site')
 TMP  = File.join(Store::ROOT, 'tmp')
@@ -371,6 +372,7 @@ puts "похожие торги: у #{sim.count { |_, v| v['c'] }} лотов, �
 # Фото — каждое отдельным файлом ph/<id>.jpg: странице лота нужно одно фото, а не пачка из 40 (0,6–0,9 МБ)
 order = active.group_by { |l| l['section'] }.values.flatten + arch
 packs = 0
+vat_stat = Hash.new(0)
 order.group_by { |l| Zlib.crc32(l['id']) % PACKS }.each do |pk, chunk|
   det = {}
   chunk.each do |l|
@@ -384,7 +386,11 @@ order.group_by { |l| Zlib.crc32(l['id']) % PACKS }.each do |pk, chunk|
         secs.unshift('h' => 'Сведения о лоте', 'rows' => [['Описание', d]])
       end
     end
-    x = { 's' => ENV['MASK'] ? mask(secs) : secs, 't' => l['terms'] || {} }
+    # НДС — статусом для калькулятора (vat.rb): по пометке робота и тексту лота
+    t = l['terms'] || {}
+    vk = Vat.kind(t, secs.flat_map { |sx| (sx['rows'] || []).map { |r| r.join(' ') } }.join(' '))
+    vat_stat[vk || 'нет'] += 1 if l['status'] == 'active'
+    x = { 's' => ENV['MASK'] ? mask(secs) : secs, 't' => t.merge('vk' => vk) }
     x.merge!((sim[l['key']] || {}).slice('c', 'h'))
     x['p'] = l['pics'] if (l['pics'] || []).size.positive?   # все фото карточки площадки (ссылками)
     # карта — только у активных; адрес — тот, по которому искали точку (у konfiskat — место хранения)
@@ -399,6 +405,7 @@ order.group_by { |l| Zlib.crc32(l['id']) % PACKS }.each do |pk, chunk|
   File.write(File.join(OUT, 'det', "p#{pk}.js"), "__det(#{pk},#{JSON.generate(det)});")
   packs += 1
 end
+puts "НДС у активных лотов: #{vat_stat.sort_by { |_, n| -n }.map { |k, n| "#{k} #{n}" }.join(', ')}"
 
 # настройки, которые нужны страницам: тексты, правила калькулятора, выключенные разделы, форма заявки
 pub = { 'texts' => CFG['texts'] || {}, 'calc' => CFG['calc'] || {}, 'sec_off' => sec_off,
