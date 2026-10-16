@@ -302,6 +302,7 @@ applyTheme(window.THEME);
   .sugg .none{padding:14px;color:var(--ink-3);font-size:14px}
   .hacts{display:flex;gap:9px;flex:none}
   .more{display:block;margin:22px auto 0;min-width:260px}
+  .more-auto{height:1px}
   .btn{padding:9px 16px;border-radius:8px;border:1px solid var(--hair-2);background:var(--card);
     color:var(--ink);cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap;
     transition:background-color .2s,border-color .2s,color .2s,box-shadow .2s,transform .2s}
@@ -2054,7 +2055,9 @@ function pageCatalog(sc, params){
   const titleOf = () => sc ? scName(sc) : view==='soon' ? 'Истекающие торги' : view==='new' ? 'Новые лоты' : view==='pin' ? 'Рекомендуем'
     : (FSTATE.q ? 'Поиск по каталогу' : FSTATE.st==='arch' ? 'Архив торгов' : 'Все лоты');
   const title = titleOf();
-  const STEP = 36; let show = STEP;
+  // по 40 лотов: первая пачка, вторая — сама при прокрутке до низа, дальше кнопка «Показать ещё» (+40) и снова одна
+  // пачка сама (+40) — так до подвала с политиками и «Настройками cookie» всегда можно долистать (решение Артёма 16.10)
+  const STEP = 40; let show = STEP;
   // вернулись с лота кнопкой «Назад» — тот же объём списка и то же место
   const pos = CAT_POS[CUR];
   if(pos && (PREV||'').startsWith('/lot/') && Date.now() - pos.t < 3*3600e3){ show = pos.show; RESTORE_Y = pos.y; }
@@ -2201,12 +2204,20 @@ function pageCatalog(sc, params){
         if(n) hint = `<div class="hint">В архиве ещё <b>${n}</b> ${plural(n,'совпадение','совпадения','совпадений')} - <a href="#" id="to-arch">показать архив</a></div>`; }
       else loadArch1().then(()=>{ if($('#res')) render(); });
     }
+    if(CAT_IO){ CAT_IO.disconnect(); CAT_IO = null; }
+    const auto = 'IntersectionObserver' in window && Math.round(show / STEP) % 2 === 1;
     $('#res').innerHTML = hint + nb + (shown.length
       ? `<div class="grid">${shown.slice(0,show).map(l=>lotCard(l, arch)).join('')}</div>`
-        + (shown.length>show ? `<button class="btn more" id="more" type="button">Показать ещё ${Math.min(STEP,shown.length-show)} · осталось ${shown.length-show}</button>` : '')
+        + (shown.length>show ? (auto ? '<div class="more-auto" id="more-auto" aria-hidden="true"></div>'
+            : `<button class="btn more" id="more" type="button">Показать ещё ${Math.min(STEP,shown.length-show)} · осталось ${shown.length-show}</button>`) : '')
       : SSNEW ? ''
       : `<div class="panel empty">${arch&&!base.length?'Архив раздела пока пуст - лоты попадают сюда после окончания приёма заявок.':'По этим условиям ничего не нашлось. Попробуйте смягчить фильтры.'}</div>`);
     const mb = $('#more'); if(mb) mb.onclick = () => { show += STEP; render(true); };
+    // нечётная пачка (40, 120, 200…) — следующая подгрузится сама, когда низ списка подойдёт к экрану
+    const ma = $('#more-auto');
+    if(ma){ CAT_IO = new IntersectionObserver(es => { if(!es.some(e=>e.isIntersecting) || !ma.isConnected) return;
+      CAT_IO.disconnect(); CAT_IO = null; show += STEP; render(true); }, { rootMargin:'0px 0px 600px 0px' });
+      CAT_IO.observe(ma); }
     const na = $('#nw-all'); if(na) na.onclick = () => { SSNEW = null; render(); toList(); };
     const ns = $('#nw-show'); if(ns) ns.onclick = () => { ssOpen(nwS); render(); toList(); };
     const nx = $('#nw-x'); if(nx) nx.onclick = () => { try{ localStorage.setItem('bl_ssx' + nwS.id, String(nwS._top)); }catch(e){} render(true); };
@@ -4326,7 +4337,7 @@ async function meProfile(M){
 }
 
 /* ───────── роутер с переходом страниц ───────── */
-let CUR = null, PREV = null, RESTORE_Y = null, FKEEP = null;
+let CUR = null, PREV = null, RESTORE_Y = null, FKEEP = null, CAT_IO = null;   // CAT_IO — автоподгрузка каталога
 function render(path, params){
   for(const box of ['#nav', '#mmenu']){
     const links = [...document.querySelectorAll(box + ' a:not(.btn)')], full = location.hash || '#/';
