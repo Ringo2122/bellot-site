@@ -1205,6 +1205,11 @@ function drawHome(){
         <div class="fld"><span>Логотип в шапке - вместо знака MoniTorg (квадратная картинка, лучше PNG с прозрачным фоном)</span>
           <div class="himg">${t.logo && HMEDIA[t.logo] ? `<img src="${HMEDIA[t.logo]}" alt="" style="width:56px;height:56px;object-fit:contain">` : '<span class="muted">знак MoniTorg</span>'}
           <input type="file" accept="image/*" id="h-logo">${t.logo ? '<button class="btn bad" type="button" id="h-nologo">Убрать</button>' : ''}</div></div></div>
+      <div class="panel"><h2>Счётчики аналитики</h2>
+        <p class="muted" style="margin-top:0">Вставьте номер счётчика или весь его код целиком - номер возьмётся из кода сам. Пусто - счётчика нет.
+          Счётчики включаются у посетителя после «Понятно» на плашке cookie. На сайте - после «Сохранить» и публикации.</p>
+        <div class="grid2">${[['ym','Яндекс.Метрика - номер счётчика','12345678'],['ga','Google Analytics - идентификатор','G-XXXXXXXXXX']].map(([k,l,ph])=>`<label class="fld"><span>${l}</span>
+          <input data-cn="${k}" value="${esc((TXT.counters||{})[k]||'')}" placeholder="${ph}"><span class="hint" id="cn-${k}">${cnHint(k, (TXT.counters||{})[k])}</span></label>`).join('')}</div></div>
       <details class="panel" id="h-other"${HOTHER ? ' open' : ''}><summary><h2 style="display:inline">Тексты других страниц и контакты</h2></summary>
         <h3>Google и вкладка браузера</h3>
         ${ht('seo_title','Название сайта - во вкладке браузера на главной и заголовком в Google')}
@@ -1250,9 +1255,16 @@ function drawHome(){
     HOME = homeDefault(); HSEL = -1; drawHome(); };
   $('#h-prev').onclick = homePreview;
   bindTexts(V());
+  V().querySelectorAll('[data-cn]').forEach(el=>el.oninput = () => { TXT.counters = Object.assign({}, TXT.counters, { [el.dataset.cn]: el.value });   // черновик — переживёт перерисовку
+    $('#cn-'+el.dataset.cn).innerHTML = cnHint(el.dataset.cn, el.value); });
   $('#h-other').ontoggle = e => { HOTHER = e.target.open; };
   $('#h-save').onclick = async () => {
     try{
+      const cn = {};
+      for(const el of V().querySelectorAll('[data-cn]')){ const v = el.value.trim(); if(!v) continue;
+        const id = cnId(el.dataset.cn, v); if(!id){ el.focus(); throw new Error('Не нашёл номер счётчика в поле «' + el.closest('label').querySelector('span').textContent + '»'); }
+        cn[el.dataset.cn] = id; }
+      if(Object.keys(cn).length) TXT.counters = cn; else delete TXT.counters;
       await saveSetting('texts', cleanTexts());
       await saveSetting('home', HOME);
       // картинки, которые больше нигде не стоят, — из базы долой
@@ -1273,6 +1285,15 @@ function bindTexts(root){
   root.querySelectorAll('[data-tc]').forEach(el=>el.oninput = () => { TXT.contacts = Object.assign({}, TXT.contacts); TXT.contacts[el.dataset.tc] = el.value.trim(); });
 }
 // перед сохранением: пустые строки — по умолчанию, пустые пункты списков убираем, пустые контакты не храним
+// счётчики (texts.counters): храним только номер — код счётчика сайт собирает сам, чужой скрипт через админку не вставить
+function cnId(k, v){
+  v = String(v || '').trim();
+  if(k === 'ga'){ const m = v.match(/\bG-[A-Z0-9]{4,15}\b/i); return m ? m[0].toUpperCase() : ''; }
+  const m = v.match(/^\d{5,12}$/) || v.match(/ym\(\s*(\d{5,12})/) || v.match(/mc\.yandex\.\w+\/watch\/(\d{5,12})/);
+  return m ? (m[1] || m[0]) : '';
+}
+const cnHint = (k, v) => { if(!String(v || '').trim()) return 'не подключён';
+  const id = cnId(k, v); return id ? 'номер: <b>' + esc(id) + '</b>' : '<span style="color:var(--bad,#c62828)">номер не найден</span>'; };
 function cleanTexts(){
   const out = JSON.parse(JSON.stringify(TXT));
   Object.keys(out).forEach(k=>{ if(typeof out[k] === 'string'){ out[k] = out[k].trim(); if(!out[k]) delete out[k]; } });

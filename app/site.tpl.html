@@ -4,7 +4,7 @@
 <meta name="robots" content="noindex, nofollow">
 <!-- Политика безопасности: скрипты, стили и шрифты — только свои (15.10: шрифты и карта Leaflet — с нашего сайта, не с Google и cdnjs:
      браузер посетителя не отдаёт IP-адрес серверам в США — политика обработки ПД), запросы — только в базу Supabase; фото площадок — с их сайтов -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://mc.yandex.ru https://mc.yandex.by https://mc.yandex.com https://yastatic.net https://*.googletagmanager.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://mc.yandex.ru https://mc.yandex.by https://mc.yandex.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; frame-src blob: https://mc.yandex.ru https://mc.yandex.by https://mc.yandex.com; child-src blob: https://mc.yandex.ru https://mc.yandex.by https://mc.yandex.com; object-src 'none'; base-uri 'none'; form-action 'self'">
 <title>__TITLE__</title>
 <meta name="description" content="__DESC__">
 <meta property="og:type" content="website"><meta property="og:site_name" content="__BRAND__"><meta property="og:title" content="__TITLE__"><meta property="og:description" content="__SHORT__">
@@ -3065,13 +3065,35 @@ function pagePrivacy(){
   const t = TX('privacy_text', PRIVACY_DEF).split(/\n\s*\n/).map(p=>`<p>${esc(p.trim()).replace(/\n/g,'<br>')}</p>`).join('');
   $('#app').innerHTML = `<div class="wrap">${crumbs([['Политика конфиденциальности']])}<h1>Политика конфиденциальности</h1><div class="privacy">${t}</div></div>`;
 }
+/* счётчики Яндекс.Метрики и Google Analytics: номера — из админки (texts.counters), код собираем здесь.
+   Включаются только после «Понятно» на плашке cookie — до согласия посетителя ничего не грузим */
+function startCounters(){
+  const c = (CFG.texts||{}).counters || {};
+  if(window.__cnt || !(c.ym || c.ga)) return; window.__cnt = 1;
+  const add = src => { const x = document.createElement('script'); x.async = true; x.src = src; document.head.appendChild(x); };
+  if(/^\d{5,12}$/.test(c.ym || '')){
+    window.ym = window.ym || function(){ (ym.a = ym.a || []).push(arguments); }; ym.l = +new Date();
+    add('https://mc.yandex.ru/metrika/tag.js');
+    ym(+c.ym, 'init', { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true, trackHash:true });   // trackHash — переходы внутри сайта (#/lot/…)
+  }
+  if(/^G-[A-Z0-9]{4,15}$/.test(c.ga || '')){
+    window.dataLayer = window.dataLayer || []; window.gtag = function(){ dataLayer.push(arguments); };
+    add('https://www.googletagmanager.com/gtag/js?id=' + c.ga);
+    // сайт живёт на адресах #/…: сам Google их не видит — адрес с # передаём явно, переходы шлём просмотрами
+    // (заголовок страницы ставится при отрисовке — берём его чуть позже)
+    gtag('js', new Date()); gtag('config', c.ga, { page_location: location.href });
+    let last = location.href;
+    addEventListener('hashchange', () => setTimeout(() => { if(location.href === last) return; last = location.href;
+      gtag('event', 'page_view', { page_location: location.href, page_title: document.title }); }, 400));
+  }
+}
 /* плашка cookie: пока не нажали «Понятно» (запоминаем в браузере); текст — из админки (texts.cookie_text) */
 (()=>{
   let ok = false; try{ ok = localStorage.getItem('bl_cookie') === '1'; }catch(e){}
-  if(ok) return;
+  if(ok) return startCounters();
   $('#ck-t').textContent = TX('cookie_text', 'Сайт использует файлы cookie: они нужны для работы сайта и личного кабинета. Продолжая пользоваться сайтом, вы соглашаетесь с этим.');
   $('#ck').hidden = false;
-  $('#ck-ok').onclick = () => { $('#ck').hidden = true; try{ localStorage.setItem('bl_cookie', '1'); }catch(e){} };
+  $('#ck-ok').onclick = () => { $('#ck').hidden = true; try{ localStorage.setItem('bl_cookie', '1'); }catch(e){} startCounters(); };
 })();
 
 function pageAbout(){
