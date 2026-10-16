@@ -1,4 +1,4 @@
--- БелЛот: база админки (Supabase). Повторный запуск безопасен.
+-- МониТорг: база админки (Supabase). Повторный запуск безопасен.
 --
 -- Сайт по-прежнему статический: его собирает робот на GitHub. База хранит то, что решает человек
 -- (правки лотов, модерация, склейки, настройки, тексты), заявки с сайта и отчёты робота и бота.
@@ -368,7 +368,7 @@ create table if not exists notifications (
   read_at timestamptz
 );
 create index if not exists notifications_user on notifications (user_id, created_at desc);
-create table if not exists reports (               -- отчёты по объектам от БелЛота
+create table if not exists reports (               -- отчёты по объектам от МониТорга
   id bigserial primary key,
   user_id bigint not null references users on delete cascade,
   lot text, lot_name text, title text not null, body text, link text,
@@ -592,7 +592,7 @@ create or replace function reports_watch() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   insert into notifications (user_id, lot, kind, title, body, link)
-  values (new.user_id, new.lot, 'report', new.title, 'Новый отчёт от БелЛота' || coalesce(' по лоту «' || left(new.lot_name, 80) || '»', ''), '#/me/reports/' || new.id);
+  values (new.user_id, new.lot, 'report', new.title, 'Новый отчёт от МониТорга' || coalesce(' по лоту «' || left(new.lot_name, 80) || '»', ''), '#/me/reports/' || new.id);
   return new;
 end $$;
 drop trigger if exists reports_watch on reports;

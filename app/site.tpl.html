@@ -804,6 +804,9 @@ applyTheme(window.THEME);
   .helpband p{margin:0;color:#d4d4d8;max-width:60ch}
   /* ленты: 4 карточки на экране, дальше — стрелками */
   .sec-sub{font-size:13px;color:var(--ink-3);margin-top:2px}
+  /* заголовок подборки на главной: кнопка «Посмотреть все» — по центру строки заголовка, подпись — под заголовком */
+  .sec-h.sec-hb{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:14px}
+  .sec-h.sec-hb .sec-sub{grid-column:1/-1}
   .car{position:relative}
   .car-track{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 42px)/4);gap:14px;overflow-x:auto;
     scroll-snap-type:x mandatory;scroll-padding-inline:2px;scrollbar-width:none;padding:3px 2px 8px}
@@ -3191,7 +3194,7 @@ const head2 = (b, def, link) => `<div class="sec-h"><div><h2>${esc(b.title || de
 function lotsHtml(b, list, def, sub, all){
   list = list.slice(0, Math.max(1, Math.min(20, +b.count || 20)));
   if(!list.length) return '';
-  const head = `<div class="sec-h"><div><h2>${esc(b.title || def)}</h2><div class="sec-sub">${esc(b.sub || sub)}</div></div><a class="btn" href="${all}">Посмотреть все</a></div>`;
+  const head = `<div class="sec-h sec-hb"><h2>${esc(b.title || def)}</h2><a class="btn" href="${all}">Посмотреть все</a><div class="sec-sub">${esc(b.sub || sub)}</div></div>`;
   return b.view === 'grid' ? head + `<div class="grid">${list.map(lotCard).join('')}</div>`
     : head + `<div class="car"><button class="car-b prev" type="button" aria-label="Назад">‹</button>
       <div class="car-track">${list.map(lotCard).join('')}</div>
