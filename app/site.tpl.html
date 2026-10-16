@@ -966,6 +966,7 @@ applyTheme(window.THEME);
   .ck[hidden]{display:none}
   .ck a{color:#ffab91}
   .ck .btn{padding:6px 14px;font-size:13px;flex:none}
+  .ck-b{display:flex;gap:8px;flex:none}
   #ck-t{flex:0 1 auto}
   .ck a{flex:none}
   /* по размеру текста, посередине внизу; на телефоне — во всю ширину: текст строкой, ниже по центру ссылка и кнопка */
@@ -973,6 +974,8 @@ applyTheme(window.THEME);
     #ck-t{flex-basis:100%} }
   .privacy{max-width:72ch}
   .privacy p{margin:0 0 14px;line-height:1.65}
+  .privacy h2{font-size:18px;margin:26px 0 10px}
+  .privacy .tw{overflow-x:auto;margin:0 0 14px} .privacy table{font-size:13px}
   .svc-p{margin:6px 0 0;font-weight:600;color:var(--brand)}
   /* ── личный кабинет ── */
   .ubtn{position:relative;text-decoration:none}
@@ -1306,10 +1309,10 @@ applyTheme(window.THEME);
     </ul></div>
   </div>
   <div class="fbot">Данные собираются с открытых площадок автоматически, последнее обновление <span id="f-upd"></span>. Перед участием в торгах сверяйтесь с карточкой лота на площадке-первоисточнике.
-    · <a href="#/privacy">Политика конфиденциальности</a></div>
+    · <a href="#/privacy">Политика конфиденциальности</a> · <a href="#/cookies">Политика cookie</a> · <a href="#" id="ck-set">Настройки cookie</a></div>
 </div></footer>
 <button class="totop" id="totop" type="button" aria-label="Наверх"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
-<div class="ck" id="ck" role="region" aria-label="Файлы cookie" hidden><span id="ck-t"></span> <a href="#/privacy">Подробнее</a><button class="btn pri" id="ck-ok" type="button">Понятно</button></div>
+<div class="ck" id="ck" role="region" aria-label="Файлы cookie" hidden><span id="ck-t"></span> <a href="#/cookies">Подробнее</a><span class="ck-b"><button class="btn pri" id="ck-ok" type="button">Принять все</button><button class="btn pri" id="ck-no" type="button">Отклонить</button></span></div>
 
 <script>
 const DATA = __DATA__;
@@ -1718,7 +1721,7 @@ function resultBlock(l){
     <p class="note">Аукцион ${at*1000 > Date.now() ? 'пройдёт ' + dtm(at) : 'прошёл ' + dtm(at)} в зале МГЦН (г. Минск, ул. К. Маркса, 39). Итоги очных аукционов организатор онлайн не публикует - узнать их можно у МГЦН: +375 (17) 360-42-22.
       <a href="${esc(l.url)}" target="_blank" rel="noopener">Извещение ↗</a></p></aside>`;
   if(!r) return `<aside class="panel rres"><div class="lbl">Итоги торгов</div><div class="rst">Итоги ещё не опубликованы</div>
-    <p class="note">Торги ${at*1000 > Date.now() ? 'пройдут ' + dtm(at) : 'прошли ' + dt(at)}. Площадку проверяем каждый час${l.result && l.result.checked ? `, последняя проверка - ${dtm(l.result.checked)}` : ''}: итог появится здесь${UB ? ' и придёт уведомлением тем, кто следит за лотом' : ''}.
+    <p class="note">Торги ${at*1000 > Date.now() ? 'пройдут ' + dtm(at) : 'прошли ' + dt(at)}. Итог появится здесь, как только площадка его опубликует${l.result && l.result.checked ? ` (последняя проверка ${dtm(l.result.checked)})` : ''}.${UB ? ' Тем, кто следит за лотом, придёт уведомление.' : ''}
       <a href="${esc(l.url)}" target="_blank" rel="noopener">Посмотреть на площадке ↗</a></p></aside>`;
   const [t, c] = RES[r.st], p = prem(r);
   return `<aside class="panel rres ${c}"><div class="lbl">Итоги торгов</div><div class="rst">${t}</div>
@@ -2146,7 +2149,7 @@ function pageCatalog(sc, params){
     if(!sc && document.title !== titleOf() + TSUF){ const t = titleOf(); document.title = t + TSUF;
       $('.cat-head h1').textContent = t; $('#app .crumbs').outerHTML = crumbs([[t]]); }
     $('#c-lede').textContent = arch
-      ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним год - для истории цен, похожих торгов и аналитики.'
+      ? 'Торги, по которым приём заявок завершён или лот снят с площадки. Храним их, даже когда площадка удаляет лот у себя.'
       : 'Лоты с открытым приёмом заявок. Каталог обновляется автоматически.';
     if(arch && !ARCH){ $('#tb').innerHTML=''; $('#res').innerHTML = '<div class="skel"></div><div class="skel" style="margin-top:10px"></div>';
       loadArch().then(()=>{ if($('#fwrap') && FSTATE.st==='arch'){ drawPanel(); render(true); } }); return; }
@@ -2233,9 +2236,9 @@ function marketBlock(l){
       ${dc>=0?`это на <b>${dc}%</b> ниже медианы рынка`:`это на <b>${-dc}%</b> выше медианы рынка`}.</div>
     ${m.sqm?`<div class="sub" style="margin-top:7px">За квадратный метр: у лота <b>${nf(m.lot_sqm)} BYN/м²</b>,
       на рынке <b>${nf(m.sqm)} BYN/м²</b> по ${m.sqm_n} объявлениям с указанной площадью.</div>`:''}
-    <div class="warn">Состояние объекта не учитывается: на торгах имущество часто требует ремонта, а в сравнении участвуют обычные объявления. Ориентир показывает порядок цен, а не гарантию выгоды.
+    <div class="warn">Состояние объекта не учитывается. На торгах имущество часто требует ремонта, а для сравнения взяты обычные объявления.
       </div>
-    <div class="mft"><a href="${esc(m.link)}" target="_blank" rel="noopener">Посмотреть похожие предложения ↗</a><span class="beta" title="Функция в тестировании: подбор похожих объявлений ещё дорабатываем">Тестовая функция</span></div>
+    <div class="mft"><a href="${esc(m.link)}" target="_blank" rel="noopener">Посмотреть похожие предложения ↗</a><span class="beta" title="Подбор похожих объявлений работает в тестовом режиме">Тестовая функция</span></div>
   </div>`;
 }
 
@@ -2320,47 +2323,46 @@ function calcBlock(l, det){
   const feeName = l.platform==='beltorgi.by' ? 'Аукционный сбор' : SCALE ? 'Услуги площадки' : l.platform==='etpvit.by' ? 'Обслуживание ЭТП'
     : 'Вознаграждение организатору';
   const pctTxt = v => String(v).replace('.',',') + '%';
-  const feeNote = t.man ? 'Условия уточнены МониТоргом по документам торгов.' : cc.note ? cc.note : !known ? 'Площадка не указала сборы по этому лоту - впишите, если знаете.'
+  const feeNote = t.man ? 'Условия проверены МониТоргом по документам торгов.' : cc.note ? cc.note : !known ? 'Площадка не указала сборы. Если знаете сумму, впишите её.'
     : l.platform==='beltorgi.by'
-      ? 'Из карточки лота на площадке.' + (t.fee_later ? ' Сумму затрат площадка объявит до начала торгов - впишите её, когда узнаете.' : '')
+      ? 'По данным площадки.' + (t.fee_later ? ' Точную сумму затрат площадка объявит до торгов.' : '')
     : l.platform==='konfiskat.by'
-      ? 'Затраты на организацию и проведение торгов оплачиваются отдельно - сумму сообщает организатор (РУП «Торговый дом «Восточный»). Задаток - 10% по извещению.'
+      ? 'Затраты на организацию торгов оплачиваются отдельно, сумму сообщает организатор. Задаток 10%.'
     : l.platform==='belauction.by'
-      ? 'Сверх ставки победитель платит сбор аукциона - размер в правилах площадки (belauction.by/sbor-auktsiona). Для юрлиц ставка указана с НДС 20%.'
+      ? 'Сверх ставки победитель платит сбор аукциона по правилам площадки. Для юрлиц ставка указана с НДС 20%.'
     : l.platform==='ipmtorgi.by'
-      ? 'Из карточки лота на площадке. Точную сумму затрат площадка сообщает до начала торгов.'
+      ? 'По данным площадки. Точную сумму затрат площадка сообщит до торгов.'
     : l.platform==='minskestate.by'
-      ? 'Из карточки лота на площадке: ориентировочная сумма затрат на организацию торгов и вознаграждение организатора.'
+      ? 'По данным площадки: примерные затраты на организацию торгов и вознаграждение организатора.'
     : l.platform==='mgcn.by'
-      ? 'Очный аукцион МГЦН: шаг торгов и затраты на организацию указаны в извещении - уточните у организатора и впишите.'
+      ? 'Шаг торгов и затраты на организацию указаны в извещении МГЦН. Если знаете сумму, впишите её.'
     : SCALE
-      ? `Победитель оплачивает услуги площадки по прейскуранту ${l.platform}: ${scaleTxt}. Если знаете точную ставку, впишите её.`
+      ? `Плата площадке по её прейскуранту: ${scaleTxt}.`
     : l.platform==='lotsale.by' && t.fee_abs
-      ? 'Из карточки лота: затраты оператору на проведение торгов (с НДС). Организатор может уточнить сумму за 12 часов до торгов.'
+      ? 'По данным площадки, с НДС. Организатор может уточнить сумму за 12 часов до торгов.'
     : l.platform==='lotsale.by'
-      ? 'Победитель возмещает затраты на организацию торгов - сумма в условиях лота на площадке (может уточняться до начала торгов). Впишите её.'
+      ? 'Победитель возмещает затраты на организацию торгов, сумма указана на площадке. Впишите её.'
     : l.platform==='butb.by'
-      ? 'Из карточки лота на бирже: затраты на организацию и проведение торгов (организатор может уточнить сумму до начала торгов).'
+      ? 'По данным биржи. Организатор может уточнить сумму до торгов.'
     : ['bankrot-torg.by','specrealization.by'].includes(l.platform)
-      ? 'Из карточки лота: аукционный сбор и затраты на организацию торгов (публикация, оценка) - если площадка их указала.'
+      ? 'Аукционный сбор и затраты на организацию торгов по данным площадки.'
     : l.platform==='gostorg.by'
-      ? 'Из карточки лота: вознаграждение организатору, % от цены продажи (если указано). Затраты на организацию торгов, если есть, - в условиях лота на площадке.'
+      ? 'Вознаграждение организатору по данным площадки. Затраты на организацию торгов, если есть, указаны в условиях лота.'
     : l.platform==='e-auction.by'
-      ? 'По этому лоту площадка сборов не указала. По регламенту e-auction затраты на организацию торгов покупатель возмещает, только если они указаны в объявлении.'
+      ? 'Площадка не указала сборы. По правилам e-auction затраты возмещаются, только если они указаны в объявлении.'
     // новые площадки (13.10) — из условий лота и прейскурантов площадок (шкала и lotsale — выше)
     : l.platform==='torgi.gov.by'
-      ? (t.fee_abs ? 'Из описания лота: затраты на организацию торгов, которые возмещает победитель.'
-        : 'В описании лота не сказано, что победитель оплачивает затраты на торги. Если в описании они есть, впишите их.')
+      ? (t.fee_abs ? 'Затраты на организацию торгов из описания лота.' : 'В описании лота затраты на торги не указаны.')
     : l.platform==='etpvit.by'
-      ? `Из карточки лота: обслуживание ЭТП - ${pctTxt(t.fee_pct||10)} от цены победителя.`
-        + (t.fee_later ? ' Затраты на организацию торгов площадка объявит на следующий день после окончания приёма заявок - впишите их.' : '')
+      ? `Обслуживание ЭТП: ${pctTxt(t.fee_pct||10)} от цены победителя.`
+        + (t.fee_later ? ' Затраты на организацию торгов площадка объявит на следующий день после окончания приёма заявок.' : '')
     : l.platform==='expert-torgi.by'
-      ? `Из карточки лота: вознаграждение организатору - ${pctTxt(t.fee_pct)} от начальной цены, платится в течение 3 рабочих дней после торгов.`
+      ? `Вознаграждение организатору ${pctTxt(t.fee_pct)} от начальной цены, оплата в течение 3 рабочих дней после торгов.`
     : l.platform==='realtorgi.by'
-      ? `Из карточки лота: вознаграждение ${pctTxt(t.fee_pct||5)} от цены продажи и затраты на организацию торгов${t.fee_upto?` до ${nf(t.fee_abs)} руб. (точную сумму опубликуют до дня аукциона)`:''}.`
+      ? `Вознаграждение ${pctTxt(t.fee_pct||5)} от цены продажи и затраты на организацию торгов${t.fee_upto?` до ${nf(t.fee_abs)} руб. Точную сумму опубликуют до аукциона`:''}.`
     : l.platform==='iintorgi.by'
-      ? `Из карточки лота: вознаграждение ${pctTxt(t.fee_pct)} от цены продажи${t.fee_min?` (не меньше ${nf(t.fee_min)} руб.)`:''} и затраты на организацию торгов.`
-      : 'Площадка не указала сборы по этому лоту. Если в описании есть затраты на организацию торгов или вознаграждение организатору, впишите их.';
+      ? `Вознаграждение ${pctTxt(t.fee_pct)} от цены продажи${t.fee_min?` (не меньше ${nf(t.fee_min)} руб.)`:''} и затраты на организацию торгов.`
+      : 'Площадка не указала сборы. Если в описании есть затраты или вознаграждение организатору, впишите их.';
   const vatHtml = vatPlus ? `<label class="cx-chk"><input type="checkbox" id="cx-vat"${vk === 'add' ? ' checked' : ''}> Добавить НДС 20% к цене лота</label>` : '';
   const feesHtml = `<div class="cx-fees"><div class="cx-fh">Расходы сверх цены лота</div>
       <label class="cx-f"><span>${feeName}, % от ${t.fee_base==='start'?'начальной':'итоговой'} цены</span><input type="number" id="cx-fp" min="0" max="30" step="0.1" value="${t.fee_pct!=null?t.fee_pct:''}" placeholder="${SCALE?'по шкале':'0'}"></label>
@@ -2491,7 +2493,7 @@ function rentBlock(l, r){
     notes.push('Запись ставки нестандартная - сумму автоматически не считаем, уточните у арендодателя.');
   }
   const from = String(B.from || '').split('-').reverse().join('.');
-  box.innerHTML = `<div class="cx-head"><h2>Сколько стоит аренда</h2><span class="c">ставка из извещения, БАВ - действующая</span></div>
+  box.innerHTML = `<div class="cx-head"><h2>Сколько стоит аренда</h2></div>
     <div class="cx-out">${rows.join('')}
       <div class="note">Ставка по извещению: «${esc(r.raw)}».${formula ? ` Расчёт: ${formula.replace(/\.$/, '')}.` : ''}</div>
       ${notes.map(n=>`<div class="note">${n}</div>`).join('')}
@@ -2599,7 +2601,7 @@ function loadLeaflet(){
   return LEAF;
 }
 function mapBlock(l, g){
-  const prec = { s:'Точка - на улице: дом на карте не нашёлся. ', p:'Точка - по населённому пункту: точного адреса на карте нет. ' }[g[2]] || '';
+  const prec = { s:'Точный дом на карте не нашёлся, поэтому отмечена улица. ', p:'Точного адреса на карте нет, поэтому отмечен населённый пункт. ' }[g[2]] || '';
   return `<section class="panel xs" id="x-map"><h2>Где находится</h2><div id="lmap" class="lmap"></div>
     <div class="mapbtns"><a class="btn" href="https://yandex.by/maps/?pt=${g[1]},${g[0]}&z=${g[2]==='p'?12:16}&l=map" target="_blank" rel="noopener">Открыть в Яндекс Картах ↗</a>
       <a class="btn" href="https://www.google.com/maps/search/?api=1&query=${g[0]},${g[1]}" target="_blank" rel="noopener">Открыть в Google Картах ↗</a></div>
@@ -2956,7 +2958,7 @@ function pageCalc(price){
       <div class="row"><span class="l">Доплата после победы</span><span class="r">${nf(rest)} BYN</span></div>
       <div class="row big"><span class="l">Итого за объект</span><span class="r">${nf(final)} BYN</span></div>
       <div class="row"><span class="l">Оплатить до</span><span class="r">${pay.toLocaleDateString('ru-RU')}</span></div>
-      <div class="note">Расчёт ориентировочный. Реальные ставки задатка и шага, а также сроки оплаты берутся из извещения по конкретному лоту. Госпошлина и расходы на регистрацию здесь не учитываются.</div>`;
+      <div class="note">Госпошлина и расходы на регистрацию в расчёте не учтены.</div>`;
   };
   ['c-price','c-dep','c-step','c-n','c-days'].forEach(i=>$('#'+i).addEventListener('input',calc));
   calc();
@@ -3006,8 +3008,8 @@ const WHY_IC = {
   clock:'<circle cx="16" cy="17" r="10"/><path d="M16 11v6l4 3M9.5 25l-2 3M22.5 25l2 3"/><path class="af" d="M3.5 9.5a4.5 4.5 0 0 1 6-6zM28.5 9.5a4.5 4.5 0 0 0-6-6z"/>'
 };
 /* «Как это работает» на главной — тексты можно поменять в админке (texts.how) */
-const HOW = [['Находите лот','Все площадки в одном каталоге: фильтры по региону, цене и сроку заявок. Не нужно обходить сайты по одному.'],
-  ['Сравниваете с рынком','Рядом с ценой лота - медиана похожих объявлений. Сразу видно, есть ли выгода.'],
+const HOW = [['Находите лот','Все площадки в одном каталоге с фильтрами по региону, цене и сроку заявок.'],
+  ['Сравниваете с рынком','У части лотов рядом с ценой показана медиана похожих объявлений.'],
   ['Считаете покупку','Калькулятор в карточке знает правила площадки: задаток, шаг, сборы организатора, сроки оплаты.'],
   ['Покупаете с нами','Проверим объект, съездим на осмотр, проведём через торги и сделку - если нужна помощь.']];
 function howList(){
@@ -3028,7 +3030,7 @@ function svcList(){
 }
 
 /* политика конфиденциальности — текст из админки (texts.privacy_text), пока его нет — заглушка; абзацы — через пустую строку */
-const PRIVACY_DEF = 'Здесь будет политика обработки персональных данных МониТорга: какие данные мы получаем (контакты из заявок на помощь, данные личного кабинета, файлы cookie), зачем, сколько храним и как их удалить.\n\nТекст готовится. По вопросам обработки данных пишите по контактам из подвала сайта.';
+// тексты по умолчанию — app/docs/privacy.txt и cookies.txt (16.10); в админке их можно заменить
 /* ───────── новости ─────────
    Статьи — из админки (таблица news; робот кладёт их в CFG.news при публикации, фото — файлами). Без базы (локальная сборка) — SSNEW ниже:
    те же три первые статьи — пересказ своими словами реальных новостей 2026 года со ссылкой на источник; фото — Pexels (бесплатная лицензия). */
@@ -3078,13 +3080,31 @@ function pageNewsItem(slug){
     ${more.length ? `<div class="sec"><div class="sec-h"><h2>Другие новости</h2><a href="#/news">Все новости →</a></div><div class="news">${more.map(newsCard).join('')}</div></div>` : ''}</div>`;
 }
 
-function pagePrivacy(){
-  document.title = 'Политика конфиденциальности' + TSUF;
-  const t = TX('privacy_text', PRIVACY_DEF).split(/\n\s*\n/).map(p=>`<p>${esc(p.trim()).replace(/\n/g,'<br>')}</p>`).join('');
-  $('#app').innerHTML = `<div class="wrap">${crumbs([['Политика конфиденциальности']])}<h1>Политика конфиденциальности</h1><div class="privacy">${t}</div></div>`;
+// абзацы — через пустую строку; строка ЗАГЛАВНЫМИ («3. КАКИЕ COOKIE…») — заголовок; строки через « | » — таблица
+function docHtml(txt){
+  return String(txt).replace(/\r/g, '').split(/\n\s*\n/).map(b=>b.replace(/^\n+|\s+$/g, '')).filter(Boolean).map(b=>{
+    const L = b.split('\n');
+    if(L.length === 1 && /^[\d. ]*[А-ЯЁA-Z][^а-яёa-z]{6,}$/.test(L[0].trim())) return `<h2>${esc(L[0].trim())}</h2>`;
+    if(L.length > 1 && L.every(l=>l.includes(' | '))){
+      const rows = L.map(l=>l.split(' | ').map(x=>x.trim()));
+      return `<div class="tw"><table class="plain"><tr>${rows[0].map(x=>`<th>${esc(x)}</th>`).join('')}</tr>${rows.slice(1).map(c=>`<tr>${c.map(x=>`<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</table></div>`;
+    }
+    return `<p>${esc(b.trim()).replace(/\n/g, '<br>')}</p>`;
+  }).join('');
 }
+function pageDoc(key, file, title){
+  document.title = title + TSUF;
+  $('#app').innerHTML = `<div class="wrap">${crumbs([[title]])}<h1>${esc(title)}</h1><div class="privacy" id="doc"><div class="skel"></div></div></div>`;
+  const draw = t => { const d = $('#doc'); if(d) d.innerHTML = docHtml(t); };
+  const own = TX(key, '');
+  if(own) return draw(own);
+  fetch('/docs/' + file + '?v=' + SNAP).then(r=>{ if(!r.ok) throw 0; return r.text(); }).then(draw)
+    .catch(()=>{ const d = $('#doc'); if(d) d.innerHTML = '<p>Не удалось загрузить текст. Обновите страницу.</p>'; });
+}
+const pagePrivacy = () => pageDoc('privacy_text', 'privacy.txt', 'Политика конфиденциальности');
+const pageCookies = () => pageDoc('cookie_policy', 'cookies.txt', 'Политика cookie');
 /* счётчики Яндекс.Метрики и Google Analytics: номера — из админки (texts.counters), код собираем здесь.
-   Включаются только после «Понятно» на плашке cookie — до согласия посетителя ничего не грузим */
+   Включаются только после «Принять все» на плашке cookie — до согласия посетителя ничего не грузим */
 function startCounters(){
   const c = (CFG.texts||{}).counters || {};
   if(window.__cnt || !(c.ym || c.ga)) return; window.__cnt = 1;
@@ -3092,7 +3112,7 @@ function startCounters(){
   if(/^\d{5,12}$/.test(c.ym || '')){
     window.ym = window.ym || function(){ (ym.a = ym.a || []).push(arguments); }; ym.l = +new Date();
     add('https://mc.yandex.ru/metrika/tag.js');
-    ym(+c.ym, 'init', { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true, trackHash:true });   // trackHash — переходы внутри сайта (#/lot/…)
+    ym(+c.ym, 'init', { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:false, trackHash:true });   // Вебвизор выключен — так в Политике cookie   // trackHash — переходы внутри сайта (#/lot/…)
   }
   if(/^G-[A-Z0-9]{4,15}$/.test(c.ga || '')){
     window.dataLayer = window.dataLayer || []; window.gtag = function(){ dataLayer.push(arguments); };
@@ -3105,13 +3125,31 @@ function startCounters(){
       gtag('event', 'page_view', { page_location: location.href, page_title: document.title }); }, 400));
   }
 }
-/* плашка cookie: пока не нажали «Понятно» (запоминаем в браузере); текст — из админки (texts.cookie_text) */
-(()=>{
-  let ok = false; try{ ok = localStorage.getItem('bl_cookie') === '1'; }catch(e){}
-  if(ok) return startCounters();
-  $('#ck-t').textContent = TX('cookie_text', 'Сайт использует файлы cookie: они нужны для работы сайта и личного кабинета. Продолжая пользоваться сайтом, вы соглашаетесь с этим.');
+/* плашка cookie (16.10): «Принять все» — согласие на 12 месяцев (bl_consent), счётчики включаются; «Отклонить» — до закрытия
+   вкладки (bl_consent_no), при следующем посещении спросим снова. «Настройки cookie» в подвале — открыть плашку снова;
+   отказ после согласия — отзыв: удаляем cookie счётчиков и перезагружаем страницу, чтобы они перестали работать */
+const CK_DAYS = 365;
+const ckOk = () => { try{ const c = JSON.parse(localStorage.getItem('bl_consent') || 'null'); return !!c && c.v === 'all' && Date.now() - c.at < CK_DAYS * 864e5; }catch(e){ return false; } };
+function ckShow(){
+  $('#ck-t').textContent = TX('cookie_text', 'МониТорг использует технические cookie - без них не работает вход в личный кабинет. С вашего согласия мы также подключим сервисы аналитики Яндекс Метрика и Google Analytics: они помогают понять, как люди пользуются сайтом. Google Analytics передаёт данные в США.');
   $('#ck').hidden = false;
-  $('#ck-ok').onclick = () => { $('#ck').hidden = true; try{ localStorage.setItem('bl_cookie', '1'); }catch(e){} startCounters(); };
+}
+(()=>{
+  try{ localStorage.removeItem('bl_cookie'); }catch(e){}   // прежняя отметка «Понятно» — согласия на аналитику в ней нет
+  let no = false; try{ no = sessionStorage.getItem('bl_consent_no') === '1'; }catch(e){}
+  if(ckOk()) startCounters(); else if(!no) ckShow();
+  $('#ck-ok').onclick = () => { $('#ck').hidden = true;
+    try{ localStorage.setItem('bl_consent', JSON.stringify({ v:'all', at:Date.now() })); sessionStorage.removeItem('bl_consent_no'); }catch(e){}
+    startCounters(); };
+  $('#ck-no').onclick = () => { const was = ckOk(); $('#ck').hidden = true;
+    try{ localStorage.removeItem('bl_consent'); sessionStorage.setItem('bl_consent_no', '1'); }catch(e){}
+    if(was){   // отзыв согласия: cookie счётчиков — на этом домене и на родительском
+      document.cookie.split(';').map(c=>c.split('=')[0].trim()).filter(n=>/^(_ga|_gid|_gat|_ym)/.test(n)).forEach(n=>{
+        ['', location.hostname, '.' + location.hostname.replace(/^www\./, '')].forEach(d=>{
+          document.cookie = `${n}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/${d ? '; domain=' + d : ''}`; }); });
+      location.reload();
+    } };
+  $('#ck-set').onclick = e => { e.preventDefault(); ckShow(); };
 })();
 
 function pageAbout(){
@@ -3554,7 +3592,7 @@ const AUTH_ERR = [
   [/after (\d+) second/i, raw => 'Повторно отправить код можно через ' + raw.match(/after (\d+) second/i)[1] + ' с'],
   [/over_email_send_rate_limit|email rate limit/i, 'Слишком много писем за час. Попробуйте позже'],
   [/rate_limit|rate limit|too many/i, 'Слишком много попыток. Подождите немного'],
-  [/email_address_not_authorized|not authorized/i, 'Отправка писем ещё настраивается - попробуйте позже'],
+  [/email_address_not_authorized|not authorized/i, 'Не удалось отправить письмо. Попробуйте через несколько минут'],
   [/email_address_invalid|unable to validate email|invalid format/i, 'Проверьте адрес почты'],
   [/same_password|should be different/i, 'Новый пароль совпадает со старым'],
   [/signup_disabled|signups not allowed/i, 'Регистрация временно закрыта'],
@@ -3784,8 +3822,7 @@ function pageLogin(params){
       <div class="fg"><label for="u-pass">Пароль</label><input id="u-pass" type="password" autocomplete="current-password" required></div>
       <div class="ferr" id="u-err"></div>
       <button class="btn pri" type="submit" style="width:100%">Войти</button></form>
-      <div class="lrow"><a href="${href('reset')}">Забыли пароль?</a><a href="${href('up')}">Зарегистрироваться</a></div>
-      <p class="note">Посмотреть кабинет без регистрации: гостевой вход - логин <b>guest</b>, пароль <b>guest</b>.</p>`;
+      <div class="lrow"><a href="${href('reset')}">Забыли пароль?</a><a href="${href('up')}">Зарегистрироваться</a></div>`;
     eyes(C);
     $('#u-login').focus();
     $('#uf').addEventListener('submit', async e=>{
@@ -4245,15 +4282,14 @@ async function meProfile(M){
   const NT = [['price','Цена лота изменилась'],['dates','Изменились сроки приёма заявок или дата торгов'],['status','Лот снят с торгов, завершён или снова выставлен'],
     ['remind','Напоминания: за 3 дня и за сутки до окончания приёма заявок'],['search','Новые лоты по сохранённым поискам']];
   M.innerHTML = `<h1>Профиль</h1>
-    ${guest ? '<div class="banner" style="margin:0 0 16px">Вы вошли гостем: избранное этого входа видят все, кто входит как guest. Заявки к гостевому входу не привязываются, контакты и настройки не сохраняются. Свой кабинет - <a href="#" id="p-reg">зарегистрируйтесь по почте</a>.</div>' : ''}
     <div class="panel me-p"><h2>Контакты</h2><p class="muted" style="margin-top:0">Подставляются в заявку на помощь, чтобы не вводить заново.</p>
-      ${guest ? '<p class="muted" style="margin:0">У гостевого входа контакты не сохраняются: их видели бы все, кто входит как guest.</p>' : `<div class="me-form"><div class="fg"><label for="p-name">Имя</label><input id="p-name" value="${esc(ME.name && !(guest && ME.name==='Гость') ? ME.name : '')}"></div>
+      ${guest ? '<p class="muted" style="margin:0">У гостевого входа контакты не сохраняются.</p>' : `<div class="me-form"><div class="fg"><label for="p-name">Имя</label><input id="p-name" value="${esc(ME.name && !(guest && ME.name==='Гость') ? ME.name : '')}"></div>
         <div class="fg"><label for="p-phone">Телефон</label><input id="p-phone" type="tel" value="${esc(ME.phone||'')}" placeholder="+375 (29) 000-00-00"></div>
         <div class="fg"><label for="p-mail">Email</label><input id="p-mail" type="email" value="${esc(ME.email||'')}"${ME.auth?' disabled':''}>${ME.auth?'<div class="fhint">Почта - логин кабинета, здесь не меняется</div>':''}</div>
         <div class="fg"><label for="p-tg">Telegram</label><input id="p-tg" value="${esc(ME.telegram||'')}" placeholder="@username"></div></div>
       ${ME.purpose ? `<p class="muted">Для чего вам МониТорг: ${esc(ME.purpose)}${ME.purpose_note ? ' - ' + esc(ME.purpose_note) : ''}</p>` : ''}
       <button class="btn pri" type="button" id="p-save">Сохранить</button>`}</div>
-    <div class="panel me-p"><h2>Уведомления</h2><p class="muted" style="margin-top:0">Приходят в личный кабинет. Доставка на почту и в Telegram - позже.</p>
+    <div class="panel me-p"><h2>Уведомления</h2><p class="muted" style="margin-top:0">Приходят в личный кабинет. Доставка на почту и в Telegram в разработке.</p>
       ${NT.map(([k,t])=>`<label class="chk"><input type="checkbox" data-nt="${k}"${on(k)?' checked':''}${guest?' disabled':''}> ${t}</label>`).join('')}
       <p class="muted">Заявки и отчёты приходят всегда.</p></div>
     ${guest ? '' : `<div class="panel me-p"><h2>Рассылка</h2>
@@ -4306,6 +4342,7 @@ function render(path, params){
   else if(path==='/calc/bav' || path==='/rent') pageRent();
   else if(path==='/about') pageAbout();
   else if(path==='/privacy') pagePrivacy();
+  else if(path==='/cookies') pageCookies();
   else if(path==='/news') pageNews();
   else if(path.startsWith('/news/')) pageNewsItem(decodeURIComponent(path.slice(6)));
   else if(path==='/help') pageHelp(params);
