@@ -613,6 +613,12 @@ applyTheme(window.THEME);
   .seg button{border:0;background:none;padding:7px 4px;border-radius:6px;cursor:pointer;color:var(--ink-2);
     font-size:13.5px;font-weight:700;transition:background .15s,color .15s}
   .seg button.on{background:var(--card);color:var(--brand);box-shadow:var(--sh)}
+  .seg.rseg{grid-template-columns:repeat(3,1fr)}
+  .ctabs{display:inline-flex;gap:4px;padding:4px;margin:4px 0 6px;background:var(--card);border:1px solid var(--hair-2);border-radius:12px;max-width:100%;overflow-x:auto}
+  .ctabs a{padding:8px 16px;border-radius:9px;font-weight:600;font-size:14px;color:var(--ink-2);text-decoration:none;white-space:nowrap}
+  .ctabs a:hover{color:var(--brand)}
+  .ctabs a.on{background:var(--brand);color:#fff}
+  @media (max-width:760px){ .ctabs{display:grid;grid-template-columns:1fr 1fr;width:100%} .ctabs a{white-space:normal;text-align:center;padding:8px 10px;line-height:1.25;display:flex;align-items:center;justify-content:center} }
   .seg small{font-weight:400;color:var(--ink-3);margin-left:2px}
   .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
   .toolbar .cnt{font-size:14px;color:var(--ink-2);margin-right:auto}
@@ -844,6 +850,7 @@ applyTheme(window.THEME);
   .cx-range input{flex:1;accent-color:var(--brand)}
   .cx-range output{min-width:40px;text-align:center;font-weight:700;font-size:18px;color:var(--brand);background:var(--brand-l);border-radius:8px;padding:2px 6px}
   .cx-hint{font-size:13px;color:var(--ink-2);margin-top:4px}
+  .cx-hint a{color:var(--brand);font-weight:600;text-decoration:none} .cx-hint a:hover{text-decoration:underline}
   .cx-in select{width:100%;padding:7px 9px;border:1px solid var(--hair-2);border-radius:8px;background:var(--card);color:var(--ink)}
   .sc-track{position:relative;height:10px;border-radius:8px;background:var(--hair);margin:30px 0 8px}
   .sc-fill{position:absolute;inset:0 auto 0 0;background:var(--brand);border-radius:8px;transition:width .2s}
@@ -1439,7 +1446,7 @@ $('#f-upd').textContent = dtm(SNAP);
   $('#fcont').innerHTML = out.length ? `<p class="fcont">${out.join('<br>')}</p>` : '';
 })();
 /* шапка: «Весь каталог» и ссылки; на телефоне ссылки — в меню под тремя полосками */
-const NAV_LINKS = [['#/','Главная'],['#/catalog','Все лоты'],['#/catalog?st=arch','Архив'],['#/calc','Калькулятор'],['#/news','Новости'],['#/about','О платформе']];
+const NAV_LINKS = [['#/','Главная'],['#/catalog','Все лоты'],['#/catalog?st=arch','Архив'],['#/calc','Калькуляторы'],['#/news','Новости'],['#/about','О платформе']];
 $('#nav').innerHTML = `<li class="cm-li"><button class="cbtn" id="cbtn" type="button" aria-expanded="false" aria-controls="cm-panel" aria-label="Весь каталог">`
   + '<span class="cg"><svg class="g" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/>'
   + '<rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span>'
@@ -2908,10 +2915,14 @@ function pageHelp(params){
   });
 }
 
+/* «Калькуляторы»: две вкладки, у каждой свой адрес — ссылку можно отправить на нужный калькулятор */
+const calcTabs = on => `<nav class="ctabs" aria-label="Калькуляторы">${[['torgi','Калькулятор торгов'],['bav','Калькулятор аренды по БАВ']]
+  .map(([k,t])=>`<a href="#/calc/${k}"${k===on?' class="on" aria-current="page"':''}>${t}</a>`).join('')}</nav>`;
 function pageCalc(price){
   document.title = 'Калькулятор торгов' + TSUF;
   $('#app').innerHTML = `<div class="wrap">
-    ${crumbs([['Калькулятор']])}
+    ${crumbs([['Калькуляторы', '#/calc/torgi'], ['Калькулятор торгов']])}
+    ${calcTabs('torgi')}
     <h1>Калькулятор торгов</h1>
     <p class="lede">Считает задаток, цену после шагов аукциона и сумму, которую нужно доплатить после победы. Ставки задатка и шага задаются организатором и указаны в извещении по лоту.</p>
     <div class="calc">
@@ -3111,6 +3122,129 @@ function pageAbout(){
     <p class="lede">МониТорг собирает торги по имуществу должников со всех площадок Беларуси, приводит их к одному виду и помогает довести покупку до сделки.</p>
     <div class="adv">${ADV.map(([ic,t,d])=>`<div class="it"><div class="ic">${advIc(ic)}</div><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div>
     </div>`;
+}
+
+/* ───────── калькулятор аренды по БАВ (макет 16.10) ─────────
+   Формула — Положение к Указу № 138, п. 5: Апл = Бст × Кмест × Кс × Кпр.2 × Кдоп × S (в БАВ в месяц).
+   Бст — по населённому пункту (приложение 1), Кмест — 0,6–1 (в Минске — по экономико-планировочной зоне, решение
+   Мингорисполкома № 3716), Кс — 0,3–3, Кпр.2 — льгота по приложению 2 (из нескольких — одна, самая низкая) */
+const RENT_PLACES = [
+  ['Минск', 0.5, 'minsk'],
+  ...['Брест','Витебск','Гомель','Гродно','Могилёв'].map(c=>[c, 0.3, 'obl']),
+  ['Населённый пункт Минского района', 0.3, 'big'],
+  ...['Барановичи','Бобруйск','Борисов','Волковыск','Жлобин','Жодино','Кобрин','Лида','Мозырь','Молодечно','Новогрудок','Новополоцк','Орша',
+      'Осиповичи','Пинск','Полоцк','Светлогорск','Слоним','Слуцк','Солигорск'].map(c=>[c, 0.25, 'big']),
+  ['Другой районный центр или посёлок городского типа', 0.2, 'rc'],
+  ['Новолукомль', 0.2, 'rc'],
+  ['Деревня, агрогородок, другой населённый пункт', 0.1, 'rc']
+];
+const RENT_LGOT = [
+  ['', 'Нет льготы', 1],
+  ['0.8', 'Учреждение образования - для образовательной деятельности', 0.8],
+  ['0.5p', 'Производство товаров (производственные площади)', 0.5],
+  ['0.5r', 'Период капремонта или реконструкции', 0.5],
+  ['0.5h', 'Доля высокотехнологичной выручки от 30%', 0.5],
+  ['0.4b', 'Бытовые услуги населению (по реестру)', 0.4],
+  ['0.4s', 'Юрлицо или ИП в сельской местности', 0.4],
+  ['0.2a', 'Аптека, льготная реализация лекарств', 0.2],
+  ['0.2l', 'Коллегия адвокатов', 0.2],
+  ['0.1i', 'Работающих инвалидов от 30%', 0.1],
+  ['0.1o', 'Общественная организация, профсоюз, творческий союз', 0.1]
+];
+function pageRent(){
+  document.title = 'Калькулятор аренды по БАВ' + TSUF;
+  const B = CFG.bav || {v:20.03, from:'2026-04-01'}, bav = +B.v, from = String(B.from || '').split('-').reverse().join('.');
+  const r2 = v => v.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const k = v => String(+(+v).toFixed(4)).replace('.', ',');
+  $('#app').innerHTML = `<div class="wrap">
+    ${crumbs([['Калькуляторы', '#/calc/torgi'], ['Калькулятор аренды по БАВ']])}
+    ${calcTabs('bav')}
+    <h1>Калькулятор аренды по БАВ</h1>
+    <p class="lede">Сколько стоит аренда госимущества в месяц и за весь срок - по формуле Указа № 138 и действующей базовой арендной величине.
+      Коэффициенты возьмите из извещения о торгах или уточните у арендодателя.</p>
+    <div class="calc">
+      <div class="panel calcform">
+        <div class="fg"><label>Как задана ставка</label><div class="seg rseg" id="rt-mode">
+          <button type="button" class="on" data-m="k">Коэффициенты</button><button type="button" data-m="m2">БАВ за 1 м²</button><button type="button" data-m="tot">БАВ за объект</button></div></div>
+        <div class="fg" data-only="k"><label for="rt-place">Где объект</label><select id="rt-place">${RENT_PLACES.map(([n,v],i)=>`<option value="${i}">${n} - ${k(v)} БАВ</option>`).join('')}</select></div>
+        <div class="fg" data-only="k" id="rt-zone-g"><label for="rt-zone">Экономико-планировочная зона Минска</label><select id="rt-zone">
+          <option value="">Не знаю - показать от и до</option>${[1,2,3,4,5].map(z=>`<option value="${z}">${z}-я зона - ${k(1.1 - z/10)}</option>`).join('')}</select>
+          <div class="cx-hint">Центр - 1-я зона, окраины - 5-я. <a href="https://mgcn.by/mapzone/" target="_blank" rel="noopener">Карта зон - на сайте МГЦН ↗</a></div></div>
+        <div class="fg" data-only="k" id="rt-km-g" hidden><label for="rt-km">Коэффициент местонахождения</label><input id="rt-km" type="number" min="0.6" max="1" step="0.05" value="1">
+          <div class="cx-hint">От 0,6 до 1 - устанавливает облисполком. Если не знаете - оставьте 1 (максимум).</div></div>
+        <div class="fg" data-only="k"><label for="rt-ks">Коэффициент спроса</label><div class="cx-range"><input id="rt-ksr" type="range" min="0.3" max="3" step="0.1" value="1"><input id="rt-ks" type="number" min="0.3" max="3" step="0.1" value="1" style="width:90px"></div>
+          <div class="cx-hint">От 0,3 до 3 - устанавливает арендодатель, указан в извещении о торгах.</div></div>
+        <div class="fg" data-only="k"><label for="rt-lg">Льгота арендатора (приложение 2)</label><select id="rt-lg">${RENT_LGOT.map(([v,t,x])=>`<option value="${v}">${t}${v?' - '+k(x):''}</option>`).join('')}</select></div>
+        <div class="fg" id="rt-ksl-g" hidden><label for="rt-ksl">Коэффициент спроса при льготе</label><input id="rt-ksl" type="number" min="0.3" max="3" step="0.1" value="1">
+          <div class="cx-hint">Если в извещении он указан отдельно - например, «3 - при применении понижающих коэффициентов» (так пишет МГЦН). Если нет - тот же, что выше.</div></div>
+        <div class="fg" data-only="m2" hidden><label for="rt-v">Ставка, БАВ за 1 м² в месяц</label><input id="rt-v" type="number" min="0" step="0.01" value="0.5"></div>
+        <div class="fg" data-only="tot" hidden><label for="rt-vt">Ставка, БАВ в месяц за весь объект</label><input id="rt-vt" type="number" min="0" step="0.1" value="20"></div>
+        <div class="fg" data-only="k m2"><label for="rt-s">Площадь, м²</label><input id="rt-s" type="number" min="0" step="0.1" value="50"></div>
+        <div class="fg"><label for="rt-n">Срок аренды, месяцев</label><input id="rt-n" type="number" min="1" max="600" value="12"></div>
+        <div class="fg"><label for="rt-p">Право заключения договора на торгах, BYN - разово</label><input id="rt-p" type="number" min="0" placeholder="если арендуете с торгов"></div>
+        <label class="chk"><input type="checkbox" id="rt-vat"> Арендодатель - плательщик НДС: +20% к арендной плате</label>
+      </div>
+      <div class="panel calcout" id="rt-out"></div>
+    </div>
+    <div class="sec"><h2>Как считается аренда</h2>
+      <table class="plain">
+        <tr><th>Что</th><th>Откуда берётся</th></tr>
+        <tr><td>Базовая арендная величина (БАВ)</td><td>${r2(bav)} руб. с ${from}. Меняется каждый год с 1 апреля - платёж пересчитывается автоматически.</td></tr>
+        <tr><td>Базовая ставка</td><td>Минск - 0,5 БАВ за м², областные центры и Минский район - 0,3, крупные города - 0,25, районные центры и посёлки - 0,2, остальные - 0,1.</td></tr>
+        <tr><td>Коэффициент местонахождения</td><td>0,6–1. В Минске зависит от зоны: 1-я - 1, 5-я - 0,6.</td></tr>
+        <tr><td>Коэффициент спроса</td><td>0,3–3. Устанавливает арендодатель заранее, указывается в извещении о торгах.</td></tr>
+        <tr><td>Льготы</td><td>Понижающие коэффициенты 0,1–0,8 по приложению 2 к Указу. Из нескольких применяется одна, самая низкая.</td></tr>
+      </table></div>
+  </div>`;
+  let mode = 'k';
+  const v = id => parseFloat(String($('#'+id).value).replace(',', '.')) || 0;
+  const clamp = (x, a, b) => Math.min(Math.max(x, a), b);
+  const calc = () => {
+    const pl = RENT_PLACES[+$('#rt-place').value], minsk = pl[2] === 'minsk';
+    $('#rt-zone-g').hidden = mode !== 'k' || !minsk; $('#rt-km-g').hidden = mode !== 'k' || minsk;
+    $('#rt-ksl-g').hidden = mode !== 'k' || !$('#rt-lg').value;
+    if(!kslTouched) $('#rt-ksl').value = $('#rt-ks').value;   // пока не меняли — как обычный коэффициент спроса
+    const n = clamp(Math.round(v('rt-n')), 1, 600), vat = $('#rt-vat').checked ? 1.2 : 1, pr = v('rt-p');
+    let lo, hi, formula = '', perM2 = null, plain = null;   // plain — аренда без льготы, [от, до] в БАВ
+    if(mode === 'k'){
+      const S = v('rt-s'), ks = clamp(v('rt-ks'), 0.3, 3), lg = (RENT_LGOT.find(x=>x[0]===$('#rt-lg').value) || RENT_LGOT[0])[2];
+      const zone = $('#rt-zone').value, km = minsk ? (zone ? 1.1 - zone/10 : null) : clamp(v('rt-km'), 0.6, 1);
+      // при льготе у МГЦН часто свой коэффициент спроса («3 — при применении понижающих коэффициентов»)
+      const ksl = lg < 1 ? clamp(v('rt-ksl'), 0.3, 3) : ks;
+      const baf = (kk, kc, kl) => pl[1] * kk * kc * kl * S;   // БАВ в месяц
+      [lo, hi] = km ? [baf(km, ksl, lg), baf(km, ksl, lg)] : [baf(0.6, ksl, lg), baf(1, ksl, lg)];
+      if(lg < 1) plain = km ? [baf(km, ks, 1), baf(km, ks, 1)] : [baf(0.6, ks, 1), baf(1, ks, 1)];
+      perM2 = S ? [lo / S, hi / S] : null;
+      formula = `${k(pl[1])} (базовая ставка) × ${km ? k(km) : '0,6…1'} (местонахождение) × ${k(ksl)} (спрос${lg < 1 && ksl !== ks ? ' при льготе' : ''})${lg < 1 ? ` × ${k(lg)} (льгота)` : ''} × ${k(S)} м² × ${r2(bav)} руб.`;
+    } else if(mode === 'm2'){
+      const S = v('rt-s'), x = v('rt-v'); lo = hi = x * S; perM2 = [x, x];
+      formula = `${k(x)} БАВ × ${k(S)} м² × ${r2(bav)} руб.`;
+    } else { lo = hi = v('rt-vt'); formula = `${k(v('rt-vt'))} БАВ × ${r2(bav)} руб.`; }
+    const byn = x => x * bav * vat, rng = (a, b, f) => Math.abs(a - b) < 0.005 ? f(a) : `${f(a)} – ${f(b)}`;
+    const money = x => r2(x) + ' BYN';
+    $('#rt-out').innerHTML = `
+      <div class="row big"><span class="l">Аренда в месяц${plain ? ' с льготой' : ''}${vat > 1 ? ' с НДС' : ''}</span><span class="r">${rng(byn(lo), byn(hi), money)}</span></div>
+      ${plain ? `<div class="row"><span class="l">Без льготы - для сравнения</span><span class="r">${rng(byn(plain[0]), byn(plain[1]), money)}</span></div>` : ''}
+      ${perM2 ? `<div class="row"><span class="l">За 1 м² в месяц</span><span class="r">${rng(byn(perM2[0]), byn(perM2[1]), money)}</span></div>` : ''}
+      <div class="row"><span class="l">В базовых арендных величинах</span><span class="r">${rng(lo, hi, x => k(x.toFixed(3)))} БАВ</span></div>
+      ${vat > 1 ? `<div class="row"><span class="l">В том числе НДС</span><span class="r">${rng(byn(lo) / 6, byn(hi) / 6, money)}</span></div>` : ''}
+      <div class="row"><span class="l">За ${n} ${plural(n,'месяц','месяца','месяцев')}</span><span class="r">${rng(byn(lo) * n, byn(hi) * n, money)}</span></div>
+      ${pr ? `<div class="row"><span class="l">Право заключения договора</span><span class="r">${money(pr)}</span></div>
+      <div class="row big"><span class="l">Всего за срок с правом аренды</span><span class="r">${rng(byn(lo) * n + pr, byn(hi) * n + pr, money)}</span></div>` : ''}
+      <div class="note">Расчёт: ${(formula + (vat > 1 ? ' × 1,2 (НДС)' : '')).replace(/\.$/, '')}.</div>
+      <div class="note">БАВ ${r2(bav)} руб. действует с ${from}. С 1 апреля каждого года БАВ меняется - сумма в рублях тоже.
+        Коммунальные и эксплуатационные расходы оплачиваются сверх аренды.</div>`;
+  };
+  $('#rt-mode').onclick = e => { const b = e.target.closest('button'); if(!b) return; mode = b.dataset.m;
+    $('#rt-mode').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x === b));
+    $('#app').querySelectorAll('[data-only]').forEach(g=>{ g.hidden = !g.dataset.only.split(' ').includes(mode); }); calc(); };
+  let kslTouched = false;
+  $('#rt-ksl').addEventListener('input', () => { kslTouched = true; });
+  $('#rt-ksr').oninput = () => { $('#rt-ks').value = $('#rt-ksr').value; calc(); };
+  $('#rt-ks').oninput = () => { $('#rt-ksr').value = $('#rt-ks').value; calc(); };
+  ['rt-place','rt-zone','rt-km','rt-lg','rt-ksl','rt-v','rt-vt','rt-s','rt-n','rt-p','rt-vat'].forEach(i=>{ $('#'+i).addEventListener('input', calc); $('#'+i).addEventListener('change', calc); });
+  ['rt-place','rt-zone','rt-lg'].forEach(i=>dd($('#'+i)));
+  calc();
 }
 
 /* ───────── главная ───────── */
@@ -4158,7 +4292,8 @@ let CUR = null, PREV = null, RESTORE_Y = null, FKEEP = null;
 function render(path, params){
   for(const box of ['#nav', '#mmenu']){
     const links = [...document.querySelectorAll(box + ' a:not(.btn)')], full = location.hash || '#/';
-    const cur = links.find(a=>a.getAttribute('href')===full) || links.find(a=>a.getAttribute('href')==='#'+path);
+    const cur = links.find(a=>a.getAttribute('href')===full) || links.find(a=>a.getAttribute('href')==='#'+path)
+      || (path.startsWith('/calc') || path==='/rent' ? links.find(a=>a.getAttribute('href')==='#/calc') : null);   // вкладки «Калькуляторов»
     links.forEach(a=>a.classList.toggle('on', a===cur));
   }
   cmenu(false); mmenu(false);
@@ -4167,7 +4302,8 @@ function render(path, params){
   else if(path.startsWith('/c/')) pageCatalog(scOf(decodeURIComponent(path.slice(3))), params);   // нет такого раздела — все лоты
   else if(path.startsWith('/s/')) pageCatalog(scOf(OLD_SEC[path.slice(3)]), params);              // старый адрес раздела
   else if(path==='/catalog') pageCatalog(null, params);
-  else if(path==='/calc') pageCalc(params.get('price'));
+  else if(path==='/calc' || path==='/calc/torgi') pageCalc(params.get('price'));
+  else if(path==='/calc/bav' || path==='/rent') pageRent();
   else if(path==='/about') pageAbout();
   else if(path==='/privacy') pagePrivacy();
   else if(path==='/news') pageNews();
