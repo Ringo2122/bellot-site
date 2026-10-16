@@ -4029,7 +4029,8 @@ function lotLine(l){
   return `${esc(l.platform)} · ${esc(secName(l.section))} · <b>${nf(l.price)} BYN</b> · ${arch ? (l.why==='removed'?'снят с площадки':'приём заявок завершён') : `заявки до ${dtm(l.req_to)}${d>=0&&d<=7?` <span class="dl">${d<=0?'сегодня':d===1?'завтра':'через '+d+' дн.'}</span>`:''}`}`;
 }
 const NK = { result:['Итоги','g'], price_down:['Цена ↓','g'], price_up:['Цена ↑',''], deadline:['Сроки',''], torg:['Сроки',''], closed:['Завершён','a'], reopened:['Снова на торгах','g'],
-  relist:['Снова на торгах','g'], remind3:['Напоминание','a'], remind1:['Напоминание','a'], search:['Новые лоты','b'], order:['Заявка','b'], report:['Отчёт','b'] };
+  relist:['Снова на торгах','g'], remind3:['Напоминание','a'], remind1:['Напоминание','a'], search:['Новые лоты','b'], order:['Заявка','b'], report:['Отчёт','b'],
+  msg:['Сообщение','b'], promo:['От МониТорга','b'] };   // из админки (admin_notify)
 const agoTxt = t => { const s = (Date.now() - new Date(t)) / 1000; return s < 3600 ? Math.max(1, Math.round(s/60)) + ' мин назад' : s < 86400 ? Math.round(s/3600) + ' ч назад' : dtm(new Date(t)/1000); };
 function notifRow(n){
   const [k, c] = NK[n.kind] || ['Событие',''];
@@ -4120,7 +4121,7 @@ async function meNotify(M, arg, params){
     <div class="me-tabs"><a href="#/me/notify" class="${only?'':'on'}">Все</a><a href="#/me/notify?f=unread" class="${only?'on':''}">Непрочитанные · ${ME.unread||0}</a>
       <span class="sp"></span><button class="lnk" type="button" id="n-all">Прочитать все</button><button class="lnk" type="button" id="n-clr">Удалить прочитанные</button></div>
     <div class="panel me-p">${rows.length ? rows.map(notifRow).join('') : '<p class="muted">Уведомлений нет.</p>'}</div>
-    <p class="muted">Что присылать - в разделе <a href="#/me/profile">Профиль</a>. Уведомления приходят по лотам, за которыми вы следите, по сохранённым поискам, заявкам и отчётам.</p>`;
+    <p class="muted">Что присылать - в разделе <a href="#/me/profile">Профиль</a>. Уведомления приходят по лотам, за которыми вы следите, по сохранённым поискам, заявкам и отчётам, а также сообщения от МониТорга.</p>`;
   bindNotif(M);
   $('#n-all').onclick = async () => { try{ await uapi('notifications?read_at=is.null', { method:'PATCH', body:{ read_at:new Date().toISOString() }, prefer:'return=minimal' }); await uload(); pageMe('notify', params); }catch(e){ utoast(e.message, true); } };
   $('#n-clr').onclick = async () => { try{ await uapi('notifications?read_at=not.is.null', { method:'DELETE' }); pageMe('notify', params); }catch(e){ utoast(e.message, true); } };
@@ -4293,7 +4294,7 @@ async function meStats(M, arg, params){
 async function meProfile(M){
   const nt = ME.notify || {}, on = k => nt[k] !== false, guest = ME.login === 'guest';
   const NT = [['price','Цена лота изменилась'],['dates','Изменились сроки приёма заявок или дата торгов'],['status','Лот снят с торгов, завершён или снова выставлен'],
-    ['remind','Напоминания: за 3 дня и за сутки до окончания приёма заявок'],['search','Новые лоты по сохранённым поискам']];
+    ['remind','Напоминания: за 3 дня и за сутки до окончания приёма заявок'],['search','Новые лоты по сохранённым поискам'],['promo','Предложения и новости от МониТорга']];
   M.innerHTML = `<h1>Профиль</h1>
     <div class="panel me-p"><h2>Контакты</h2><p class="muted" style="margin-top:0">Подставляются в заявку на помощь, чтобы не вводить заново.</p>
       ${guest ? '<p class="muted" style="margin:0">У гостевого входа контакты не сохраняются.</p>' : `<div class="me-form"><div class="fg"><label for="p-name">Имя</label><input id="p-name" value="${esc(ME.name && !(guest && ME.name==='Гость') ? ME.name : '')}"></div>
@@ -4304,7 +4305,7 @@ async function meProfile(M){
       <button class="btn pri" type="button" id="p-save">Сохранить</button>`}</div>
     <div class="panel me-p"><h2>Уведомления</h2><p class="muted" style="margin-top:0">Приходят в личный кабинет. Доставка на почту и в Telegram в разработке.</p>
       ${NT.map(([k,t])=>`<label class="chk"><input type="checkbox" data-nt="${k}"${on(k)?' checked':''}${guest?' disabled':''}> ${t}</label>`).join('')}
-      <p class="muted">Заявки и отчёты приходят всегда.</p></div>
+      <p class="muted">Заявки, отчёты и личные сообщения от МониТорга приходят всегда.</p></div>
     ${guest ? '' : `<div class="panel me-p"><h2>Рассылка</h2>
       <label class="chk"><input type="checkbox" id="p-news"${ME.news?' checked':''}> Получать подборки лотов и новости от МониТорга на почту</label>
       <p class="muted">Отписаться можно здесь в любой момент.</p></div>`}

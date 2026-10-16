@@ -898,6 +898,30 @@ function usersCsv(users, news){
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   toast(`Скачано: ${rows.length} ${plural(rows.length,'пользователь','пользователя','пользователей')}`);
 }
+/* уведомление в личный кабинет (admin_notify, 16.10): одному — «Сообщение», приходит всегда; всем — «От МониТорга»,
+   кроме гостевого входа и тех, кто выключил «Предложения и новости» в профиле. Лежат в общей ленте уведомлений —
+   оттуда их возьмёт и доставка в Telegram, когда появится */
+const ntfForm = (all, hint) => `<div class="panel"><h2>${all ? 'Уведомление всем пользователям' : 'Отправить уведомление'}</h2>
+  <p class="muted" style="margin-top:0">${hint}</p>
+  <label class="fld"><span>Заголовок - до 120 знаков</span><input id="n-title" maxlength="120" placeholder="${all ? 'Например: Квартира в центре Минска со скидкой 30%' : 'Например: Подобрали вам объект'}"></label>
+  <label class="fld"><span>Текст - до 1000 знаков, необязательно</span><textarea id="n-body" rows="3" maxlength="1000"></textarea></label>
+  <label class="fld"><span>Лот - адрес на сайте или номер, необязательно (уведомление будет вести на него)</span><input id="n-lot" placeholder="…/#/lot/bt-145082 или bt-145082"></label>
+  <div class="saverow"><button class="btn pri" id="n-send">${all ? 'Отправить всем' : 'Отправить'}</button><span class="muted" id="n-ask"></span></div></div>`;
+function ntfBind(userId, done){
+  let armed = false;
+  $('#n-send').onclick = async () => {
+    const title = $('#n-title').value.trim(), body = $('#n-body').value.trim(),
+          lot = $('#n-lot').value.trim().replace(/^.*#\/lot\//, '').replace(/[?#].*$/, '');
+    if(!title){ toast('Нужен заголовок', true); $('#n-title').focus(); return; }
+    // рассылка всем — со второго нажатия: первое только предупреждает
+    if(userId == null && !armed){ armed = true; $('#n-ask').textContent = 'Нажмите ещё раз, чтобы отправить всем'; $('#n-send').textContent = 'Да, отправить всем'; return; }
+    try{
+      const n = await rpc('admin_notify', { p_user: userId, p_title: title, p_body: body || null, p_lot: lot || null });
+      toast(userId == null ? `Отправлено: ${nf(n)} ${n % 10 === 1 && n % 100 !== 11 ? 'кабинет' : 'кабинетов'}` : 'Уведомление отправлено');
+      done && done();
+    }catch(err){ toast(err.message, true); armed = false; $('#n-send').textContent = userId == null ? 'Отправить всем' : 'Отправить'; $('#n-ask').textContent = ''; }
+  };
+}
 async function pUsers(params){
   const uid = params.get('id');
   if(uid) return pUser(+uid, params);
@@ -920,12 +944,23 @@ async function pUsers(params){
       <td>${[u.phone,u.auth_id?'':u.email,u.telegram].filter(Boolean).map(esc).join('<br>')||'<span class="muted">-</span>'}</td>
       <td>${u.news_at ? 'да, с ' + dt(u.news_at).slice(0,10) : '<span class="muted">нет</span>'}</td>
       <td>${c(ul,u.id,x=>x.fav)}</td><td>${c(ul,u.id,x=>x.watch)}</td><td>${c(ss,u.id)}</td><td>${c(ld,u.id)}</td><td>${c(rp,u.id)}</td><td>${u.last_seen?dt(u.last_seen):'-'}</td></tr>`).join('')}</table></div>
-    <p class="muted">Нажмите на строку - избранное пользователя, его заявки и отправка отчёта по объекту.</p>
+    <p class="muted">Нажмите на строку - избранное пользователя, его заявки, отправка отчёта или уведомления.</p>
+    ${ntfForm(true, 'Придёт в раздел «Уведомления» личного кабинета всем, кроме гостевого входа и тех, кто выключил в профиле «Предложения и новости от МониТорга». Отправка - со второго нажатия кнопки.')}
+    <div class="panel"><h2>Отправленные из админки</h2><div id="bc-list"><p class="muted">Загрузка…</p></div></div>
     <div class="panel"><h2>Варианты «Для чего вам МониТорг» при регистрации</h2>
       <p class="muted" style="margin-top:0">Обязательное поле в форме регистрации. Вариант «Другое» с полем «Уточните» есть всегда, последним. На сайте - после публикации.</p>
       <div id="rp-list"></div>
       <div class="saverow"><button class="btn" id="rp-add">+ Добавить вариант</button><button class="btn pri" id="rp-save">Сохранить</button><button class="btn" id="rp-def">Вернуть по умолчанию</button></div></div>`;
   V().querySelectorAll('tr[data-u]').forEach(tr=>tr.onclick = ()=>{ location.hash = 'users?id=' + tr.dataset.u; });
+  const uname = Object.fromEntries(users.map(u=>[u.id, u.name || u.login]));
+  const bcDraw = async () => { const bc = await api('broadcasts?select=*&order=created_at.desc&limit=30');
+    $('#bc-list').innerHTML = bc.length ? `<div class="tw"><table><tr><th>Когда</th><th>Кому</th><th>Заголовок</th><th>Лот</th><th>Доставлено</th></tr>${bc.map(b=>`<tr>
+      <td>${dt(b.created_at)}</td><td>${b.user_id ? esc(uname[b.user_id] || '#' + b.user_id) : '<b>всем</b>'}</td>
+      <td><b>${esc(b.title)}</b>${b.body ? `<br><span class="muted">${esc(b.body.slice(0,140))}</span>` : ''}</td>
+      <td>${b.lot ? `<a href="../#/lot/${enc(b.lot)}" target="_blank" rel="noopener">${esc(b.lot)}</a>` : '-'}</td><td>${nf(b.sent)}</td></tr>`).join('')}</table></div>`
+      : '<p class="muted">Пока ничего не отправляли.</p>'; };
+  bcDraw().catch(e=>{ $('#bc-list').innerHTML = `<p class="muted">${esc(e.message)}</p>`; });
+  ntfBind(null, () => { $('#n-title').value = $('#n-body').value = $('#n-lot').value = ''; $('#n-ask').textContent = ''; $('#n-send').textContent = 'Отправить всем'; bcDraw(); });
   $('#csv-all').onclick = () => usersCsv(users, false);
   $('#csv-news').onclick = () => usersCsv(users, true);
   const cur = (SET.texts||{}).reg_purposes;
@@ -963,6 +998,7 @@ async function pUser(id, params){
       ${u.confirmed_at ? 'почта подтверждена ' + dt(u.confirmed_at).slice(0,10) : '<span style="color:var(--bad)">почта не подтверждена</span>'} ·
       ${u.consent_at ? 'согласие на обработку данных ' + dt(u.consent_at).slice(0,10) : 'согласия на обработку данных нет'} ·
       ${u.news_at ? 'согласен на рассылку с ' + dt(u.news_at).slice(0,10) : 'рассылку не получает'}</p>` : ''}
+    ${u.login === 'guest' ? '' : ntfForm(false, 'Придёт в раздел «Уведомления» его личного кабинета с пометкой «Сообщение». Такие уведомления приходят всегда, их нельзя отключить в профиле.')}
     <div class="panel"><h2>Отправить отчёт по объекту</h2>
       <p class="muted" style="margin-top:0">Отчёт появится в разделе «Отчёты» кабинета, пользователь получит уведомление.</p>
       <div class="grid2"><label class="fld"><span>Лот</span><select id="r-lot"><option value="">- без привязки к лоту -</option>
@@ -987,6 +1023,7 @@ async function pUser(id, params){
     <div class="panel"><h2>Сохранённые поиски</h2>${ss.length?ss.map(x=>`<div>${esc(x.name)} ${x.notify?'<span class="chip g">уведомления</span>':''}</div>`).join(''):'<p class="muted">Нет.</p>'}</div>`;
   V().querySelectorAll('[data-rdel]').forEach(b=>b.onclick = async ()=>{ if(!confirm('Удалить отчёт из кабинета пользователя?')) return;
     try{ await api(`reports?id=eq.${b.dataset.rdel}`, { method:'DELETE' }); toast('Удалено'); route(); }catch(err){ toast(err.message, true); } });
+  if($('#n-send')) ntfBind(id, () => { $('#n-title').value = $('#n-body').value = $('#n-lot').value = ''; });
   $('#r-send').onclick = async ()=>{
     const btn = $('#r-send'), title = $('#r-title').value.trim(), file = $('#r-file').files[0];
     let lot = $('#r-lot').value || $('#r-lotid').value.trim().replace(/^.*#\/lot\//,'');
