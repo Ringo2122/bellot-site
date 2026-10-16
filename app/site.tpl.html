@@ -131,7 +131,12 @@ applyTheme(window.THEME);
   .hs-btn:hover{border-color:var(--brand);color:var(--brand)}
   /* компьютер: при прокрутке шапка плавно сжимается 72 → 46 px, подпись под названием прячется (решение Артёма 13.10);
      на телефоне шапка и так компактная — без анимации */
+  /* шапка — поверх страницы (fixed), её место сверху держит подложка .hsp высотой с несжатую шапку: сжатие шапки
+     не двигает страницу, и браузер не пересчитывает на каждом кадре весь каталог (на iPad анимация шла рывками, 16.10) */
+  .hsp{display:none}
   @media (min-width:761px){
+    header.main{position:fixed;left:0;right:0}
+    .hsp{display:block;height:var(--hh,72px)}
     .hrow{transition:padding .2s}
     .logo .mark{transition:width .2s,height .2s,box-shadow .2s}
     .logo .nm{transition:font-size .2s,text-shadow .2s}
@@ -1249,7 +1254,7 @@ applyTheme(window.THEME);
 </div>
 <div class="mmenu" id="mmenu"></div>
 <div class="cm-panel" id="cm-panel" aria-label="Весь каталог"></div>
-</header>
+</header><div class="hsp" aria-hidden="true"></div>
 <div class="cm-dim" id="cm-dim"></div>
 
 <main id="app"></main>
@@ -1622,7 +1627,8 @@ $('#cm-panel').addEventListener('click', e => { if(e.target.closest('a')) cmenu(
 $('#mburg').onclick = () => mmenu(!document.documentElement.classList.contains('mm-open'));
 $('#mmenu').addEventListener('click', e => { if(e.target.closest('a')) mmenu(false); });
 // высота шапки — первому экрану главной (он занимает окно под шапкой)
-const setHH = () => document.documentElement.style.setProperty('--hh', $('header.main').offsetHeight + 'px');
+// (сжатая шапка не в счёт: подложка .hsp держит место под несжатую)
+const setHH = () => { const h = $('header.main'); if(!h.classList.contains('sc')) document.documentElement.style.setProperty('--hh', h.offsetHeight + 'px'); };
 setHH();
 addEventListener('resize', () => { setHH(); if(document.documentElement.classList.contains('cm-open')) cmPlace(); });
 document.addEventListener('keydown', e => { if(e.key === 'Escape'){ cmenu(false); mmenu(false); } });
