@@ -967,6 +967,8 @@ applyTheme(window.THEME);
   .ck a{color:#ffab91}
   .ck .btn{padding:6px 14px;font-size:13px;flex:none}
   .ck-b{display:flex;gap:8px;flex:none}
+  .ck .btn.ck-no{background:transparent;border:1px solid rgba(255,255,255,.55);color:#fff}   /* без заливки, но такого же размера */
+  .ck .btn.ck-no:hover{border-color:#fff;background:rgba(255,255,255,.08)}
   #ck-t{flex:0 1 auto}
   .ck a{flex:none}
   /* по размеру текста, посередине внизу; на телефоне — во всю ширину: текст строкой, ниже по центру ссылка и кнопка */
@@ -1312,7 +1314,7 @@ applyTheme(window.THEME);
     · <a href="#/privacy">Политика конфиденциальности</a> · <a href="#/cookies">Политика cookie</a> · <a href="#" id="ck-set">Настройки cookie</a></div>
 </div></footer>
 <button class="totop" id="totop" type="button" aria-label="Наверх"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
-<div class="ck" id="ck" role="region" aria-label="Файлы cookie" hidden><span id="ck-t"></span> <a href="#/cookies">Подробнее</a><span class="ck-b"><button class="btn pri" id="ck-ok" type="button">Принять все</button><button class="btn pri" id="ck-no" type="button">Отклонить</button></span></div>
+<div class="ck" id="ck" role="region" aria-label="Файлы cookie" hidden><span id="ck-t"></span> <a href="#/cookies">Подробнее</a><span class="ck-b"><button class="btn pri" id="ck-ok" type="button">Принять все</button><button class="btn ck-no" id="ck-no" type="button">Отклонить</button></span></div>
 
 <script>
 const DATA = __DATA__;
@@ -3131,7 +3133,7 @@ function startCounters(){
 const CK_DAYS = 365;
 const ckOk = () => { try{ const c = JSON.parse(localStorage.getItem('bl_consent') || 'null'); return !!c && c.v === 'all' && Date.now() - c.at < CK_DAYS * 864e5; }catch(e){ return false; } };
 function ckShow(){
-  $('#ck-t').textContent = TX('cookie_text', 'МониТорг использует технические cookie - без них не работает вход в личный кабинет. С вашего согласия мы также подключим сервисы аналитики Яндекс Метрика и Google Analytics: они помогают понять, как люди пользуются сайтом. Google Analytics передаёт данные в США.');
+  $('#ck-t').textContent = TX('cookie_text', 'Мы используем cookie для улучшения работы с сайтом и личным кабинетом.');
   $('#ck').hidden = false;
 }
 (()=>{
