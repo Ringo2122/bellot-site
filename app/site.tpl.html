@@ -555,9 +555,17 @@ applyTheme(window.THEME);
 
   footer.main{background:var(--navy);color:#d4d4d8;padding-block:28px 34px;font-size:13.5px;margin-top:40px}
   footer.main a{color:#fafafa}
-  .fcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:22px}
+  .fcols{display:grid;gap:18px}
+  .fcols>div:first-child p{max-width:560px}
   footer.main h4{margin:0 0 9px;font-size:14px;color:#fafafa}
   footer.main ul{list-style:none;margin:0;padding:0;line-height:1.9}
+  /* источники — мелкой строкой через точку под описанием (решение Артёма 16.10) */
+  footer.main .fsrc{border-top:1px solid rgba(255,255,255,.12);padding-top:16px;display:flex;gap:18px;align-items:baseline}
+  footer.main .fsrc h4{margin:0;flex:none;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#8b95a3}
+  footer.main .fsrc ul{display:flex;flex-wrap:wrap;gap:2px 0;font-size:12.5px;line-height:1.7}
+  footer.main .fsrc li:not(:last-child)::after{content:'·';margin:0 9px;color:#5b6676}
+  footer.main .fsrc a{color:#b4bcc8} footer.main .fsrc a:hover{color:#fff}
+  @media(max-width:760px){footer.main .fsrc{display:block} footer.main .fsrc h4{margin-bottom:8px}}
   .fbot{border-top:1px solid rgba(255,255,255,.18);margin-top:22px;padding-top:16px;font-size:12.5px;
     color:#a1a1aa}
   .empty{padding:50px 20px;text-align:center;color:var(--ink-3)}
@@ -1266,30 +1274,22 @@ applyTheme(window.THEME);
       <p style="margin:0;color:#a1a1aa">Агрегатор торгов по имуществу должников: банкротство, исполнительное производство, залог и конфискат.</p>
       <div id="fcont"></div>
     </div>
-    <div><h4>Разделы</h4><ul id="fnav"></ul></div>
-    <div><h4>Сервисы</h4><ul>
-      <li><a href="#/calc">Калькулятор торгов</a></li>
-      <li><a href="#/about">Возможности платформы</a></li>
-      <li><a href="#/catalog">Весь каталог</a></li>
-      <li><a href="#/catalog?st=arch">Архив торгов</a></li>
-      <li><a href="#/help">Помощь в аукционе</a></li>
-    </ul></div>
-    <div><h4>Источники</h4><ul>
+    <div class="fsrc"><h4>Источники</h4><ul>
       <li><a href="https://e-auction.by" target="_blank" rel="noopener">БелЮрОбеспечение</a></li>
       <li><a href="https://ipmtorgi.by" target="_blank" rel="noopener">ИПМ-Торги</a></li>
       <li><a href="https://beltorgi.by" target="_blank" rel="noopener">Белреализация</a></li>
       <li><a href="https://konfiskat.by" target="_blank" rel="noopener">Торговый дом «Восточный»</a></li>
       <li><a href="https://belauction.by" target="_blank" rel="noopener">БелАукцион</a></li>
-      <li><a href="https://minskestate.by" target="_blank" rel="noopener">Минск-Недвижимость (МГЦН)</a></li>
-      <li><a href="https://mgcn.by/auctions/" target="_blank" rel="noopener">МГЦН - очные аукционы</a></li>
-      <li><a href="https://auction24.by" target="_blank" rel="noopener">Госторги (auction24.by)</a></li>
-      <li><a href="https://et.butb.by/et/index.xhtml" target="_blank" rel="noopener">БУТБ-Имущество (товарная биржа)</a></li>
+      <li><a href="https://minskestate.by" target="_blank" rel="noopener">Минск-Недвижимость</a></li>
+      <li><a href="https://mgcn.by/auctions/" target="_blank" rel="noopener">МГЦН</a></li>
+      <li><a href="https://auction24.by" target="_blank" rel="noopener">Госторги</a></li>
+      <li><a href="https://et.butb.by/et/index.xhtml" target="_blank" rel="noopener">БУТБ</a></li>
       <li><a href="https://lotsale.by" target="_blank" rel="noopener">LotSale</a></li>
-      <li><a href="https://gostorg.by" target="_blank" rel="noopener">GOSTORG (Институт недвижимости и оценки)</a></li>
+      <li><a href="https://gostorg.by" target="_blank" rel="noopener">GOSTORG</a></li>
       <li><a href="https://bankrot-torg.by" target="_blank" rel="noopener">БелБанкротАукцион</a></li>
       <li><a href="https://specrealization.by" target="_blank" rel="noopener">СпецРеализация</a></li>
-      <li><a href="https://torgi.gov.by" target="_blank" rel="noopener">Единая система электронных торгов (torgi.gov.by)</a></li>
-      <li><a href="https://etpvit.by" target="_blank" rel="noopener">ETPVIT (Витебский областной центр маркетинга)</a></li>
+      <li><a href="https://torgi.gov.by" target="_blank" rel="noopener">Единая система электронных торгов</a></li>
+      <li><a href="https://etpvit.by" target="_blank" rel="noopener">ETPVIT</a></li>
       <li><a href="https://www.expert-torgi.by" target="_blank" rel="noopener">EXPERT ТОРГИ</a></li>
       <li><a href="https://realtorgi.by" target="_blank" rel="noopener">Реалторги</a></li>
       <li><a href="https://iintorgi.by" target="_blank" rel="noopener">ИИН Торги</a></li>
@@ -1443,7 +1443,6 @@ $('#nav').innerHTML = `<li class="cm-li"><button class="cbtn" id="cbtn" type="bu
   + '<rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span>'
   + '<span>Весь каталог</span></button></li>' + NAV_LINKS.map(([h,n])=>`<li><a href="${h}">${n}</a></li>`).join('');
 $('#mmenu').innerHTML = NAV_LINKS.map(([h,n])=>`<a href="${h}">${n}</a>`).join('') + '<a class="btn pri" href="#/help">Помощь в аукционе</a>';
-$('#fnav').innerHTML = CATS.map(t=>`<li><a href="#/c/${t.k}">${esc(t.n)}</a></li>`).join('');
 
 /* ───────── поиск с подсказками ───────── */
 const norm = s => String(s||'').toLowerCase().replace(/ё/g,'е');
